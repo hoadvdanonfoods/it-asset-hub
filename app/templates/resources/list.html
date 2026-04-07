@@ -1,80 +1,148 @@
 {% extends 'base.html' %}
-{% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h1 class="mb-1">Tài nguyên hỗ trợ</h1>
-    <div class="text-muted">Kho link, app, camera, file và thông tin hỗ trợ nội bộ</div>
-  </div>
-  <div class="d-flex gap-2">
-    {% if current_user.can_manage_resources %}<a class="btn btn-outline-secondary" href="/resources/export?q={{ q|urlencode }}&category={{ category|urlencode }}">Export Excel</a>{% endif %}
-    {% if current_user.can_manage_resources %}<a class="btn btn-outline-success" href="/resources/import">Import Excel</a>{% endif %}
-    {% if current_user.can_manage_resources %}<a class="btn btn-primary" href="/resources/new">+ Thêm tài nguyên</a>{% endif %}
-  </div>
-</div>
-<div class="card mb-3">
-  <div class="card-body py-3">
-    <form method="get" class="mb-0">
-      <div class="row g-2 align-items-center">
-        <div class="col-md-5"><input class="form-control" name="q" value="{{ q }}" placeholder="Tìm theo tên, URL, user, ghi chú"></div>
-        <div class="col-md-3">
-          <select class="form-select" name="category">
-            <option value="">-- Tất cả nhóm --</option>
-            {% for c in categories %}<option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
-          </select>
-        </div>
-        <div class="col-md-2 d-grid"><button class="btn btn-dark">Lọc</button></div>
-        <div class="col-md-2 text-end align-self-center small text-muted">{{ total_items }} mục</div>
-      </div>
-    </form>
-  </div>
-</div>
-<table class="table table-striped table-bordered bg-white">
-  <thead><tr><th>Tên</th><th>Nhóm</th><th>Loại</th><th>URL / File</th><th>User</th><th>Password</th><th>Ghi chú</th><th></th></tr></thead>
-  <tbody>
-  {% for item in items %}
-    <tr>
-      <td>{{ item.title }}</td>
-      <td>{{ item.category or '' }}</td>
-      <td>{{ item.resource_type or '' }}</td>
-      <td>
-        {% if item.url %}<a href="{{ item.url }}" target="_blank">{{ item.url }}</a>{% elif item.file_path %}<a href="file:///{{ item.file_path|replace('\\','/') }}" target="_blank">{{ item.file_path }}</a>{% endif %}
-      </td>
-      <td>{{ item.username_hint or '' }}</td>
-      <td>
-        <div class="d-flex align-items-center gap-2">
-          <code id="pwd-{{ item.id }}">{% if item._decrypted_password and item._decrypted_password.strip() %}••••••••{% else %}{% endif %}</code>
-          {% if item._decrypted_password and item._decrypted_password.strip() %}
-          <button type="button" class="btn btn-sm btn-outline-secondary" data-password="{{ item._decrypted_password|e }}" onclick="togglePassword('pwd-{{ item.id }}', this)">Hiện</button>
-          <button type="button" class="btn btn-sm btn-outline-primary" data-password="{{ item._decrypted_password|e }}" onclick="copyPassword(this)">Copy</button>
-          {% endif %}
-        </div>
-      </td>
-      <td>{{ item.note or '' }}</td>
-      <td>
-        {% if current_user.can_manage_resources %}
-        <div class="d-flex gap-1 flex-wrap">
-          <a class="btn btn-sm btn-outline-primary" href="/resources/{{ item.id }}/edit">Sửa</a>
-          <form method="post" action="/resources/{{ item.id }}/archive" onsubmit="return confirm('Ẩn tài nguyên này?');">
-            <button class="btn btn-sm btn-outline-warning">Archive</button>
-          </form>
-        </div>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
+{% block title %}Tài nguyên - IT Asset Hub{% endblock %}
 
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Tài nguyên hỗ trợ</h1>
+    <p class="text-on-surface/60 mt-1">Kho link, app, camera, file và thông tin hỗ trợ nội bộ</p>
+  </div>
+  {% if current_user.can_manage_resources %}
+  <div class="flex flex-wrap items-center gap-3">
+    <a href="/resources/export?q={{ q|urlencode }}&category={{ category|urlencode }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+      <i data-lucide="download" class="w-4 h-4"></i> Export Excel
+    </a>
+    <a href="/resources/import" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+      <i data-lucide="upload" class="w-4 h-4"></i> Import Excel
+    </a>
+    <a href="/resources/new" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5">
+      <i data-lucide="plus" class="w-4 h-4"></i> Thêm tài nguyên
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-8">
+  <form method="get" class="mb-0">
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+      <div class="md:col-span-2">
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
+          <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên, URL, user, ghi chú..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all">
+        </div>
+      </div>
+      <div class="md:col-span-2">
+        <select name="category" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
+          <option value="">Tất cả nhóm</option>
+          {% for c in categories %}<option value="{{ c }}" {% if category == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="flex gap-2">
+        <button type="submit" class="flex-1 bg-on-surface text-surface-container-lowest font-bold text-sm py-2.5 rounded-xl hover:bg-on-surface/80 transition-colors shadow-sm cursor-pointer">Lọc</button>
+        <a href="/resources" class="flex items-center justify-center px-3.5 bg-surface-container-highest text-on-surface/60 rounded-xl hover:bg-outline-variant/30 transition-colors border border-outline-variant/20" title="Xóa bộ lọc">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </a>
+      </div>
+      <div class="text-right text-xs text-on-surface/40 font-medium">{{ total_items }} mục</div>
+    </div>
+  </form>
+</div>
+
+<!-- Data Table -->
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-on-surface whitespace-nowrap">
+      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
+        <tr>
+          <th class="px-6 py-4 rounded-tl-3xl">Tên</th>
+          <th class="px-6 py-4">Nhóm / Loại</th>
+          <th class="px-6 py-4">URL / File</th>
+          <th class="px-6 py-4">User</th>
+          <th class="px-6 py-4">Password</th>
+          <th class="px-6 py-4">Ghi chú</th>
+          <th class="px-6 py-4 text-right rounded-tr-3xl">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for item in items %}
+        <tr class="hover:bg-primary/5 transition-colors group">
+          <td class="px-6 py-4 font-bold text-on-surface">{{ item.title }}</td>
+          <td class="px-6 py-4">
+            <div class="flex flex-col gap-0.5">
+              {% if item.category %}<span class="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface/60 text-[10px] font-bold uppercase w-fit">{{ item.category }}</span>{% endif %}
+              {% if item.resource_type %}<span class="text-on-surface/40 text-xs">{{ item.resource_type }}</span>{% endif %}
+            </div>
+          </td>
+          <td class="px-6 py-4 max-w-xs">
+            {% if item.url %}
+            <a href="{{ item.url }}" target="_blank" class="text-primary hover:underline text-xs flex items-center gap-1 truncate max-w-[200px]">
+              <i data-lucide="external-link" class="w-3 h-3 flex-shrink-0"></i>{{ item.url }}
+            </a>
+            {% elif item.file_path %}
+            <a href="file:///{{ item.file_path|replace('\\','/') }}" target="_blank" class="text-primary hover:underline text-xs flex items-center gap-1 truncate max-w-[200px]">
+              <i data-lucide="folder-open" class="w-3 h-3 flex-shrink-0"></i>{{ item.file_path }}
+            </a>
+            {% else %}
+            <span class="text-on-surface/30">-</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-4 text-on-surface/70 text-xs">{{ item.username_hint or '-' }}</td>
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-2">
+              <code id="pwd-{{ item.id }}" class="text-xs text-on-surface/60">{% if item._decrypted_password and item._decrypted_password.strip() %}••••••••{% endif %}</code>
+              {% if item._decrypted_password and item._decrypted_password.strip() %}
+              <button type="button" data-password="{{ item._decrypted_password|e }}" onclick="togglePassword('pwd-{{ item.id }}', this)"
+                class="p-1 rounded-md bg-surface-container-highest hover:bg-outline-variant/30 text-on-surface/50 transition-colors border border-outline-variant/20 text-[10px] font-bold px-2">Hiện</button>
+              <button type="button" data-password="{{ item._decrypted_password|e }}" onclick="copyPassword(this)"
+                class="p-1 rounded-md bg-surface-container-highest hover:bg-primary/10 hover:text-primary text-on-surface/50 transition-colors border border-outline-variant/20 text-[10px] font-bold px-2">Copy</button>
+              {% endif %}
+            </div>
+          </td>
+          <td class="px-6 py-4 text-on-surface/60 text-xs max-w-[150px] truncate">{{ item.note or '-' }}</td>
+          <td class="px-6 py-4 text-right">
+            {% if current_user.can_manage_resources %}
+            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a href="/resources/{{ item.id }}/edit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-primary/20 hover:text-primary transition-colors text-on-surface/60 border border-outline-variant/20" title="Sửa">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </a>
+              <form method="post" action="/resources/{{ item.id }}/archive" onsubmit="return confirm('Ẩn tài nguyên này?');" class="inline">
+                <button type="submit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-amber-500/20 hover:text-amber-600 transition-colors text-on-surface/60 cursor-pointer border border-outline-variant/20" title="Archive">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                </button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not items %}
+  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
+    <i data-lucide="database" class="w-12 h-12 mb-4 opacity-50"></i>
+    <p>Chưa có tài nguyên nào.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Pagination -->
 {% if total_pages > 1 %}
-<nav aria-label="Resource pagination">
-  <ul class="pagination">
-    <li class="page-item {% if page <= 1 %}disabled{% endif %}"><a class="page-link" href="/resources/?page={{ page-1 }}&q={{ q }}&category={{ category }}">Trước</a></li>
-    {% for p in range(1, total_pages + 1) %}
-      <li class="page-item {% if p == page %}active{% endif %}"><a class="page-link" href="/resources/?page={{ p }}&q={{ q }}&category={{ category }}">{{ p }}</a></li>
-    {% endfor %}
-    <li class="page-item {% if page >= total_pages %}disabled{% endif %}"><a class="page-link" href="/resources/?page={{ page+1 }}&q={{ q }}&category={{ category }}">Sau</a></li>
-  </ul>
-</nav>
+<div class="mt-6 flex items-center justify-center gap-1">
+  <a href="/resources/?page={{ page-1 }}&q={{ q }}&category={{ category }}"
+    class="px-3 py-2 rounded-xl text-sm font-bold transition-colors {% if page <= 1 %}text-on-surface/20 pointer-events-none{% else %}text-on-surface/60 hover:bg-surface-container-highest{% endif %}">
+    <i data-lucide="chevron-left" class="w-4 h-4"></i>
+  </a>
+  {% for p in range(1, total_pages + 1) %}
+  <a href="/resources/?page={{ p }}&q={{ q }}&category={{ category }}"
+    class="w-9 h-9 flex items-center justify-center rounded-xl text-sm font-bold transition-colors {% if p == page %}bg-primary text-white{% else %}text-on-surface/60 hover:bg-surface-container-highest{% endif %}">{{ p }}</a>
+  {% endfor %}
+  <a href="/resources/?page={{ page+1 }}&q={{ q }}&category={{ category }}"
+    class="px-3 py-2 rounded-xl text-sm font-bold transition-colors {% if page >= total_pages %}text-on-surface/20 pointer-events-none{% else %}text-on-surface/60 hover:bg-surface-container-highest{% endif %}">
+    <i data-lucide="chevron-right" class="w-4 h-4"></i>
+  </a>
+</div>
 {% endif %}
 
 <script>
@@ -82,28 +150,16 @@ function togglePassword(targetId, btn) {
   const el = document.getElementById(targetId);
   const hidden = '••••••••';
   const value = btn.getAttribute('data-password') || '';
-  if (el.textContent === hidden) {
-    el.textContent = value;
-    btn.textContent = 'Ẩn';
-  } else {
-    el.textContent = hidden;
-    btn.textContent = 'Hiện';
-  }
+  if (el.textContent === hidden) { el.textContent = value; btn.textContent = 'Ẩn'; }
+  else { el.textContent = hidden; btn.textContent = 'Hiện'; }
 }
-
 function copyPassword(btn) {
   const value = btn.getAttribute('data-password') || '';
   if (!value) return;
   navigator.clipboard.writeText(value).then(() => {
-    const originalText = btn.textContent;
-    btn.textContent = 'Đã copy!';
-    btn.classList.add('btn-success');
-    btn.classList.remove('btn-outline-primary');
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.classList.remove('btn-success');
-      btn.classList.add('btn-outline-primary');
-    }, 2000);
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
   });
 }
 </script>

@@ -1,104 +1,169 @@
 {% extends 'base.html' %}
+{% block title %}Import thiết bị - IT Asset Hub{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
   <div>
-    <h1 class="mb-1">Import danh sách thiết bị</h1>
-    <div class="text-muted">Nạp file Excel chuẩn hóa, hệ thống sẽ thêm mới hoặc cập nhật theo Mã thiết bị</div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Import danh sách thiết bị</h1>
+    <p class="text-on-surface/60 mt-1">Nạp file Excel chuẩn hóa, hệ thống sẽ thêm mới hoặc cập nhật theo Mã thiết bị</p>
   </div>
-  <div class="d-flex gap-2">
-    <a class="btn btn-outline-success" href="/assets/import/template">Tải file mẫu</a>
-    <a class="btn btn-secondary" href="/assets/">Quay lại danh sách</a>
+  <div class="flex gap-3">
+    <a href="/assets/import/template" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="file-down" class="w-4 h-4"></i> Tải file mẫu
+    </a>
+    <a href="/assets/" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+    </a>
   </div>
 </div>
 
-{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<!-- Error -->
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
+</div>
+{% endif %}
+
+<!-- Import Result Summary -->
 {% if summary %}
-<div class="alert alert-success">
-  <div><strong>Import xong.</strong></div>
-  <div>Tổng dòng đọc được: {{ summary.total_rows }}</div>
-  <div>Thêm mới: {{ summary.created }}</div>
-  <div>Cập nhật: {{ summary.updated }}</div>
-  <div>Bỏ qua: {{ summary.skipped|length }}</div>
+<div class="flex items-start gap-3 bg-emerald-50 border border-emerald-300/40 text-emerald-800 rounded-2xl px-5 py-4 mb-6">
+  <i data-lucide="check-circle-2" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <div class="text-sm">
+    <p class="font-bold">Import xong!</p>
+    <p>Tổng dòng: <strong>{{ summary.total_rows }}</strong> &nbsp;·&nbsp; Thêm mới: <strong>{{ summary.created }}</strong> &nbsp;·&nbsp; Cập nhật: <strong>{{ summary.updated }}</strong> &nbsp;·&nbsp; Bỏ qua: <strong>{{ summary.skipped|length }}</strong></p>
+  </div>
 </div>
 {% if summary.skipped %}
-<div class="card card-body mb-3">
-  <div class="fw-semibold mb-2">Các dòng bị bỏ qua</div>
-  <ul class="mb-0">
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 mb-6">
+  <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-3">Các dòng bị bỏ qua</p>
+  <ul class="space-y-1 text-sm text-on-surface/70 list-disc list-inside">
     {% for item in summary.skipped %}<li>{{ item }}</li>{% endfor %}
   </ul>
 </div>
 {% endif %}
 {% endif %}
 
+<!-- Preview Panel -->
 {% if preview %}
-<div class="card card-body bg-white mb-3 border-primary">
-  <div class="d-flex justify-content-between align-items-center mb-2">
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-primary/20 p-6 mb-8">
+  <div class="flex items-center justify-between mb-5">
     <div>
-      <div class="fw-semibold">Preview import</div>
-      <div class="small text-muted">Xem trước trước khi ghi dữ liệu vào hệ thống</div>
+      <p class="font-bold text-on-surface">Preview import</p>
+      <p class="text-xs text-on-surface/50 mt-0.5">Xem trước trước khi ghi dữ liệu vào hệ thống</p>
     </div>
-    <span class="badge text-bg-primary">{{ preview.total_rows }} dòng</span>
+    <span class="px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold">{{ preview.total_rows }} dòng</span>
   </div>
-  <div class="row g-3 mb-3">
-    <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Sẽ thêm mới</div><div class="fs-5 fw-semibold">{{ preview.created }}</div></div></div>
-    <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Sẽ cập nhật</div><div class="fs-5 fw-semibold">{{ preview.updated }}</div></div></div>
-    <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">Bỏ qua</div><div class="fs-5 fw-semibold">{{ preview.skipped|length }}</div></div></div>
-    <div class="col-md-3"><div class="border rounded p-2"><div class="small text-muted">File</div><div class="small fw-semibold text-truncate">{{ preview.filename }}</div></div></div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-5">
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">Sẽ thêm mới</p>
+      <p class="text-2xl font-extrabold text-emerald-600">{{ preview.created }}</p>
+    </div>
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">Sẽ cập nhật</p>
+      <p class="text-2xl font-extrabold text-amber-600">{{ preview.updated }}</p>
+    </div>
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">Bỏ qua</p>
+      <p class="text-2xl font-extrabold text-on-surface/40">{{ preview.skipped|length }}</p>
+    </div>
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">File</p>
+      <p class="text-sm font-bold text-on-surface truncate">{{ preview.filename }}</p>
+    </div>
   </div>
+
+  <!-- Sample rows table -->
   {% if preview.sample_rows %}
-  <div class="table-responsive mb-3">
-    <table class="table table-sm table-bordered">
-      <thead><tr><th>Dòng</th><th>Mã</th><th>Tên</th><th>Loại</th><th>Trạng thái xử lý</th></tr></thead>
-      <tbody>
-        {% for row in preview.sample_rows %}
+  <div class="overflow-x-auto rounded-2xl border border-outline-variant/10 mb-5">
+    <table class="w-full text-left text-sm whitespace-nowrap">
+      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
         <tr>
-          <td>{{ row.row_number }}</td>
-          <td>{{ row.asset_code }}</td>
-          <td>{{ row.asset_name }}</td>
-          <td>{{ row.asset_type }}</td>
-          <td><span class="badge {% if row.action == 'create' %}text-bg-success{% elif row.action == 'update' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">{{ row.action }}</span></td>
+          <th class="px-4 py-3">Dòng</th>
+          <th class="px-4 py-3">Mã</th>
+          <th class="px-4 py-3">Tên</th>
+          <th class="px-4 py-3">Loại</th>
+          <th class="px-4 py-3">Trạng thái xử lý</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for row in preview.sample_rows %}
+        <tr class="hover:bg-primary/5">
+          <td class="px-4 py-3 text-on-surface/50">{{ row.row_number }}</td>
+          <td class="px-4 py-3 font-bold text-primary">{{ row.asset_code }}</td>
+          <td class="px-4 py-3 text-on-surface">{{ row.asset_name }}</td>
+          <td class="px-4 py-3 text-on-surface/70">{{ row.asset_type }}</td>
+          <td class="px-4 py-3">
+            {% if row.action == 'create' %}
+            <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase border border-emerald-500/10">+ Thêm mới</span>
+            {% elif row.action == 'update' %}
+            <span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold uppercase border border-amber-500/10">~ Cập nhật</span>
+            {% else %}
+            <span class="px-2 py-0.5 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold uppercase border border-outline-variant/20">Bỏ qua</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
   {% endif %}
+
   {% if preview.skipped %}
-  <div class="mb-3">
-    <div class="fw-semibold mb-2">Các dòng sẽ bị bỏ qua</div>
-    <ul class="mb-0">
+  <div class="mb-5">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-2">Các dòng sẽ bị bỏ qua</p>
+    <ul class="space-y-1 text-sm text-on-surface/60 list-disc list-inside">
       {% for item in preview.skipped %}<li>{{ item }}</li>{% endfor %}
     </ul>
   </div>
   {% endif %}
+
   <form method="post" action="/assets/import/confirm">
     <input type="hidden" name="preview_token" value="{{ preview.token }}">
-    <div class="d-flex gap-2">
-      <button class="btn btn-primary">Xác nhận import</button>
-      <a class="btn btn-outline-secondary" href="/assets/import">Chọn file khác</a>
+    <div class="flex gap-3">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="check" class="w-4 h-4"></i> Xác nhận import
+      </button>
+      <a href="/assets/import" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Chọn file khác
+      </a>
     </div>
   </form>
 </div>
 {% endif %}
 
-<div class="card card-body bg-white mb-3">
-  <div class="fw-semibold mb-2">Cột bắt buộc</div>
-  <ul>
-    {% for item in required_headers %}<li>{{ item }}</li>{% endfor %}
-  </ul>
-  <div class="fw-semibold mb-2">Tất cả cột hỗ trợ</div>
-  <div class="small text-muted mb-2">Ngày nên nhập theo định dạng <code>YYYY-MM-DD</code>. Import dựa trên <strong>Mã thiết bị</strong>:</div>
-  <div class="small">{{ all_headers|join(', ') }}</div>
+<!-- Column Info -->
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6 mb-6">
+  <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-3">Cột bắt buộc</p>
+  <div class="flex flex-wrap gap-2 mb-4">
+    {% for item in required_headers %}
+    <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 text-xs font-bold border border-rose-500/10">{{ item }}</span>
+    {% endfor %}
+  </div>
+  <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-2">Tất cả cột hỗ trợ</p>
+  <p class="text-xs text-on-surface/40 mb-2">Ngày nên nhập theo định dạng <code class="bg-surface-container-low px-1 rounded">YYYY-MM-DD</code>. Import dựa trên <strong>Mã thiết bị</strong>.</p>
+  <p class="text-sm text-on-surface/60">{{ all_headers|join(', ') }}</p>
 </div>
 
-<form class="card card-body bg-white" method="post" enctype="multipart/form-data" action="/assets/import/preview">
-  <div class="mb-3">
-    <label class="form-label">Chọn file Excel (.xlsx)</label>
-    <input class="form-control" type="file" name="import_file" accept=".xlsx" required>
-  </div>
-  <div class="d-flex gap-2">
-    <button class="btn btn-primary">Preview import</button>
-    <a class="btn btn-outline-success" href="/assets/import/template">Tải file mẫu</a>
-  </div>
-</form>
+<!-- Upload Form -->
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6">
+  <p class="font-bold text-on-surface mb-4">Chọn file Excel để import</p>
+  <form method="post" enctype="multipart/form-data" action="/assets/import/preview" class="space-y-4">
+    <div>
+      <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">File Excel (.xlsx) <span class="text-rose-500">*</span></label>
+      <input type="file" name="import_file" accept=".xlsx" required
+        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary cursor-pointer">
+    </div>
+    <div class="flex gap-3">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="eye" class="w-4 h-4"></i> Preview import
+      </button>
+      <a href="/assets/import/template" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="file-down" class="w-4 h-4"></i> Tải file mẫu
+      </a>
+    </div>
+  </form>
+</div>
 {% endblock %}

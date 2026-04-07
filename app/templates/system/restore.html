@@ -1,25 +1,50 @@
 {% extends 'base.html' %}
+{% block title %}Restore DB - IT Asset Hub{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">Restore DB</h1>
-<div class="alert alert-warning">
-  Thao tác này sẽ ghi đè database hiện tại. Hệ thống sẽ tự tạo một backup an toàn trước khi restore.
+<div class="mb-8">
+  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Restore Database</h1>
+  <p class="text-on-surface/60 mt-1">Khôi phục database từ một file backup đã có</p>
 </div>
-{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-<form class="card card-body bg-white" method="post">
-  <div class="mb-3">
-    <label class="form-label">Chọn file backup</label>
-    <select class="form-select" name="backup_name" required>
-      <option value="">-- Chọn backup --</option>
-      {% for item in backups %}<option value="{{ item.name }}">{{ item.name }}</option>{% endfor %}
-    </select>
-  </div>
-  <div class="mb-3">
-    <label class="form-label">Nhập chữ <code>RESTORE</code> để xác nhận</label>
-    <input class="form-control" name="confirm_text" required>
-  </div>
-  <div class="d-flex gap-2">
-    <button class="btn btn-danger">Restore DB</button>
-    <a class="btn btn-secondary" href="/system/">Quay lại</a>
-  </div>
-</form>
+
+<div class="flex items-start gap-3 bg-amber-50 border border-amber-300/40 text-amber-800 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
+  <i data-lucide="triangle-alert" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">Thao tác này sẽ <strong>ghi đè</strong> database hiện tại. Hệ thống sẽ tự tạo một backup an toàn trước khi restore.</p>
+</div>
+
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
+</div>
+{% endif %}
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-2xl">
+  <form method="post" class="space-y-6">
+    <div>
+      <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Chọn file backup <span class="text-rose-500">*</span></label>
+      <select name="backup_name" required class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
+        <option value="">-- Chọn backup --</option>
+        {% for item in backups %}<option value="{{ item.name }}">{{ item.name }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">
+        Nhập chữ <code class="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded">RESTORE</code> để xác nhận
+      </label>
+      <input type="text" name="confirm_text" required placeholder="Nhập RESTORE..."
+        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface placeholder:text-on-surface/40 transition-all">
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="flex items-center gap-2 bg-rose-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-700 transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restore DB
+      </button>
+      <a href="/system/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+      </a>
+    </div>
+  </form>
+</div>
 {% endblock %}

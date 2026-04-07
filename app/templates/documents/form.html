@@ -1,17 +1,62 @@
 {% extends 'base.html' %}
+{% block title %}{% if item %}Cập nhật tài liệu{% else %}Tải tài liệu lên{% endif %} - IT Asset Hub{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">{% if item %}Cập nhật tài liệu{% else %}Tải tài liệu lên{% endif %}</h1>
-{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-<form class="card card-body bg-white" method="post" enctype="multipart/form-data">
-  <div class="row g-3">
-    <div class="col-md-6"><label class="form-label">Tên tài liệu</label><input class="form-control" name="title" value="{{ item.title if item else '' }}" required></div>
-    <div class="col-md-3"><label class="form-label">Nhóm</label><input class="form-control" name="category" value="{{ item.category if item else 'Biểu mẫu' }}"></div>
-    <div class="col-md-3"><label class="form-label">File {% if item %}(chọn nếu muốn thay file){% endif %}</label><input class="form-control" type="file" name="{% if item %}replace_file{% else %}file{% endif %}" {% if not item %}required{% endif %} accept=".pdf,.doc,.docx,.xls,.xlsx"></div>
-    <div class="col-12"><label class="form-label">Mô tả</label><textarea class="form-control" name="description" rows="4">{{ item.description if item else '' }}</textarea></div>
-    {% if item %}
-    <div class="col-12 small text-muted">File hiện tại: {{ item.original_filename }}</div>
-    {% endif %}
-  </div>
-  <div class="mt-3 d-flex gap-2"><button class="btn btn-primary">Lưu</button><a class="btn btn-secondary" href="/documents/">Quay lại</a></div>
-</form>
+<div class="mb-8">
+  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">
+    {% if item %}Cập nhật tài liệu{% else %}Tải tài liệu lên{% endif %}
+  </h1>
+  <p class="text-on-surface/60 mt-1">{% if item %}Chỉnh sửa thông tin tài liệu{% else %}Thêm tài liệu mới vào kho chia sẻ{% endif %}</p>
+</div>
+
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
+</div>
+{% endif %}
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-2xl">
+  <form method="post" enctype="multipart/form-data" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Tên tài liệu <span class="text-rose-500">*</span></label>
+        <input type="text" name="title" value="{{ item.title if item else '' }}" required placeholder="Nhập tên tài liệu..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Nhóm</label>
+        <input type="text" name="category" value="{{ item.category if item else 'Biểu mẫu' }}" placeholder="VD: Biểu mẫu, Hướng dẫn..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">
+          File {% if item %}<span class="text-on-surface/40 font-normal normal-case">(chọn nếu muốn thay file)</span>{% else %}<span class="text-rose-500">*</span>{% endif %}
+        </label>
+        <input type="file" name="{% if item %}replace_file{% else %}file{% endif %}" {% if not item %}required{% endif %} accept=".pdf,.doc,.docx,.xls,.xlsx"
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary cursor-pointer">
+        {% if item %}
+        <p class="text-xs text-on-surface/40 mt-1 flex items-center gap-1"><i data-lucide="paperclip" class="w-3 h-3"></i>File hiện tại: {{ item.original_filename }}</p>
+        {% endif %}
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Mô tả</label>
+        <textarea name="description" rows="4" placeholder="Mô tả ngắn về nội dung tài liệu..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all resize-none">{{ item.description if item else '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="upload" class="w-4 h-4"></i> Lưu tài liệu
+      </button>
+      <a href="/documents/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+      </a>
+    </div>
+  </form>
+</div>
 {% endblock %}

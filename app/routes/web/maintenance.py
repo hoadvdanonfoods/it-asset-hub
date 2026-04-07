@@ -2,7 +2,7 @@ from datetime import datetime
 import io
 
 from fastapi import APIRouter, Depends, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import openpyxl
 from sqlalchemy import select
@@ -45,8 +45,15 @@ def maintenance_export(request: Request, technician: str | None = Query(default=
         ws.append([item.id, item.asset.asset_code if item.asset else '', str(item.maintenance_date), item.technician or '', float(item.cost) if item.cost is not None else '', str(item.next_maintenance_date) if item.next_maintenance_date else '', item.description, item.result or ''])
     stream = io.BytesIO()
     wb.save(stream)
-    stream.seek(0)
-    return StreamingResponse(stream, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename=maintenance_export.xlsx'})
+    content = stream.getvalue()
+    return Response(
+        content=content,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            'Content-Disposition': 'attachment; filename="maintenance_export.xlsx"',
+            'Content-Length': str(len(content))
+        }
+    )
 
 
 @router.get('/new', response_class=HTMLResponse)

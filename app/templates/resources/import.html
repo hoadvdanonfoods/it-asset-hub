@@ -1,31 +1,50 @@
 {% extends 'base.html' %}
+{% block title %}Import tài nguyên - IT Asset Hub{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">Import tài nguyên từ Excel</h1>
-{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-{% if summary %}
-<div class="alert alert-success">
-  Import hoàn tất: tạo mới <strong>{{ summary.created }}</strong>, cập nhật <strong>{{ summary.updated }}</strong>, tổng xử lý <strong>{{ summary.total }}</strong> dòng.
+<div class="mb-8">
+  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Import tài nguyên từ Excel</h1>
+  <p class="text-on-surface/60 mt-1">Tải lên file Excel để nhập hàng loạt tài nguyên vào hệ thống</p>
+</div>
+
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
 </div>
 {% endif %}
-<div class="card">
-  <div class="card-body">
-    <div class="mb-3 text-muted">
-      Hỗ trợ 2 kiểu file Excel: (1) file nguồn danh sách IP / User / Password để chuẩn hóa thành tài nguyên camera, hoặc (2) file <strong>Export Excel</strong> từ chính màn Tài nguyên để import lại sang máy/server khác.
-    </div>
-    <form method="post" enctype="multipart/form-data" class="mb-0">
-      <div class="row g-3 align-items-end">
-        <div class="col-md-8">
-          <label class="form-label">Chọn file Excel (.xlsx)</label>
-          <input class="form-control" type="file" name="import_file" accept=".xlsx" required>
-        </div>
-        <div class="col-md-4 d-grid">
-          <button class="btn btn-primary">Import vào Tài nguyên</button>
-        </div>
-      </div>
-    </form>
-  </div>
+
+{% if summary %}
+<div class="flex items-start gap-3 bg-emerald-50 border border-emerald-300/40 text-emerald-800 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
+  <i data-lucide="check-circle-2" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">
+    Import hoàn tất: tạo mới <strong>{{ summary.created }}</strong>, cập nhật <strong>{{ summary.updated }}</strong>, tổng xử lý <strong>{{ summary.total }}</strong> dòng.
+  </p>
 </div>
-<div class="mt-3">
-  <a class="btn btn-secondary" href="/resources/">Quay lại danh mục tài nguyên</a>
+{% endif %}
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-2xl space-y-6">
+  <!-- Info box -->
+  <div class="flex items-start gap-3 bg-blue-50/60 border border-blue-300/30 text-blue-700 rounded-2xl px-5 py-4 text-sm">
+    <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+    <p>Hỗ trợ 2 kiểu file Excel: (1) file nguồn danh sách IP / User / Password để chuẩn hoá thành tài nguyên camera, hoặc (2) file <strong>Export Excel</strong> từ chính màn Tài nguyên để import lại sang máy/server khác.</p>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="space-y-5">
+    <div>
+      <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Chọn file Excel (.xlsx) <span class="text-rose-500">*</span></label>
+      <input type="file" name="import_file" accept=".xlsx" required
+        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary cursor-pointer">
+    </div>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="upload" class="w-4 h-4"></i> Import vào Tài nguyên
+      </button>
+      <a href="/resources/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+      </a>
+    </div>
+  </form>
 </div>
 {% endblock %}

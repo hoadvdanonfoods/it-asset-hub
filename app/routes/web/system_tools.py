@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -61,7 +61,11 @@ def backup_download(backup_name: str, request: Request, current_user=None):
     file_path = BACKUP_DIR / backup_name
     if not file_path.exists():
         return RedirectResponse(url='/system/backups', status_code=303)
-    return StreamingResponse(file_path.open('rb'), media_type='application/octet-stream', headers={'Content-Disposition': f'attachment; filename={backup_name}'})
+    return FileResponse(
+        path=file_path,
+        media_type='application/octet-stream',
+        filename=backup_name
+    )
 
 
 @router.get('/restore', response_class=HTMLResponse)

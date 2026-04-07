@@ -1,21 +1,83 @@
 {% extends 'base.html' %}
+{% block title %}{% if item %}Cập nhật bảo trì{% else %}Ghi nhận bảo trì{% endif %} - IT Asset Hub{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">{% if item %}Cập nhật bảo trì{% else %}Ghi nhận bảo trì{% endif %}</h1>
-<form class="card card-body bg-white" method="post">
-  <div class="row g-3">
-    <div class="col-md-6">
-      <label class="form-label">Thiết bị</label>
-      <select class="form-select" name="asset_id" required>
-        {% for asset in assets %}<option value="{{ asset.id }}" {% if item and item.asset_id == asset.id %}selected{% endif %}>{{ asset.asset_code }} - {{ asset.asset_name }}</option>{% endfor %}
-      </select>
+<div class="mb-8">
+  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">
+    {% if item %}Cập nhật bảo trì #{{ item.id }}{% else %}Ghi nhận bảo trì{% endif %}
+  </h1>
+  <p class="text-on-surface/60 mt-1">{% if item %}Chỉnh sửa thông tin phiếu bảo trì{% else %}Tạo phiếu ghi nhận bảo trì mới{% endif %}</p>
+</div>
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-3xl">
+  <form method="post" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- Thiết bị -->
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Thiết bị <span class="text-rose-500">*</span></label>
+        <select name="asset_id" required class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
+          {% for asset in assets %}
+          <option value="{{ asset.id }}" {% if item and item.asset_id == asset.id %}selected{% endif %}>
+            {{ asset.asset_code }} - {{ asset.asset_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Ngày bảo trì -->
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Ngày bảo trì <span class="text-rose-500">*</span></label>
+        <input type="date" name="maintenance_date" value="{{ item.maintenance_date if item else '' }}" required
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+      </div>
+
+      <!-- Kỹ thuật viên -->
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Kỹ thuật viên</label>
+        <input type="text" name="technician" value="{{ item.technician if item else '' }}" placeholder="Tên kỹ thuật viên..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <!-- Chi phí -->
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Chi phí (đ)</label>
+        <input type="number" step="0.01" name="cost" value="{{ item.cost if item and item.cost is not none else '' }}" placeholder="0"
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <!-- Lần bảo trì tiếp theo -->
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Bảo trì tiếp theo</label>
+        <input type="date" name="next_maintenance_date" value="{{ item.next_maintenance_date if item and item.next_maintenance_date else '' }}"
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+      </div>
+
+      <!-- Nội dung -->
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Nội dung bảo trì <span class="text-rose-500">*</span></label>
+        <textarea name="description" rows="4" required placeholder="Mô tả công việc bảo trì đã thực hiện..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all resize-none">{{ item.description if item else '' }}</textarea>
+      </div>
+
+      <!-- Kết quả -->
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Kết quả</label>
+        <textarea name="result" rows="3" placeholder="Ghi chú kết quả, tình trạng sau bảo trì..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all resize-none">{{ item.result if item else '' }}</textarea>
+      </div>
     </div>
-    <div class="col-md-3"><label class="form-label">Ngày bảo trì</label><input class="form-control" type="date" name="maintenance_date" value="{{ item.maintenance_date if item else '' }}" required></div>
-    <div class="col-md-3"><label class="form-label">Kỹ thuật viên</label><input class="form-control" name="technician" value="{{ item.technician if item else '' }}"></div>
-    <div class="col-md-3"><label class="form-label">Chi phí</label><input class="form-control" type="number" step="0.01" name="cost" value="{{ item.cost if item and item.cost is not none else '' }}"></div>
-    <div class="col-md-3"><label class="form-label">Ngày bảo trì tiếp theo</label><input class="form-control" type="date" name="next_maintenance_date" value="{{ item.next_maintenance_date if item and item.next_maintenance_date else '' }}"></div>
-    <div class="col-12"><label class="form-label">Nội dung</label><textarea class="form-control" name="description" rows="4" required>{{ item.description if item else '' }}</textarea></div>
-    <div class="col-12"><label class="form-label">Kết quả</label><textarea class="form-control" name="result" rows="3">{{ item.result if item else '' }}</textarea></div>
-  </div>
-  <div class="mt-3 d-flex gap-2"><button class="btn btn-success">{% if item %}Cập nhật bảo trì{% else %}Lưu bảo trì{% endif %}</button><a class="btn btn-secondary" href="/maintenance/">Quay lại</a></div>
-</form>
+
+    <!-- Actions -->
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="flex items-center gap-2 bg-emerald-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="save" class="w-4 h-4"></i>
+        {% if item %}Cập nhật bảo trì{% else %}Lưu bảo trì{% endif %}
+      </button>
+      <a href="/maintenance/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+      </a>
+    </div>
+  </form>
+</div>
 {% endblock %}

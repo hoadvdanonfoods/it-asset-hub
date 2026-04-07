@@ -1,24 +1,94 @@
 {% extends 'base.html' %}
+{% block title %}{% if item %}Sửa tài nguyên{% else %}Thêm tài nguyên{% endif %} - IT Asset Hub{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">{% if item %}Sửa tài nguyên{% else %}Thêm tài nguyên{% endif %}</h1>
-{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
-<form class="card card-body bg-white" method="post">
-  <div class="row g-3">
-    <div class="col-md-6"><label class="form-label">Tên</label><input class="form-control" name="title" value="{{ item.title if item else '' }}" required></div>
-    <div class="col-md-3"><label class="form-label">Nhóm</label><input class="form-control" name="category" value="{{ item.category if item else '' }}" placeholder="dashboard/camera/app"></div>
-    <div class="col-md-3"><label class="form-label">Loại</label><input class="form-control" name="resource_type" value="{{ item.resource_type if item else 'web' }}"></div>
-    <div class="col-md-6"><label class="form-label">URL</label><input class="form-control" name="url" value="{{ item.url if item else '' }}"></div>
-    <div class="col-md-6"><label class="form-label">Đường dẫn file</label><input class="form-control" name="file_path" value="{{ item.file_path if item else '' }}"></div>
-    <div class="col-md-6"><label class="form-label">User</label><input class="form-control" name="username_hint" value="{{ item.username_hint if item else '' }}"></div>
-    <div class="col-md-6"><label class="form-label">Password</label><input class="form-control" name="password_hint" value="{{ item._decrypted_password if item else '' }}"></div>
-    <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control" name="note" rows="4">{{ item.note if item else '' }}</textarea></div>
-    {% if item %}
-    <div class="col-12 form-check ms-2">
-      <input class="form-check-input" type="checkbox" value="true" id="is_active" name="is_active" {% if item.is_active %}checked{% endif %}>
-      <label class="form-check-label" for="is_active">Tài nguyên đang hoạt động</label>
+<div class="mb-8">
+  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">
+    {% if item %}Sửa tài nguyên{% else %}Thêm tài nguyên{% endif %}
+  </h1>
+  <p class="text-on-surface/60 mt-1">{% if item %}Chỉnh sửa thông tin tài nguyên{% else %}Thêm link, app, camera hoặc file mới vào kho nội bộ{% endif %}</p>
+</div>
+
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6 max-w-3xl">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
+</div>
+{% endif %}
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-3xl">
+  <form method="post" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Tên <span class="text-rose-500">*</span></label>
+        <input type="text" name="title" value="{{ item.title if item else '' }}" required placeholder="Tên tài nguyên..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Nhóm</label>
+        <input type="text" name="category" value="{{ item.category if item else '' }}" placeholder="dashboard / camera / app..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Loại</label>
+        <input type="text" name="resource_type" value="{{ item.resource_type if item else 'web' }}" placeholder="web / file / app..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">URL</label>
+        <input type="text" name="url" value="{{ item.url if item else '' }}" placeholder="https://..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Đường dẫn file</label>
+        <input type="text" name="file_path" value="{{ item.file_path if item else '' }}" placeholder="D:\Files\..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">User</label>
+        <input type="text" name="username_hint" value="{{ item.username_hint if item else '' }}" placeholder="Tên đăng nhập..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Password</label>
+        <input type="text" name="password_hint" value="{{ item._decrypted_password if item else '' }}" placeholder="Mật khẩu (sẽ được mã hoá)..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Ghi chú</label>
+        <textarea name="note" rows="4" placeholder="Ghi chú thêm về tài nguyên này..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all resize-none">{{ item.note if item else '' }}</textarea>
+      </div>
+
+      {% if item %}
+      <div class="md:col-span-2">
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <div class="relative">
+            <input type="checkbox" value="true" id="is_active" name="is_active" {% if item.is_active %}checked{% endif %} class="sr-only peer">
+            <div class="w-10 h-6 bg-outline-variant/40 rounded-full peer peer-checked:bg-primary transition-colors"></div>
+            <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></div>
+          </div>
+          <span class="text-sm font-medium text-on-surface">Tài nguyên đang hoạt động</span>
+        </label>
+      </div>
+      {% endif %}
     </div>
-    {% endif %}
-  </div>
-  <div class="mt-3 d-flex gap-2"><button class="btn btn-primary">Lưu</button><a class="btn btn-secondary" href="/resources/">Quay lại</a></div>
-</form>
+
+    <div class="flex gap-3 pt-2">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="save" class="w-4 h-4"></i> Lưu
+      </button>
+      <a href="/resources/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+      </a>
+    </div>
+  </form>
+</div>
 {% endblock %}

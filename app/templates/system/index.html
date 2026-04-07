@@ -1,29 +1,55 @@
 {% extends 'base.html' %}
+{% block title %}Hệ thống - IT Asset Hub{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">Hệ thống</h1>
-<div class="row g-3">
-  <div class="col-md-4">
-    <div class="card"><div class="card-body">
-      <h5 class="card-title">Backup DB</h5>
-      <p class="text-muted">Tạo ngay một bản sao database hiện tại.</p>
-      <form method="post" action="/system/backup">
-        <button class="btn btn-primary">Backup DB ngay</button>
-      </form>
-    </div></div>
+<div class="mb-8">
+  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Quản lý hệ thống</h1>
+  <p class="text-on-surface/60 mt-1">Backup, restore và bảo trì cơ sở dữ liệu</p>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <!-- Backup Now -->
+  <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6 flex flex-col gap-4">
+    <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+      <i data-lucide="database-backup" class="w-6 h-6"></i>
+    </div>
+    <div>
+      <h2 class="text-lg font-bold text-on-surface">Backup DB</h2>
+      <p class="text-on-surface/60 text-sm mt-1">Tạo ngay một bản sao database hiện tại để đảm bảo an toàn dữ liệu.</p>
+    </div>
+    <form method="post" action="/system/backup" class="mt-auto">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer w-full justify-center">
+        <i data-lucide="save" class="w-4 h-4"></i> Backup DB ngay
+      </button>
+    </form>
   </div>
-  <div class="col-md-4">
-    <div class="card"><div class="card-body">
-      <h5 class="card-title">Danh sách backup</h5>
-      <p class="text-muted">Xem các file backup đã tạo và tải về nếu cần.</p>
-      <a class="btn btn-outline-secondary" href="/system/backups">Mở danh sách backup</a>
-    </div></div>
+
+  <!-- View Backups -->
+  <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6 flex flex-col gap-4">
+    <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+      <i data-lucide="archive" class="w-6 h-6"></i>
+    </div>
+    <div>
+      <h2 class="text-lg font-bold text-on-surface">Danh sách backup</h2>
+      <p class="text-on-surface/60 text-sm mt-1">Xem các file backup đã tạo và tải về nếu cần phục hồi.</p>
+    </div>
+    <a href="/system/backups" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20 w-full justify-center mt-auto">
+      <i data-lucide="list" class="w-4 h-4"></i> Mở danh sách backup
+    </a>
   </div>
-  <div class="col-md-4">
-    <div class="card"><div class="card-body">
-      <h5 class="card-title">Restore DB</h5>
-      <p class="text-muted">Khôi phục database từ một file backup đã có.</p>
-      <a class="btn btn-outline-danger" href="/system/restore">Mở trang restore</a>
-    </div></div>
+
+  <!-- Restore -->
+  <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6 flex flex-col gap-4">
+    <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center">
+      <i data-lucide="rotate-ccw" class="w-6 h-6"></i>
+    </div>
+    <div>
+      <h2 class="text-lg font-bold text-on-surface">Restore DB</h2>
+      <p class="text-on-surface/60 text-sm mt-1">Khôi phục database từ một file backup đã có. Thao tác này sẽ ghi đè dữ liệu hiện tại.</p>
+    </div>
+    <a href="/system/restore" class="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-700 transition-all shadow-md hover:-translate-y-0.5 w-full justify-center mt-auto">
+      <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Mở trang restore
+    </a>
   </div>
 </div>
 {% endblock %}

@@ -4,7 +4,7 @@ import io
 import json
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import openpyxl
 from sqlalchemy import or_, select
@@ -309,8 +309,15 @@ def asset_export(request: Request, q: str | None = Query(default=None), asset_ty
         ws.append([asset.id, asset.asset_code, asset.asset_name, asset.asset_type, asset.model or '', asset.serial_number or '', asset.ip_address or '', asset.department or '', asset.assigned_user or '', asset.assigned_at or '', asset.unassigned_at or '', asset.location or '', asset.purchase_date or '', asset.warranty_expiry or '', asset.status, asset.notes or ''])
     stream = io.BytesIO()
     wb.save(stream)
-    stream.seek(0)
-    return StreamingResponse(stream, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename=assets_export.xlsx'})
+    content = stream.getvalue()
+    return Response(
+        content=content,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            'Content-Disposition': 'attachment; filename="assets_export.xlsx"',
+            'Content-Length': str(len(content))
+        }
+    )
 
 
 @router.get('/import/template')
@@ -326,8 +333,15 @@ def asset_import_template(request: Request, current_user=None):
         ws.column_dimensions[letter].width = 22
     stream = io.BytesIO()
     wb.save(stream)
-    stream.seek(0)
-    return StreamingResponse(stream, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename=asset_import_template.xlsx'})
+    content = stream.getvalue()
+    return Response(
+        content=content,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            'Content-Disposition': 'attachment; filename="asset_import_template.xlsx"',
+            'Content-Length': str(len(content))
+        }
+    )
 
 
 @router.get('/import', response_class=HTMLResponse)

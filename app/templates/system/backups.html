@@ -1,24 +1,68 @@
 {% extends 'base.html' %}
+{% block title %}Danh sách backup - IT Asset Hub{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="mb-0">Danh sách backup</h1>
-  <form method="post" action="/system/backup">
-    <button class="btn btn-primary">Backup DB ngay</button>
-  </form>
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Danh sách backup</h1>
+    <p class="text-on-surface/60 mt-1">Các bản sao database đã được tạo</p>
+  </div>
+  <div class="flex gap-3">
+    <form method="post" action="/system/backup">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="save" class="w-4 h-4"></i> Backup DB ngay
+      </button>
+    </form>
+    <a href="/system/" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+    </a>
+  </div>
 </div>
-<div class="alert alert-secondary">Database hiện tại: <code>{{ db_path }}</code></div>
-<table class="table table-striped table-bordered bg-white">
-  <thead><tr><th>Tên file</th><th>Kích thước (bytes)</th><th>Thời gian sửa</th><th></th></tr></thead>
-  <tbody>
-  {% for item in backups %}
-    <tr>
-      <td>{{ item.name }}</td>
-      <td>{{ item.size }}</td>
-      <td>{{ item.modified_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-      <td><a class="btn btn-sm btn-outline-secondary" href="/system/backups/{{ item.name }}/download">Tải về</a></td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-<a class="btn btn-secondary" href="/system/">Quay lại Hệ thống</a>
+
+<div class="flex items-center gap-2 bg-surface-container-low/60 border border-outline-variant/10 rounded-2xl px-5 py-3 mb-6 text-sm text-on-surface/60 max-w-2xl">
+  <i data-lucide="database" class="w-4 h-4 text-primary"></i>
+  Database hiện tại: <code class="text-primary font-bold ml-1">{{ db_path }}</code>
+</div>
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-on-surface whitespace-nowrap">
+      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
+        <tr>
+          <th class="px-6 py-4 rounded-tl-3xl">Tên file</th>
+          <th class="px-6 py-4">Kích thước</th>
+          <th class="px-6 py-4">Thời gian tạo</th>
+          <th class="px-6 py-4 text-right rounded-tr-3xl">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for item in backups %}
+        <tr class="hover:bg-primary/5 transition-colors group">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-2 font-medium text-on-surface">
+              <i data-lucide="file-archive" class="w-4 h-4 text-primary opacity-60"></i>
+              {{ item.name }}
+            </div>
+          </td>
+          <td class="px-6 py-4 text-on-surface/60 text-xs">{{ "{:,}".format(item.size) }} bytes</td>
+          <td class="px-6 py-4 text-on-surface/60 text-xs">{{ item.modified_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td class="px-6 py-4 text-right">
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity flex justify-end">
+              <a href="/system/backups/{{ item.name }}/download" class="flex items-center gap-1.5 bg-surface-container-highest hover:bg-primary/20 hover:text-primary transition-colors text-on-surface/60 border border-outline-variant/20 px-3 py-1.5 rounded-lg text-xs font-bold" title="Tải về">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Tải về
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not backups %}
+  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
+    <i data-lucide="archive" class="w-12 h-12 mb-4 opacity-50"></i>
+    <p>Chưa có bản backup nào.</p>
+  </div>
+  {% endif %}
+</div>
 {% endblock %}

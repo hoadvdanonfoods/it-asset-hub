@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import openpyxl
 from sqlalchemy import or_, select
@@ -234,8 +234,15 @@ def resource_export(request: Request, q: str | None = Query(default=None), categ
         ])
     stream = io.BytesIO()
     wb.save(stream)
-    stream.seek(0)
-    return StreamingResponse(stream, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename=resources_export.xlsx'})
+    content = stream.getvalue()
+    return Response(
+        content=content,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            'Content-Disposition': 'attachment; filename="resources_export.xlsx"',
+            'Content-Length': str(len(content))
+        }
+    )
 
 
 @router.get('/new', response_class=HTMLResponse)
