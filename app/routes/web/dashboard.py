@@ -30,7 +30,7 @@ def _parse_asset_date(value: str | None):
 @require_module_access('dashboard')
 def dashboard(request: Request, db: Session = Depends(get_db), current_user=None):
     total_assets = db.scalar(select(func.count()).select_from(Asset)) or 0
-    open_incidents = db.scalar(select(func.count()).select_from(Incident).where(Incident.status != 'closed')) or 0
+    open_incidents = db.scalar(select(func.count()).select_from(Incident).where(Incident.status.in_(['open', 'in_progress', 'waiting_user', 'waiting_vendor']))) or 0
     total_maintenances = db.scalar(select(func.count()).select_from(Maintenance)) or 0
     active_assets = db.scalar(select(func.count()).select_from(Asset).where(Asset.status == 'active')) or 0
 
@@ -39,7 +39,7 @@ def dashboard(request: Request, db: Session = Depends(get_db), current_user=None
     status_rows = [list(row) for row in db.execute(select(Incident.status, func.count()).group_by(Incident.status).order_by(func.count().desc())).all()]
 
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    open_incident_items = db.scalars(select(Incident).where(Incident.status != 'closed').order_by(Incident.reported_at.asc())).all()
+    open_incident_items = db.scalars(select(Incident).where(Incident.status.in_(['open', 'in_progress', 'waiting_user', 'waiting_vendor'])).order_by(Incident.reported_at.asc())).all()
     maintenance_items = db.scalars(select(Maintenance).where(Maintenance.next_maintenance_date.is_not(None)).order_by(Maintenance.next_maintenance_date.asc())).all()
 
     today = datetime.utcnow().date()

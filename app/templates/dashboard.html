@@ -34,14 +34,14 @@
   <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/5 hover:border-primary/20 transition-all group hover:-translate-y-1">
     <div class="flex justify-between items-start mb-4">
       <div class="p-3 rounded-xl bg-primary/5 text-primary group-hover:scale-110 transition-transform">
-        <i data-lucide="laptop" class="w-5 h-5"></i>
+        <i data-lucide="monitor" class="w-5 h-5"></i>
       </div>
-      <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/5 text-primary">+12%</span>
+      <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/5 text-primary">System</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium">Total Assets</h4>
-    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.total_assets|default('2,842') }}</p>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Total Assets</h4>
+    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.total_assets }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
-      <div class="h-full rounded-full bg-primary" style="width: 85%"></div>
+      <div class="h-full rounded-full bg-primary" style="width: 100%"></div>
     </div>
   </div>
   
@@ -52,10 +52,11 @@
       </div>
       <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600">Stable</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium">Active Assets</h4>
-    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.active_assets|default('2,410') }}</p>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Active Assets</h4>
+    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.active_assets }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
-      <div class="h-full rounded-full bg-emerald-500" style="width: 72%"></div>
+      {% set active_percent = (stats.active_assets / stats.total_assets * 100) if stats.total_assets > 0 else 0 %}
+      <div class="h-full rounded-full bg-emerald-500" style="width: {{ active_percent }}%"></div>
     </div>
   </div>
 
@@ -64,12 +65,13 @@
       <div class="p-3 rounded-xl bg-rose-50 text-rose-600 group-hover:scale-110 transition-transform">
         <i data-lucide="alert-circle" class="w-5 h-5"></i>
       </div>
-      <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-600">High</span>
+      <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-600">URGENCY</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium">Open Incidents</h4>
-    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.open_incidents|default('14') }}</p>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Open Incidents</h4>
+    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.open_incidents }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
-      <div class="h-full rounded-full bg-rose-500" style="width: 25%"></div>
+      {% set incident_percent = (stats.open_incidents / stats.total_assets * 100) if stats.total_assets > 0 else 0 %}
+      <div class="h-full rounded-full bg-rose-500" style="width: {{ [incident_percent, 100]|min }}%"></div>
     </div>
   </div>
 
@@ -78,12 +80,12 @@
       <div class="p-3 rounded-xl bg-amber-50 text-amber-600 group-hover:scale-110 transition-transform">
         <i data-lucide="wrench" class="w-5 h-5"></i>
       </div>
-      <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-600">Pending</span>
+      <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-600">SCHEDULED</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium">Maintenances</h4>
-    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.maintenance_count|default('48') }}</p>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Maintenances</h4>
+    <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.total_maintenances }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
-      <div class="h-full rounded-full bg-amber-500" style="width: 45%"></div>
+      <div class="h-full rounded-full bg-amber-500" style="width: 100%"></div>
     </div>
   </div>
 </section>
@@ -103,31 +105,31 @@
 
   <div class="bg-surface-container-lowest p-8 rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col">
     <h3 class="text-xl font-bold text-on-surface mb-6 headline">Top Departments</h3>
-    <div class="space-y-6 flex-1">
-      <div class="flex items-center justify-between group cursor-pointer hover:bg-surface-container-low p-2 rounded-lg transition-colors">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">1</div>
-          <div>
-            <p class="text-sm font-bold text-on-surface">Research & Dev</p>
-            <p class="text-[10px] text-on-surface/50">842 Assets</p>
+    <div class="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2" style="max-height: 280px;">
+      {% if departments %}
+        {% for dept, count in departments %}
+        <div class="flex items-center justify-between group cursor-pointer hover:bg-surface-container-low p-2 rounded-lg transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{{ loop.index }}</div>
+            <div>
+              <p class="text-sm font-bold text-on-surface">{{ dept }}</p>
+              <p class="text-[10px] text-on-surface/50">{{ count }} Assets</p>
+            </div>
           </div>
+          {% set dept_percent = (count / stats.total_assets * 100) if stats.total_assets > 0 else 0 %}
+          <span class="text-xs font-bold text-primary">{{ "%.1f"|format(dept_percent) }}%</span>
         </div>
-        <span class="text-xs font-bold text-primary">30%</span>
-      </div>
-      <div class="flex items-center justify-between group cursor-pointer hover:bg-surface-container-low p-2 rounded-lg transition-colors">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">2</div>
-          <div>
-            <p class="text-sm font-bold text-on-surface">Finance & Ops</p>
-            <p class="text-[10px] text-on-surface/50">624 Assets</p>
-          </div>
+        {% endfor %}
+      {% else %}
+        <div class="flex flex-col items-center justify-center py-10 text-on-surface/30">
+          <i data-lucide="layers" class="w-10 h-10 mb-2 opacity-50"></i>
+          <p class="text-xs">No department data</p>
         </div>
-        <span class="text-xs font-bold text-primary">22%</span>
-      </div>
+      {% endif %}
     </div>
-    <button class="w-full mt-6 py-3 rounded-xl bg-surface-container-low text-on-surface/60 text-sm font-bold hover:bg-surface-container-highest transition-colors cursor-pointer">
-      View All Departments
-    </button>
+    <a href="/assets" class="w-full mt-6 py-3 rounded-xl bg-surface-container-low text-on-surface/60 text-sm font-bold hover:bg-surface-container-highest transition-colors cursor-pointer text-center">
+      View All Assets
+    </a>
   </div>
 </section>
 
@@ -138,26 +140,73 @@
       <span class="bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-lg">Action Required</span>
     </div>
     
-    <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-amber-500 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
-      <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
-        <i data-lucide="history" class="w-5 h-5"></i>
-      </div>
-      <div class="flex-1">
-        <p class="text-sm font-bold text-on-surface">Warranty Expiring Soon</p>
-        <p class="text-xs text-on-surface/50">12 MacBook Pro units reaching EOL in 30 days.</p>
-      </div>
-      <button class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Review</button>
-    </div>
+    <div class="space-y-3 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 380px;">
+      {% if alerts.warranty_expiring or alerts.overdue_maintenance or alerts.stale_incidents or alerts.missing_assignment %}
+        {# Warranty Alerts #}
+        {% for item in alerts.warranty_expiring %}
+        <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-amber-500 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-500">
+            <i data-lucide="history" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-bold text-on-surface text-ellipsis overflow-hidden">Warranty Expiring</p>
+            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} expires in {{ item.days }} days.</p>
+          </div>
+          <a href="/assets/{{ item.asset.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Review</a>
+        </div>
+        {% endfor %}
 
-    <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-rose-500 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
-      <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-rose-50 text-rose-500">
-        <i data-lucide="shield-alert" class="w-5 h-5"></i>
-      </div>
-      <div class="flex-1">
-        <p class="text-sm font-bold text-on-surface">Critical Incident Logged</p>
-        <p class="text-xs text-on-surface/50">Server #42 - Unscheduled downtime in Frankfurt.</p>
-      </div>
-      <button class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Deploy</button>
+        {# Overdue Maintenance #}
+        {% for item in alerts.overdue_maintenance %}
+        <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-rose-500 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-rose-50 text-rose-500">
+            <i data-lucide="wrench" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-bold text-on-surface">Missed Maintenance</p>
+            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} was due on {{ item.next_maintenance_date }}</p>
+          </div>
+          <a href="/maintenance/{{ item.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Schedule</a>
+        </div>
+        {% endfor %}
+
+        {# Stale Incidents #}
+        {% for alert in alerts.stale_incidents %}
+        <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-rose-600 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-rose-50 text-rose-600">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-bold text-on-surface">Unresolved Incident</p>
+            <p class="text-[10px] text-on-surface/50">Incident #{{ alert.incident.id }} open for {{ alert.age_days }} days.</p>
+          </div>
+          <a href="/incidents/{{ alert.incident.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Check</a>
+        </div>
+        {% endfor %}
+
+        {# Missing Assignment #}
+        {% for asset in alerts.missing_assignment %}
+        <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-primary shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-primary/10 text-primary">
+            <i data-lucide="user-x" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-bold text-on-surface">Asset Not Assigned</p>
+            <p class="text-[10px] text-on-surface/50">{{ asset.asset_code }} (Active) lacks an assigned user.</p>
+          </div>
+          <a href="/assets/{{ asset.id }}/edit" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Assign</a>
+        </div>
+        {% endfor %}
+
+      {% else %}
+        <div class="bg-surface-container-lowest p-8 rounded-2xl border border-dashed border-outline-variant/30 flex flex-col items-center justify-center text-center">
+            <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">
+              <i data-lucide="check-check" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-bold text-on-surface">All Clear</p>
+            <p class="text-xs text-on-surface/50 mt-1">No critical operations alerts found.</p>
+        </div>
+      {% endif %}
     </div>
   </div>
 
@@ -166,13 +215,16 @@
         <div class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
           <i data-lucide="trending-up" class="w-8 h-8"></i>
         </div>
-        <h3 class="text-xl font-bold text-on-surface headline">Asset Data Quality</h3>
+        <h3 class="text-xl font-bold text-on-surface headline">Performance Insights</h3>
+        {% set health = 100 - (alerts.missing_core_info|length / stats.total_assets * 100)|round if stats.total_assets > 0 else 100 %}
         <p class="text-sm text-on-surface/50 max-w-xs mt-2">
-          Your asset records are 94% complete. Improve your reporting by updating serial numbers.
+          Your asset records are {{ health }}% complete. Improve your reporting by updating serial numbers.
         </p>
-        <button class="mt-8 px-8 py-3 bg-on-surface text-white font-bold rounded-xl text-sm hover:bg-primary transition-all cursor-pointer">
-          Run Health Check
-        </button>
+        <div class="mt-8 flex gap-3">
+           <a href="/assets?filter=missing_info" class="px-6 py-3 bg-on-surface text-white font-bold rounded-xl text-sm hover:bg-primary transition-all cursor-pointer">
+            Run Health Check
+          </a>
+        </div>
       </div>
   </div>
 </section>
@@ -192,27 +244,56 @@ document.addEventListener("DOMContentLoaded", function() {
     Chart.defaults.font.family = "'Inter', sans-serif";
     Chart.defaults.color = textColor;
 
+    let chartLabels = [];
+    let chartData = [];
+    
+    {% for type, count in asset_types %}
+      chartLabels.push('{{ type }}');
+      chartData.push({{ count }});
+    {% endfor %}
+
+    // Palette generation
+    let baseColors = ['#3525cd', '#10b981', '#f59e0b', '#ef4444', '#0ea5e9', '#8b5cf6', '#ec4899'];
+    let backgroundColors = chartData.map((_, i) => baseColors[i % baseColors.length]);
+
     let chartInstance = new Chart(typeCtx, {
         type: 'bar',
         data: {
-            labels: ['Laptops', 'Desktops', 'Servers', 'Network', 'Mobile'],
+            labels: chartLabels,
             datasets: [{
-                label: 'Count',
-                data: [60, 45, 85, 30, 70],
-                backgroundColor: '#3525cd',
-                borderRadius: 4,
-                barPercentage: 0.5
+                label: 'Asset Count',
+                data: chartData,
+                backgroundColor: backgroundColors,
+                borderRadius: 8,
+                barPercentage: 0.6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: isDark ? '#191c1e' : '#fff',
+                    titleColor: textColor,
+                    bodyColor: textColor,
+                    borderColor: 'rgba(0,0,0,0.1)',
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false
+                }
             },
             scales: {
-                y: { beginAtZero: true, grid: { color: gridColor }, border: { display: false } },
-                x: { grid: { display: false }, border: { display: false } }
+                y: { 
+                  beginAtZero: true, 
+                  grid: { color: gridColor }, 
+                  border: { display: false },
+                  ticks: { precision: 0 }
+                },
+                x: { 
+                  grid: { display: false }, 
+                  border: { display: false } 
+                }
             }
         }
     });
@@ -224,6 +305,9 @@ document.addEventListener("DOMContentLoaded", function() {
         
         Chart.defaults.color = newColor;
         chartInstance.options.scales.y.grid.color = newGrid;
+        chartInstance.options.plugins.tooltip.backgroundColor = newIsDark ? '#191c1e' : '#fff';
+        chartInstance.options.plugins.tooltip.titleColor = newColor;
+        chartInstance.options.plugins.tooltip.bodyColor = newColor;
         chartInstance.update();
     });
 });

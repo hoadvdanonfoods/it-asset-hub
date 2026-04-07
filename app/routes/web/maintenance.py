@@ -1,6 +1,7 @@
 from datetime import datetime
 import io
 
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -15,14 +16,25 @@ from app.db.session import get_db
 router = APIRouter(prefix='/maintenance', tags=['maintenance'])
 templates = Jinja2Templates(directory='app/templates')
 
+def format_bangkok_datetime(value) -> str:
+    if not value: return ''
+    if isinstance(value, str): return value
+    return value.strftime('%d/%m/%Y %H:%M')
+
+def status_label(status: str | None) -> str:
+    return (status or 'completed').upper()
+
+def priority_label(priority: str | None) -> str:
+    return (priority or 'medium').upper()
+
 
 def _filtered_maintenance(db: Session, technician: str | None = None, asset_code: str | None = None):
-    items = db.scalars(select(Maintenance).order_by(Maintenance.maintenance_date.desc())).all()
+    stmt = select(Maintenance).join(Asset, isouter=True).order_by(Maintenance.maintenance_date.desc())
     if technician:
-        items = [i for i in items if (i.technician or '').lower() == technician.lower()]
+        stmt = stmt.where(Maintenance.technician.ilike(f"%{technician.strip()}%"))
     if asset_code:
-        items = [i for i in items if i.asset and asset_code.lower() in i.asset.asset_code.lower()]
-    return items
+        stmt = stmt.where(Asset.asset_code.ilike(f"%{asset_code.strip()}%"))
+    return db.scalars(stmt).all()
 
 
 @router.get('/', response_class=HTMLResponse)
@@ -77,7 +89,14 @@ def maintenance_create(request: Request, asset_id: int = Form(...), maintenance_
 @require_module_access('maintenance')
 def maintenance_detail(maintenance_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     item = db.get(Maintenance, maintenance_id)
-    return templates.TemplateResponse('maintenance/detail.html', {'request': request, 'item': item, 'current_user': current_user})
+    return templates.TemplateResponse('maintenance/detail.html', {
+        'request': request, 
+        'item': item, 
+        'current_user': current_user,
+        'status_label': status_label,
+        'priority_label': priority_label,
+        'format_bangkok_datetime': format_bangkok_datetime
+    })
 
 
 @router.get('/{maintenance_id}/edit', response_class=HTMLResponse)

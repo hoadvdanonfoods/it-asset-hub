@@ -7,79 +7,85 @@
     <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Quản lý người dùng</h1>
     <p class="text-on-surface/60 mt-1">Cấp phát tài khoản và phân quyền truy cập hệ thống</p>
   </div>
-  <a href="/users/new" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5 w-fit">
+  <a href="/users/new" class="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg hover:-translate-y-0.5 w-fit">
     <i data-lucide="user-plus" class="w-4 h-4"></i> Thêm user
   </a>
 </div>
 
 <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm text-on-surface whitespace-nowrap">
-      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
+  <div class="overflow-x-auto custom-scrollbar">
+    <table class="w-full text-left text-sm text-on-surface">
+      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
         <tr>
-          <th class="px-6 py-4 rounded-tl-3xl">Tài khoản</th>
-          <th class="px-6 py-4">Họ tên</th>
-          <th class="px-6 py-4">Vai trò</th>
-          <th class="px-6 py-4">Quyền chính</th>
-          <th class="px-6 py-4">Trạng thái</th>
-          <th class="px-6 py-4 text-right rounded-tr-3xl">Thao tác</th>
+          <th class="px-6 py-5 w-16 text-center">STT</th>
+          <th class="px-6 py-5 min-w-[180px]">Tài khoản</th>
+          <th class="px-6 py-5 min-w-[200px]">Họ tên</th>
+          <th class="px-6 py-5 w-40 text-center">Vai trò</th>
+          <th class="px-6 py-5 min-w-[240px]">Quyền hạn chính</th>
+          <th class="px-6 py-5 w-36 text-center">Trạng thái</th>
+          <th class="px-6 py-5 w-28 text-right">Thao tác</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for u in users %}
-        <tr class="hover:bg-primary/5 transition-colors group">
-          <td class="px-6 py-4">
+        <tr class="hover:bg-purple-500/5 transition-all duration-200 group">
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-purple-500/10 group-hover:text-purple-600 transition-colors">
+              {{ loop.index }}
+            </span>
+          </td>
+          <td class="px-6 py-5">
             <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold flex-shrink-0">{{ u.username[0] | upper }}</div>
-              <span class="font-bold text-on-surface">{{ u.username }}</span>
+              <div class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center text-sm font-bold flex-shrink-0 border border-purple-500/10 shadow-sm">{{ u.username[0] | upper }}</div>
+              <span class="font-bold text-on-surface group-hover:text-purple-700 transition-colors">{{ u.username }}</span>
             </div>
           </td>
-          <td class="px-6 py-4 text-on-surface/70">{{ u.full_name or '-' }}</td>
-          <td class="px-6 py-4">
+          <td class="px-6 py-5 text-on-surface/70 font-medium">{{ u.full_name or '-' }}</td>
+          <td class="px-6 py-5 text-center">
             {% if u.role == 'admin' %}
-            <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-[10px] font-bold tracking-wide uppercase border border-primary/10">admin</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 text-[10px] font-bold tracking-wide uppercase border border-purple-500/10 shadow-sm"><i data-lucide="shield-check" class="w-3 h-3"></i>admin</span>
             {% elif u.role == 'technician' %}
-            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10">technician</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10 shadow-sm"><i data-lucide="tool" class="w-3 h-3"></i>technician</span>
             {% else %}
-            <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20">user</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="user" class="w-3 h-3"></i>user</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4">
-            <div class="flex flex-wrap gap-1">
-              {% if u.can_manage_users %}<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">users</span>{% endif %}
-              {% if u.can_manage_system %}<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">system</span>{% endif %}
-              {% if u.can_manage_resources %}<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">resources</span>{% endif %}
-              {% if u.can_manage_documents %}<span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">documents</span>{% endif %}
-              {% if u.can_edit_assets %}<span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[10px] font-bold">asset edit</span>{% endif %}
-              {% if u.can_edit_maintenance %}<span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600 text-[10px] font-bold">maint. edit</span>{% endif %}
-              {% if u.can_edit_incidents %}<span class="px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 text-[10px] font-bold">incident edit</span>{% endif %}
+          <td class="px-6 py-5">
+            <div class="flex flex-wrap gap-1.5">
+              {% if u.can_manage_users %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">USERS</span>{% endif %}
+              {% if u.can_manage_system %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">SYSTEM</span>{% endif %}
+              {% if u.can_manage_resources %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">RESOURCES</span>{% endif %}
+              {% if u.can_manage_documents %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">DOCUMENTS</span>{% endif %}
+              {% if u.can_edit_assets %}<span class="px-2 py-0.5 rounded-md bg-blue-500/5 text-blue-500 text-[9px] font-bold border border-blue-500/10">ASSET_EDIT</span>{% endif %}
+              {% if u.can_edit_maintenance %}<span class="px-2 py-0.5 rounded-md bg-emerald-500/5 text-emerald-500 text-[9px] font-bold border border-emerald-500/10">MAINT_EDIT</span>{% endif %}
+              {% if u.can_edit_incidents %}<span class="px-2 py-0.5 rounded-md bg-rose-500/5 text-rose-500 text-[9px] font-bold border border-rose-500/10">INCIDENT_EDIT</span>{% endif %}
             </div>
           </td>
-          <td class="px-6 py-4">
+          <td class="px-6 py-5 text-center">
             {% if u.is_active %}
-            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10 flex items-center gap-1 w-fit">
-              <i data-lucide="check-circle-2" class="w-3 h-3"></i>Active
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active
             </span>
             {% else %}
-            <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10 flex items-center gap-1 w-fit">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10 opacity-70">
               <i data-lucide="archive" class="w-3 h-3"></i>Archived
             </span>
             {% endif %}
           </td>
-          <td class="px-6 py-4 text-right">
-            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <a href="/users/{{ u.id }}/edit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-primary/20 hover:text-primary transition-colors text-on-surface/60 border border-outline-variant/20" title="Sửa">
+          <td class="px-6 py-5 text-right">
+            <div class="flex items-center justify-end gap-1.5 text-on-surface/30">
+              <a href="/users/{{ u.id }}/edit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-purple-500/10 hover:text-purple-600 transition-all border border-outline-variant/10 hover:border-purple-500/20" title="Sửa">
                 <i data-lucide="pencil" class="w-4 h-4"></i>
               </a>
               {% if u.is_active %}
               <form method="post" action="/users/{{ u.id }}/archive" onsubmit="return confirm('Archive user này?');" class="inline">
-                <button type="submit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-amber-500/20 hover:text-amber-600 transition-colors text-on-surface/60 cursor-pointer border border-outline-variant/20" title="Archive">
+                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-amber-500/10 hover:text-amber-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-amber-500/20" title="Archive">
                   <i data-lucide="archive" class="w-4 h-4"></i>
                 </button>
               </form>
               {% else %}
               <form method="post" action="/users/{{ u.id }}/restore" onsubmit="return confirm('Khôi phục user này?');" class="inline">
-                <button type="submit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-emerald-500/20 hover:text-emerald-600 transition-colors text-on-surface/60 cursor-pointer border border-outline-variant/20" title="Khôi phục">
+                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-emerald-500/20" title="Khôi phục">
                   <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                 </button>
               </form>

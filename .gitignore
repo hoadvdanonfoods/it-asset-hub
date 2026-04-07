@@ -20,6 +20,7 @@ build/
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/backups/
 
 # OS
 .DS_Store

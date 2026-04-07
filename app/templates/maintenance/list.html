@@ -2,48 +2,59 @@
 {% block title %}Bảo trì - IT Asset Hub{% endblock %}
 
 {% block content %}
-<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
   <div>
     <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Lịch sử bảo trì</h1>
-    <p class="text-on-surface/60 mt-1">Theo dõi các lần kiểm tra, sửa chữa và chi phí</p>
+    <p class="text-on-surface/60 mt-1">Theo dõi quá trình kiểm tra, sửa chữa và chi phí vận hành thiết bị</p>
   </div>
   <div class="flex flex-wrap items-center gap-3">
     {% if current_user.can_export_maintenance %}
-    <a href="/maintenance/export?technician={{ technician }}&asset_code={{ asset_code }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm">
-      <i data-lucide="download" class="w-4 h-4"></i> Xuất Excel
+    <a href="/maintenance/export?technician={{ technician }}&asset_code={{ asset_code }}" class="flex items-center gap-2 bg-surface-container-highest px-5 py-3 rounded-2xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-all border border-outline-variant/10 shadow-sm active:scale-95">
+      <i data-lucide="download" class="w-4 h-4"></i> Xuất dữ liệu
     </a>
     {% endif %}
     {% if current_user.can_create_maintenance %}
-    <a href="/maintenance/new" class="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-700 transition-all shadow-lg hover:-translate-y-0.5">
+    <a href="/maintenance/new" class="flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-amber-700 transition-all shadow-lg shadow-amber-500/20 hover:-translate-y-0.5 active:scale-95">
       <i data-lucide="plus" class="w-4 h-4"></i> Ghi nhận bảo trì
     </a>
     {% endif %}
   </div>
 </div>
 
-<!-- Filters -->
-<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-8">
-  <form method="get" class="mb-0">
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-      <div class="md:col-span-2">
-        <div class="relative">
-          <i data-lucide="monitor" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
-          <input type="text" name="asset_code" value="{{ asset_code }}" placeholder="Lọc theo mã thiết bị..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all">
+<!-- Combined Search & Filters -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl shadow-sm border border-outline-variant/10 mb-8 overflow-visible relative z-20">
+  <form method="get" class="m-0 space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+      <!-- Search Input -->
+      <div class="md:col-span-5 lg:col-span-6">
+        <div class="relative group">
+          <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-amber-600 transition-colors"></i>
+          <input type="text" name="asset_code" value="{{ asset_code }}" placeholder="Tìm nhanh theo mã thiết bị (e.g. LAP-001)..." 
+            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40 text-on-surface placeholder:text-on-surface/30 transition-all">
         </div>
       </div>
-      <div class="md:col-span-2">
-        <div class="relative">
-          <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
-          <select name="technician" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
-            <option value="">Kỹ thuật viên</option>
-            {% for t in techs %}<option value="{{ t }}" {% if technician == t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+
+      <!-- Technician Filter -->
+      <div class="md:col-span-4 lg:col-span-4">
+        <div class="relative group">
+          <i data-lucide="user-cog" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-amber-600 transition-colors"></i>
+          <select name="technician" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40 text-on-surface appearance-none transition-all cursor-pointer">
+            <option value="">Tất cả kỹ thuật viên</option>
+            {% for t in techs %}
+            <option value="{{ t }}" {% if technician == t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
           </select>
+          <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
         </div>
       </div>
-      <div class="flex gap-2">
-        <button type="submit" class="flex-1 bg-on-surface text-surface-container-lowest font-bold text-sm py-2.5 rounded-xl hover:bg-on-surface/80 transition-colors shadow-sm cursor-pointer">Lọc</button>
-        <a href="/maintenance" class="flex items-center justify-center px-3.5 bg-surface-container-highest text-on-surface/60 rounded-xl hover:bg-outline-variant/30 transition-colors border border-outline-variant/20" title="Xóa bộ lọc">
-          <i data-lucide="x" class="w-4 h-4"></i>
+
+      <!-- Action Buttons -->
+      <div class="md:col-span-3 lg:col-span-2 flex gap-2">
+        <button type="submit" class="flex-1 bg-on-surface text-surface-container-lowest font-bold text-sm py-3 rounded-2xl hover:bg-on-surface/90 transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2">
+          <i data-lucide="filter" class="w-4 h-4"></i> Áp dụng
+        </button>
+        <a href="/maintenance" class="flex items-center justify-center px-4 bg-surface-container-highest text-on-surface/60 rounded-2xl hover:bg-outline-variant/30 transition-all border border-outline-variant/10 group shadow-sm" title="Xóa bộ lọc">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 group-hover:rotate-[-45deg] transition-transform"></i>
         </a>
       </div>
     </div>
@@ -51,74 +62,95 @@
 </div>
 
 <!-- Data Table -->
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm text-on-surface whitespace-nowrap">
-      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
-        <tr>
-          <th class="px-6 py-4 rounded-tl-3xl">ID</th>
-          <th class="px-6 py-4">Thiết bị</th>
-          <th class="px-6 py-4">Ngày bảo trì</th>
-          <th class="px-6 py-4">Kỹ thuật viên</th>
-          <th class="px-6 py-4">Chi phí</th>
-          <th class="px-6 py-4">Lần tới</th>
-          <th class="px-6 py-4 text-right rounded-tr-3xl">Thao tác</th>
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden mb-8">
+  <div class="overflow-x-auto custom-scrollbar">
+    <table class="w-full text-left text-sm text-on-surface border-collapse">
+      <thead>
+        <tr class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
+          <th class="px-6 py-5 w-20 text-center">STT</th>
+          <th class="px-6 py-5 min-w-[140px]">Phiếu ID</th>
+          <th class="px-6 py-5 min-w-[220px]">Thiết bị</th>
+          <th class="px-6 py-5 w-48">Ngày xử lý</th>
+          <th class="px-6 py-5 min-w-[180px]">Thực hiện</th>
+          <th class="px-6 py-5 w-40 text-center">Chi phí</th>
+          <th class="px-6 py-5 w-48">Hẹn lần tới</th>
+          <th class="px-6 py-5 w-28 text-right"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for item in items %}
-        <tr class="hover:bg-primary/5 transition-colors group">
-          <td class="px-6 py-4 font-bold text-primary">
-            <a href="/maintenance/{{ item.id }}" class="hover:underline flex items-center gap-1.5">
-              <i data-lucide="hash" class="w-4 h-4 opacity-50"></i>{{ item.id }}
+        <tr class="hover:bg-amber-500/[0.03] transition-colors group cursor-default">
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-surface-container-highest text-[11px] font-extrabold text-on-surface/40 group-hover:bg-amber-500/10 group-hover:text-amber-600 transition-colors">
+              {{ loop.index }}
+            </span>
+          </td>
+          <td class="px-6 py-5">
+            <a href="/maintenance/{{ item.id }}" class="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+              <span class="w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/10 flex items-center justify-center shadow-inner">
+                <i data-lucide="hash" class="w-3.5 h-3.5 text-amber-600 opacity-60"></i>
+              </span>
+              <span class="font-bold text-on-surface">M-{{ "%04d" % item.id }}</span>
             </a>
           </td>
-          <td class="px-6 py-4 font-medium">
+          <td class="px-6 py-5">
             {% if item.asset %}
-            <a href="/assets/{{ item.asset.id }}" class="flex items-center gap-1.5 text-on-surface hover:text-primary transition-colors">
-              <i data-lucide="monitor" class="w-3.5 h-3.5 opacity-50"></i>{{ item.asset.asset_code }}
+            <a href="/assets/{{ item.asset.id }}" class="flex items-center gap-3 hover:text-amber-600 transition-colors group/asset">
+              <div class="w-9 h-9 rounded-2xl bg-surface-container-high border border-outline-variant/10 flex items-center justify-center text-on-surface group-hover/asset:border-amber-500/20 shadow-sm overflow-hidden">
+                <i data-lucide="monitor" class="w-4 h-4 opacity-40"></i>
+              </div>
+              <div>
+                <div class="font-bold text-xs">{{ item.asset.asset_code }}</div>
+                <div class="text-[10px] text-on-surface/40 font-medium truncate max-w-[150px]">{{ item.asset.asset_name }}</div>
+              </div>
             </a>
             {% else %}
-            <span class="text-on-surface/30">-</span>
+            <span class="text-on-surface/20 text-xs italic">Không tìm thấy TB</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4 text-on-surface/70">
-            <span class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 opacity-50"></i>{{ item.maintenance_date }}</span>
+          <td class="px-6 py-5">
+            <div class="flex items-center gap-2 text-on-surface/70">
+              <i data-lucide="calendar" class="w-4 h-4 opacity-30"></i>
+              <span class="font-medium truncate">{{ item.maintenance_date }}</span>
+            </div>
           </td>
-          <td class="px-6 py-4">
+          <td class="px-6 py-5">
             {% if item.technician %}
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[10px] font-bold">{{ item.technician[0] | upper }}</div>
-              <span class="text-on-surface/70">{{ item.technician }}</span>
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[10px] font-extrabold border border-emerald-500/10 shadow-sm">{{ item.technician[0] | upper }}</div>
+              <span class="text-xs font-bold text-on-surface/70">{{ item.technician }}</span>
             </div>
             {% else %}
-            <span class="text-on-surface/30">-</span>
+            <span class="text-on-surface/20 text-xs italic">-</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4">
+          <td class="px-6 py-5 text-center">
             {% if item.cost %}
-            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-500/10">
+            <span class="px-3 py-1.5 rounded-2xl bg-emerald-500/5 text-emerald-700 text-xs font-black border border-emerald-500/10 shadow-sm whitespace-nowrap">
               {{ "{:,.0f}".format(item.cost) }} đ
             </span>
             {% else %}
-            <span class="text-on-surface/30">-</span>
+            <span class="text-on-surface/20 text-[10px] uppercase font-bold tracking-widest">N/A</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4 text-on-surface/60 text-xs">
+          <td class="px-6 py-5">
             {% if item.next_maintenance_date %}
-            <span class="flex items-center gap-1.5"><i data-lucide="calendar-clock" class="w-3.5 h-3.5 opacity-50"></i>{{ item.next_maintenance_date }}</span>
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-amber-500/5 border border-amber-500/10 text-amber-600 font-bold text-[10px] w-fit shadow-sm">
+              <i data-lucide="bell-ring" class="w-3.5 h-3.5 opacity-60"></i>
+              {{ item.next_maintenance_date }}
+            </div>
             {% else %}
-            <span class="text-on-surface/30">-</span>
+            <span class="text-on-surface/10 pl-4">—</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4 text-right">
-            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <a href="/maintenance/{{ item.id }}" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-blue-500/20 hover:text-blue-600 transition-colors text-on-surface/60 border border-outline-variant/20" title="Xem chi tiết">
-                <i data-lucide="eye" class="w-4 h-4"></i>
+          <td class="px-6 py-5 text-right">
+            <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a href="/maintenance/{{ item.id }}" class="w-9 h-9 rounded-xl bg-surface-container-highest/50 hover:bg-amber-600 hover:text-white transition-all border border-outline-variant/10 flex items-center justify-center group/btn shadow-sm" title="Xem chi tiết">
+                <i data-lucide="eye" class="w-4 h-4 group-hover/btn:scale-110 transition-transform"></i>
               </a>
               {% if current_user.can_edit_maintenance %}
-              <a href="/maintenance/{{ item.id }}/edit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-primary/20 hover:text-primary transition-colors text-on-surface/60 border border-outline-variant/20" title="Cập nhật">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
+              <a href="/maintenance/{{ item.id }}/edit" class="w-9 h-9 rounded-xl bg-surface-container-highest/50 hover:bg-amber-600 hover:text-white transition-all border border-outline-variant/10 flex items-center justify-center group/btn shadow-sm" title="Cập nhật">
+                <i data-lucide="pencil" class="w-4 h-4 group-hover/btn:scale-110 transition-transform"></i>
               </a>
               {% endif %}
             </div>
@@ -129,9 +161,17 @@
     </table>
   </div>
   {% if not items %}
-  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="wrench" class="w-12 h-12 mb-4 opacity-50"></i>
-    <p>Chưa có lịch sử bảo trì nào.</p>
+  <div class="py-24 flex flex-col items-center justify-center text-on-surface/30">
+    <div class="w-20 h-20 rounded-full bg-surface-container-highest flex items-center justify-center mb-6 shadow-inner ring-8 ring-surface-container-lowest">
+      <i data-lucide="cog" class="w-10 h-10 opacity-20"></i>
+    </div>
+    <div class="text-center">
+      <p class="text-lg font-bold">Chưa tìm thấy dữ liệu bảo trì</p>
+      <p class="text-sm mt-1 font-medium opacity-60">Hãy thử thay đổi bộ lọc hoặc thêm phiếu ghi nhận mới</p>
+      <a href="/maintenance/new" class="mt-8 px-8 py-3.5 bg-amber-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-amber-500/20 hover:bg-amber-700 transition-all inline-block active:scale-95">
+        Ghi nhận bảo trì đầu tiên
+      </a>
+    </div>
   </div>
   {% endif %}
 </div>

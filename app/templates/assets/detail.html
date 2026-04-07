@@ -1,5 +1,269 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3"><h1 class="mb-0">Chi tiết thiết bị</h1><div class="d-flex gap-2">{% if asset and current_user.role == 'admin' %}<a class="btn btn-outline-primary" href="/assets/{{ asset.id }}/edit">Sửa thiết bị</a>{% endif %}<a class="btn btn-outline-secondary" href="/assets/export">Export assets</a>{% if current_user.role == 'admin' %}<a class="btn btn-outline-success" href="/maintenance/new">+ Ghi bảo trì</a>{% endif %}<a class="btn btn-outline-danger" href="/incidents/new">+ Tạo sự cố</a></div></div>
-{% if asset %}{% for level, message in alerts %}<div class="alert alert-{{ level }}">{{ message }}</div>{% endfor %}<div class="row g-3"><div class="col-lg-5"><ul class="list-group shadow-sm mb-3"><li class="list-group-item"><strong>Mã:</strong> {{ asset.asset_code }}</li><li class="list-group-item"><strong>Tên:</strong> {{ asset.asset_name }}</li><li class="list-group-item"><strong>Loại:</strong> {{ asset.asset_type }}</li><li class="list-group-item"><strong>IP:</strong> {{ asset.ip_address or '' }}</li><li class="list-group-item"><strong>Model:</strong> {{ asset.model or '' }}</li><li class="list-group-item"><strong>Serial:</strong> {{ asset.serial_number or '' }}</li><li class="list-group-item"><strong>Bộ phận:</strong> {{ asset.department or '' }}</li><li class="list-group-item"><strong>Người dùng:</strong> {{ asset.assigned_user or '' }}</li><li class="list-group-item"><strong>Ngày cấp:</strong> {{ asset.assigned_at or '' }}</li><li class="list-group-item"><strong>Ngày thu hồi:</strong> {{ asset.unassigned_at or '' }}</li><li class="list-group-item"><strong>Vị trí:</strong> {{ asset.location or '' }}</li><li class="list-group-item"><strong>Ngày mua:</strong> {{ asset.purchase_date or '' }}</li><li class="list-group-item"><strong>Hết bảo hành:</strong> {{ asset.warranty_expiry or '' }}</li><li class="list-group-item"><strong>Trạng thái:</strong> {{ asset.status }}</li><li class="list-group-item"><strong>Ghi chú:</strong> {{ asset.notes or '' }}</li></ul>{% if current_user.role == 'admin' %}<div class="card"><div class="card-body text-center"><div class="text-muted small mb-2">QR thiết bị</div><img src="/qr/asset/{{ asset.id }}.png" alt="QR" style="max-width:220px;" class="img-fluid"></div></div>{% endif %}</div><div class="col-lg-7"><div class="card mb-3"><div class="card-body"><h5 class="card-title">Asset assignment history</h5>{% if asset.assignments %}<div class="table-responsive"><table class="table table-sm"><thead><tr><th>Người dùng</th><th>Ngày cấp</th><th>Ngày thu hồi</th><th>Trạng thái</th><th>Người thao tác</th></tr></thead><tbody>{% for item in asset.assignments %}<tr><td>{{ item.assigned_user }}</td><td>{{ item.assigned_at.strftime('%Y-%m-%d %H:%M') if item.assigned_at else '' }}</td><td>{{ item.unassigned_at.strftime('%Y-%m-%d %H:%M') if item.unassigned_at else '' }}</td><td><span class="badge text-bg-secondary">{{ item.status }}</span></td><td>{{ item.assigned_by or item.returned_by or '' }}</td></tr>{% endfor %}</tbody></table></div>{% else %}<div class="text-muted">Chưa có lịch sử cấp phát.</div>{% endif %}</div></div><div class="card"><div class="card-body"><h5 class="card-title">Asset event timeline</h5>{% if asset.events %}{% for event in asset.events %}<div class="timeline-item border-bottom pb-2"><div class="d-flex justify-content-between gap-3"><div><div class="fw-semibold">{{ event.title }}</div>{% if event.description %}<div class="text-muted small">{{ event.description }}</div>{% endif %}<div class="small text-secondary">{{ event.actor or 'system' }}</div></div><div class="small text-muted text-nowrap">{{ event.created_at.strftime('%Y-%m-%d %H:%M') if event.created_at else '' }}</div></div></div>{% endfor %}{% else %}<div class="text-muted">Chưa có timeline.</div>{% endif %}</div></div></div></div>{% else %}<div class="alert alert-warning">Không tìm thấy thiết bị.</div>{% endif %}
+<div class="max-w-7xl mx-auto pb-12">
+  <!-- Header Area -->
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+    <div class="flex items-center gap-4">
+      <a href="/assets/" class="p-3 rounded-2xl bg-surface-container-low text-on-surface/60 hover:bg-surface-container-highest transition-colors">
+        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+      </a>
+      <div>
+        <div class="flex items-center gap-3 mb-1">
+          <h1 class="text-3xl font-extrabold text-on-surface headline">{{ asset.asset_name }}</h1>
+          <span class="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 text-xs font-bold border border-indigo-500/20 shadow-sm uppercase tracking-tighter">
+            {{ asset.asset_code }}
+          </span>
+        </div>
+        <p class="text-sm text-on-surface/50 flex items-center gap-2">
+          <i data-lucide="map-pin" class="w-4 h-4"></i>
+          {{ asset.location or 'Chưa xác định vị trí' }} • {{ asset.department or 'N/A' }}
+        </p>
+      </div>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3">
+      {% if asset and current_user.role == 'admin' %}
+      <a href="/assets/{{ asset.id }}/edit" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95">
+        <i data-lucide="edit-3" class="w-4 h-4"></i>
+        <span>Sửa thiết bị</span>
+      </a>
+      {% endif %}
+      <div class="h-8 w-px bg-outline-variant/10 hidden md:block mx-2"></div>
+      <a href="/maintenance/new?asset_id={{ asset.id }}" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 font-bold border border-emerald-500/20 hover:bg-emerald-500/20 transition-all active:scale-95">
+        <i data-lucide="hammer" class="w-4 h-4"></i>
+        <span>Ghi bảo trì</span>
+      </a>
+      <a href="/incidents/new?asset_id={{ asset.id }}" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-rose-500/10 text-rose-600 font-bold border border-rose-500/20 hover:bg-rose-500/20 transition-all active:scale-95">
+        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+        <span>Tạo sự cố</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Alerts Section -->
+  {% if alerts %}
+  <div class="space-y-4 mb-8">
+    {% for level, message in alerts %}
+    <div class="p-4 rounded-2xl bg-{{ level if level != 'danger' else 'rose' }}-500/10 border border-{{ level if level != 'danger' else 'rose' }}-500/20 flex items-center gap-3 text-{{ level if level != 'danger' else 'rose' }}-600">
+      <i data-lucide="{% if level == 'warning' %}alert-circle{% elif level == 'danger' %}x-circle{% else %}info{% endif %}" class="w-5 h-5"></i>
+      <p class="text-sm font-bold">{{ message }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Main Content Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <!-- Left Column: Details & History -->
+    <div class="lg:col-span-8 space-y-8">
+      <!-- Info Cards Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Technical Specs -->
+        <div class="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/10">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-2 rounded-lg bg-indigo-500/10 text-indigo-600">
+              <i data-lucide="cpu" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-on-surface">Cấu hình kỹ thuật</h3>
+          </div>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Loại</span>
+              <span class="text-sm font-bold text-on-surface">{{ asset.asset_type }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">IP Address</span>
+              <span class="text-sm font-mono font-bold text-indigo-600">{{ asset.ip_address or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Model</span>
+              <span class="text-sm font-bold text-on-surface">{{ asset.model or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Serial</span>
+              <span class="text-sm font-bold text-on-surface">{{ asset.serial_number or '—' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assignment & Lifecycle -->
+        <div class="bg-surface-container-lowest rounded-3xl p-6 shadow-sm border border-outline-variant/10">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="p-2 rounded-lg bg-amber-500/10 text-amber-600">
+              <i data-lucide="user-check" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-on-surface">Bàn giao & Thời hạn</h3>
+          </div>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Sử dụng bởi</span>
+              <span class="text-sm font-bold text-on-surface">{{ asset.assigned_user or 'Chưa bàn giao' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Ngày mua</span>
+              <span class="text-sm font-bold text-on-surface">{{ asset.purchase_date or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Hết BH</span>
+              <span class="text-sm font-bold text-rose-500">{{ asset.warranty_expiry or '—' }}</span>
+            </div>
+            <div class="flex justify-between items-center py-2">
+              <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Trạng thái</span>
+              <span class="px-2 py-0.5 rounded-lg bg-surface-container-highest text-on-surface text-[10px] font-black uppercase tracking-widest">
+                {{ asset.status }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline & Event History -->
+      <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
+        <div class="flex items-center justify-between mb-8">
+          <div class="flex items-center gap-3">
+            <div class="p-2 rounded-lg bg-sky-500/10 text-sky-600">
+              <i data-lucide="history" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-xl font-extrabold text-on-surface headline">Timeline thiết bị</h3>
+          </div>
+          <span class="text-xs font-bold text-on-surface/30 uppercase tracking-widest">Tổng số: {{ asset.events|length }}</span>
+        </div>
+
+        {% if asset.events %}
+        <div class="relative pl-8 space-y-8 before:absolute before:inset-y-0 before:left-3 before:w-0.5 before:bg-outline-variant/10">
+          {% for event in asset.events | sort(attribute='created_at', reverse=True) %}
+          <div class="relative group">
+            <div class="absolute -left-8 mt-1.5 w-4 h-4 rounded-full border-4 border-surface-container-lowest bg-indigo-500 shadow-sm z-10"></div>
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-1 mb-1">
+              <h4 class="text-sm font-bold text-on-surface group-hover:text-indigo-600 transition-colors">{{ event.title }}</h4>
+              <span class="text-[10px] font-bold text-on-surface/30 uppercase tracking-widest whitespace-nowrap">
+                {{ event.created_at.strftime('%Y-%m-%d %H:%M') if event.created_at else '' }}
+              </span>
+            </div>
+            {% if event.description %}
+            <p class="text-sm text-on-surface/60 leading-relaxed mb-1">{{ event.description }}</p>
+            {% endif %}
+            <div class="flex items-center gap-2 text-[10px] font-black text-on-surface/30 uppercase tracking-widest">
+              <i data-lucide="user" class="w-3 h-3"></i>
+              {{ event.actor or 'system' }}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center justify-center py-12 text-on-surface/30">
+          <i data-lucide="clock-rewind" class="w-12 h-12 mb-4 opacity-20"></i>
+          <p class="font-bold uppercase tracking-widest text-xs">Chưa có lịch sử hoạt động</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Assignment History Card -->
+      <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
+        <div class="flex items-center gap-3 mb-6">
+          <div class="p-2 rounded-lg bg-purple-500/10 text-purple-600">
+            <i data-lucide="user-plus" class="w-5 h-5"></i>
+          </div>
+          <h3 class="text-lg font-bold text-on-surface">Lịch sử cấp phát</h3>
+        </div>
+
+        {% if asset.assignments %}
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left">
+            <thead>
+              <tr class="border-b border-outline-variant/5">
+                <th class="pb-4 text-[10px] font-black text-on-surface/40 uppercase tracking-widest px-4">Người dùng</th>
+                <th class="pb-4 text-[10px] font-black text-on-surface/40 uppercase tracking-widest px-4">Ngày cấp</th>
+                <th class="pb-4 text-[10px] font-black text-on-surface/40 uppercase tracking-widest px-4">Ngày thu hồi</th>
+                <th class="pb-4 text-[10px] font-black text-on-surface/40 uppercase tracking-widest px-4 text-center">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/5">
+              {% for item in asset.assignments | sort(attribute='assigned_at', reverse=True) %}
+              <tr class="group hover:bg-surface-container-low transition-colors duration-300">
+                <td class="py-4 px-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-bold text-on-surface">
+                      {{ item.assigned_user[:1] | upper }}
+                    </div>
+                    <span class="text-sm font-bold text-on-surface">{{ item.assigned_user }}</span>
+                  </div>
+                </td>
+                <td class="py-4 px-4 text-sm text-on-surface/60 font-medium">
+                  {{ item.assigned_at.strftime('%Y-%m-%d %H:%M') if item.assigned_at else '—' }}
+                </td>
+                <td class="py-4 px-4 text-sm text-on-surface/60 font-medium">
+                  {{ item.unassigned_at.strftime('%Y-%m-%d %H:%M') if item.unassigned_at else '—' }}
+                </td>
+                <td class="py-4 px-4 text-center">
+                  <span class="px-2 py-1 rounded-lg bg-surface-container-highest text-on-surface/60 text-[9px] font-black uppercase tracking-widest">
+                    {{ item.status }}
+                  </span>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-on-surface/30">
+          <p class="text-sm font-bold uppercase tracking-widest">Chưa có lịch sử bàn giao</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Column: Summary & QR -->
+    <div class="lg:col-span-4 space-y-8">
+      <!-- QR Code Card -->
+      <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10 text-center relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16"></div>
+        <div class="relative">
+          <div class="mb-6">
+            <h4 class="text-xs font-bold text-on-surface/40 uppercase tracking-widest mb-1">Mã QR Thiết bị</h4>
+            <div class="h-1 w-8 bg-indigo-500 mx-auto rounded-full"></div>
+          </div>
+          
+          <div class="mx-auto p-4 rounded-3xl bg-white shadow-inner border border-outline-variant/10 w-fit mb-6">
+            <img src="/qr/asset/{{ asset.id }}.png" alt="QR" class="w-48 h-48">
+          </div>
+          
+          <p class="text-xs text-on-surface/40 leading-relaxed mb-6 font-medium">
+            Quét mã để truy cập nhanh thông tin tài sản trên thiết bị di động.
+          </p>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="window.print()" class="flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-container-low text-on-surface/60 font-bold hover:bg-surface-container-highest transition-all">
+              <i data-lucide="printer" class="w-4 h-4"></i>
+              <span>In mã</span>
+            </button>
+            <a href="/qr/asset/{{ asset.id }}.png" download="QR_{{ asset.asset_code }}.png" class="flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-500/10 text-indigo-600 font-bold hover:bg-indigo-500/20 transition-all">
+              <i data-lucide="download" class="w-4 h-4"></i>
+              <span>Tải về</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Summary Card -->
+      <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
+        <h4 class="text-lg font-bold text-on-surface mb-6">Ghi chú & Metadata</h4>
+        <div class="p-4 rounded-2xl bg-surface-container-low text-sm text-on-surface/60 italic leading-relaxed mb-6 border-l-4 border-indigo-500">
+          {{ asset.notes or 'Không có ghi chú bổ sung.' }}
+        </div>
+        
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <span class="text-xs font-bold text-on-surface/60 uppercase tracking-widest">Uptime Ready</span>
+          </div>
+          <div class="flex items-center gap-3 text-on-surface/30">
+            <div class="w-2 h-2 rounded-full bg-outline-variant/20"></div>
+            <span class="text-xs font-bold uppercase tracking-widest">Cloud Synced</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

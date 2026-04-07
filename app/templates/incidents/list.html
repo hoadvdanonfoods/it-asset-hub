@@ -2,58 +2,73 @@
 {% block title %}Sự cố - IT Asset Hub{% endblock %}
 
 {% block content %}
-<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
   <div>
-    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Danh sách sự cố</h1>
-    <p class="text-on-surface/60 mt-1">Theo dõi ticket lỗi, trạng thái xử lý và thời gian hoàn tất</p>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Quản lý sự cố</h1>
+    <p class="text-on-surface/60 mt-1">Theo dõi ticket lỗi, trạng thái xử lý và thời gian hoàn tất trung bình</p>
   </div>
   <div class="flex flex-wrap items-center gap-3">
     {% if current_user.can_export_incidents %}
-    <a href="/incidents/export?status={{ status }}&priority={{ priority }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm">
-      <i data-lucide="download" class="w-4 h-4"></i> Xuất Excel
+    <a href="/incidents/export?status={{ status }}&priority={{ priority }}" class="flex items-center gap-2 bg-surface-container-highest px-5 py-3 rounded-2xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-all border border-outline-variant/10 shadow-sm active:scale-95">
+      <i data-lucide="download" class="w-4 h-4"></i> Xuất dữ liệu
     </a>
     {% endif %}
     {% if current_user.can_create_incidents %}
-    <a href="/incidents/new" class="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-700 transition-all shadow-lg hover:-translate-y-0.5">
-      <i data-lucide="plus" class="w-4 h-4"></i> Tạo sự cố
+    <a href="/incidents/new" class="flex items-center gap-2 bg-rose-600 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-rose-700 transition-all shadow-lg shadow-rose-500/20 hover:-translate-y-0.5 active:scale-95">
+      <i data-lucide="plus" class="w-4 h-4"></i> Tạo sự cố mới
     </a>
     {% endif %}
   </div>
 </div>
 
-<!-- Filters -->
-<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-8">
-  <form method="get" class="mb-0">
-    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
-      <div class="md:col-span-2">
-        <div class="relative">
-          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
-          <input type="text" name="q" value="{{ q if q else '' }}" placeholder="Tìm theo thiết bị, người báo..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all">
+<!-- Combined Search & Filters -->
+<div class="bg-surface-container-lowest p-6 rounded-3xl shadow-sm border border-outline-variant/10 mb-8 overflow-visible relative z-20">
+  <form method="get" class="m-0 space-y-4">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+      <!-- Search Input -->
+      <div class="md:col-span-5 lg:col-span-4">
+        <div class="relative group">
+          <i data-lucide="search" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-600 transition-colors"></i>
+          <input type="text" name="q" value="{{ q if q else '' }}" placeholder="Tìm theo thiết bị, người báo..." 
+            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500/40 text-on-surface placeholder:text-on-surface/30 transition-all">
         </div>
       </div>
 
-      <div>
-        <select name="status" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
-          <option value="">Trạng thái</option>
-          {% for item in incident_statuses %}
-          <option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ status_label(item) }}</option>
-          {% endfor %}
-        </select>
+      <!-- Status Filter -->
+      <div class="md:col-span-3 lg:col-span-3">
+        <div class="relative group">
+          <i data-lucide="loader-circle" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-600 transition-colors"></i>
+          <select name="status" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer">
+            <option value="">Tất cả trạng thái</option>
+            {% for item in incident_statuses %}
+            <option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ status_label(item) }}</option>
+            {% endfor %}
+          </select>
+          <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
+        </div>
       </div>
 
-      <div>
-        <select name="priority" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
-          <option value="">Ưu tiên</option>
-          {% for item in incident_priorities %}
-          <option value="{{ item }}" {% if priority == item %}selected{% endif %}>{{ priority_label(item) }}</option>
-          {% endfor %}
-        </select>
+      <!-- Priority Filter -->
+      <div class="md:col-span-2 lg:col-span-3">
+        <div class="relative group">
+          <i data-lucide="flame" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-600 transition-colors"></i>
+          <select name="priority" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer">
+            <option value="">Độ ưu tiên</option>
+            {% for item in incident_priorities %}
+            <option value="{{ item }}" {% if priority == item %}selected{% endif %}>{{ priority_label(item) }}</option>
+            {% endfor %}
+          </select>
+          <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
+        </div>
       </div>
 
-      <div class="flex gap-2">
-        <button type="submit" class="flex-1 bg-on-surface text-surface-container-lowest font-bold text-sm py-2.5 rounded-xl hover:bg-on-surface/80 transition-colors shadow-sm cursor-pointer">Lọc</button>
-        <a href="/incidents" class="flex items-center justify-center px-3.5 bg-surface-container-highest text-on-surface/60 rounded-xl hover:bg-outline-variant/30 transition-colors border border-outline-variant/20" title="Xóa bộ lọc">
-          <i data-lucide="x" class="w-4 h-4"></i>
+      <!-- Action Buttons -->
+      <div class="md:col-span-2 lg:col-span-2 flex gap-2">
+        <button type="submit" class="flex-1 bg-on-surface text-surface-container-lowest font-bold text-sm py-3 rounded-2xl hover:bg-on-surface/90 transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2">
+          <i data-lucide="filter" class="w-4 h-4"></i> Lọc
+        </button>
+        <a href="/incidents" class="flex items-center justify-center px-4 bg-surface-container-highest text-on-surface/60 rounded-2xl hover:bg-outline-variant/30 transition-all border border-outline-variant/10 group shadow-sm" title="Xóa bộ lọc">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 group-hover:rotate-[-45deg] transition-transform"></i>
         </a>
       </div>
     </div>
@@ -61,114 +76,124 @@
 </div>
 
 <!-- Data Table -->
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm text-on-surface whitespace-nowrap">
-      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
-        <tr>
-          <th class="px-6 py-4 rounded-tl-3xl">ID</th>
-          <th class="px-6 py-4">Thiết bị</th>
-          <th class="px-6 py-4">Người báo</th>
-          <th class="px-6 py-4">Ưu tiên</th>
-          <th class="px-6 py-4">Trạng thái</th>
-          <th class="px-6 py-4">Báo lúc</th>
-          <th class="px-6 py-4">Hoàn tất lúc</th>
-          <th class="px-6 py-4">Thời gian xử lý</th>
-          <th class="px-6 py-4 text-right rounded-tr-3xl">Thao tác</th>
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden mb-8">
+  <div class="overflow-x-auto custom-scrollbar">
+    <table class="w-full text-left text-sm text-on-surface border-collapse">
+      <thead>
+        <tr class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
+          <th class="px-6 py-5 w-20 text-center">STT</th>
+          <th class="px-6 py-5 min-w-[140px]">Ticket ID</th>
+          <th class="px-6 py-5 min-w-[220px]">Thiết bị / Người báo</th>
+          <th class="px-6 py-5 w-32 text-center">Độ ưu tiên</th>
+          <th class="px-6 py-5 w-36 text-center">Trạng thái</th>
+          <th class="px-6 py-5 w-48">Thời điểm báo</th>
+          <th class="px-6 py-5 w-32 text-center">Xử lý</th>
+          <th class="px-6 py-5 w-28 text-right"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for item in items %}
-        <tr class="hover:bg-primary/5 transition-colors group">
-          <td class="px-6 py-4 font-bold text-primary">
-            <a href="/incidents/{{ item.id }}" class="hover:underline flex items-center gap-1.5">
-              <i data-lucide="hash" class="w-4 h-4 opacity-50"></i>{{ item.id }}
+        <tr class="hover:bg-rose-500/[0.03] transition-colors group cursor-default">
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-surface-container-highest text-[11px] font-extrabold text-on-surface/40 group-hover:bg-rose-500/10 group-hover:text-rose-600 transition-colors">
+              {{ loop.index }}
+            </span>
+          </td>
+          <td class="px-6 py-5">
+            <a href="/incidents/{{ item.id }}" class="flex items-center gap-2 group-hover:translate-x-1 transition-transform">
+              <span class="w-8 h-8 rounded-lg bg-surface-container-high border border-outline-variant/10 flex items-center justify-center shadow-inner">
+                <i data-lucide="hash" class="w-3.5 h-3.5 text-rose-600 opacity-60"></i>
+              </span>
+              <span class="font-extrabold text-on-surface tracking-tight">INC-{{ "%04d" % item.id }}</span>
             </a>
           </td>
-          <td class="px-6 py-4 font-medium">
-            {% if item.asset %}
-            <a href="/assets/{{ item.asset.id }}" class="flex items-center gap-1.5 text-on-surface hover:text-primary transition-colors">
-              <i data-lucide="monitor" class="w-3.5 h-3.5 opacity-50"></i>{{ item.asset.asset_code }}
-            </a>
-            {% else %}
-            <span class="text-on-surface/30">-</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-4 text-on-surface/70">
-            {% if item.reported_by %}
-            <div class="flex items-center gap-2">
-              <div class="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">{{ item.reported_by[0] | upper }}</div>
-              <span>{{ item.reported_by }}</span>
+          <td class="px-6 py-5">
+            <div class="flex flex-col gap-1.5">
+              {% if item.asset %}
+              <a href="/assets/{{ item.asset.id }}" class="flex items-center gap-2 text-on-surface hover:text-rose-600 transition-colors font-bold group/asset">
+                <i data-lucide="monitor" class="w-3.5 h-3.5 opacity-40 group-hover/asset:opacity-100 transition-opacity"></i>
+                <span class="text-xs">{{ item.asset.asset_code }}</span>
+              </a>
+              {% endif %}
+              {% if item.reported_by %}
+              <div class="flex items-center gap-2 text-on-surface/40">
+                <div class="w-4 h-4 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center text-[8px] font-bold border border-rose-500/10">{{ item.reported_by[0] | upper }}</div>
+                <span class="text-[10px] font-medium tracking-wide uppercase">{{ item.reported_by }}</span>
+              </div>
+              {% endif %}
             </div>
-            {% else %}
-            <span class="text-on-surface/30">-</span>
-            {% endif %}
           </td>
-          <td class="px-6 py-4">
+          <td class="px-6 py-5 text-center">
             {% if item.priority == 'high' %}
-            <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 text-[10px] font-bold tracking-wide uppercase border border-rose-500/10 flex items-center gap-1 w-fit">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-rose-500/10 text-rose-600 text-[10px] font-black tracking-wide uppercase border border-rose-500/10 shadow-sm animate-pulse-subtle">
               <i data-lucide="flame" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
             </span>
             {% elif item.priority == 'medium' %}
-            <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10 flex items-center gap-1 w-fit">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-500/10 text-amber-600 text-[10px] font-black tracking-wide uppercase border border-amber-500/10 shadow-sm">
               <i data-lucide="triangle-alert" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
             </span>
-            {% elif item.priority == 'low' %}
-            <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20 flex items-center gap-1 w-fit">
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-surface-container-highest text-on-surface/40 text-[10px] font-black tracking-wide uppercase border border-outline-variant/20">
               <i data-lucide="minus-circle" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
             </span>
-            {% else %}
-            <span class="px-2.5 py-1 rounded-lg bg-outline-variant/20 text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20 w-fit">{{ priority_label(item.priority) }}</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4">
+          <td class="px-6 py-5 text-center">
             {% set s = item.status %}
             {% if s == 'open' %}
-            <span class="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-bold tracking-wide uppercase border border-blue-500/10 flex items-center gap-1 w-fit">
-              <i data-lucide="circle-dot" class="w-3 h-3"></i>{{ status_label(s) }}
-            </span>
+            <div class="flex flex-col items-center gap-1">
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 text-[10px] font-black tracking-wide uppercase border border-blue-500/10">
+                <div class="w-1.5 h-1.5 rounded-full bg-blue-600"></div>{{ status_label(s) }}
+              </span>
+            </div>
             {% elif s == 'in_progress' %}
-            <span class="px-2.5 py-1 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10 flex items-center gap-1 w-fit">
-              <i data-lucide="loader-circle" class="w-3 h-3"></i>{{ status_label(s) }}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-black tracking-wide uppercase border border-amber-500/10">
+              <i data-lucide="loader-circle" class="w-3 h-3 animate-spin"></i>{{ status_label(s) }}
             </span>
             {% elif s == 'resolved' %}
-            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10 flex items-center gap-1 w-fit">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-black tracking-wide uppercase border border-emerald-500/10">
               <i data-lucide="check-circle-2" class="w-3 h-3"></i>{{ status_label(s) }}
             </span>
-            {% elif s == 'closed' %}
-            <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20 flex items-center gap-1 w-fit">
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-highest text-on-surface/40 text-[10px] font-black tracking-wide uppercase border border-outline-variant/20">
               <i data-lucide="archive" class="w-3 h-3"></i>{{ status_label(s) }}
             </span>
-            {% else %}
-            <span class="px-2.5 py-1 rounded-lg bg-outline-variant/20 text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20 w-fit">{{ status_label(s) }}</span>
             {% endif %}
           </td>
-          <td class="px-6 py-4 text-on-surface/60 text-xs">{{ format_bangkok_datetime(item.reported_at) }}</td>
-          <td class="px-6 py-4 text-on-surface/60 text-xs">
-            {% if item.resolved_at %}
-            {{ format_bangkok_datetime(item.resolved_at) }}
-            {% else %}
-            <span class="text-on-surface/30">—</span>
-            {% endif %}
+          <td class="px-6 py-5">
+            <div class="flex flex-col gap-0.5">
+              <div class="flex items-center gap-2 text-on-surface/70 text-xs font-bold font-mono">
+                {{ format_bangkok_datetime(item.reported_at) }}
+              </div>
+              <div class="text-[10px] text-on-surface/30 font-medium italic flex items-center gap-1">
+                <i data-lucide="timer" class="w-3 h-3"></i>
+                Báo cách đây {{ format_duration(item.reported_at, none) }}
+              </div>
+            </div>
           </td>
-          <td class="px-6 py-4 text-on-surface/60 text-xs">
+          <td class="px-6 py-5 text-center">
             {% set dur = format_duration(item.reported_at, item.resolved_at) %}
             {% if dur %}
-            <span class="flex items-center gap-1"><i data-lucide="timer" class="w-3 h-3 opacity-50"></i>{{ dur }}</span>
+            <div class="flex flex-col items-center gap-0.5">
+              <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{{ dur }}</div>
+              <div class="text-[9px] text-on-surface/30 font-medium italic">SLA Met</div>
+            </div>
             {% else %}
-            <span class="text-on-surface/30">—</span>
+            <div class="flex items-center justify-center text-on-surface/10 pl-2">
+              <i data-lucide="hourglass" class="w-4 h-4 animate-bounce-subtle"></i>
+            </div>
             {% endif %}
           </td>
-          <td class="px-6 py-4 text-right">
-            <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <td class="px-6 py-5 text-right">
+            <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a href="/incidents/{{ item.id }}" class="w-9 h-9 rounded-xl bg-surface-container-highest/50 hover:bg-rose-600 hover:text-white transition-all border border-outline-variant/10 flex items-center justify-center group/btn shadow-sm" title="Xem chi tiết ticket">
+                <i data-lucide="eye" class="w-4 h-4 group-hover/btn:scale-110 transition-transform"></i>
+              </a>
               {% if current_user.can_edit_incidents %}
-              <a href="/incidents/{{ item.id }}/edit" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-primary/20 hover:text-primary transition-colors text-on-surface/60 border border-outline-variant/20" title="Cập nhật">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
+              <a href="/incidents/{{ item.id }}/edit" class="w-9 h-9 rounded-xl bg-surface-container-highest/50 hover:bg-rose-600 hover:text-white transition-all border border-outline-variant/10 flex items-center justify-center group/btn shadow-sm" title="Cập nhật xử lý">
+                <i data-lucide="pencil-line" class="w-4 h-4 group-hover/btn:scale-110 transition-transform"></i>
               </a>
               {% endif %}
-              <a href="/incidents/{{ item.id }}" class="p-1.5 rounded-lg bg-surface-container-highest hover:bg-blue-500/20 hover:text-blue-600 transition-colors text-on-surface/60 border border-outline-variant/20" title="Xem chi tiết">
-                <i data-lucide="eye" class="w-4 h-4"></i>
-              </a>
             </div>
           </td>
         </tr>
@@ -177,9 +202,17 @@
     </table>
   </div>
   {% if not items %}
-  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="shield-check" class="w-12 h-12 mb-4 opacity-50"></i>
-    <p>Không có sự cố nào khớp với bộ lọc.</p>
+  <div class="py-24 flex flex-col items-center justify-center text-on-surface/30">
+    <div class="w-20 h-20 rounded-full bg-surface-container-highest flex items-center justify-center mb-6 shadow-inner ring-8 ring-surface-container-lowest">
+      <i data-lucide="shield-off" class="w-10 h-10 opacity-20"></i>
+    </div>
+    <div class="text-center">
+      <p class="text-lg font-bold">Mọi thứ đều ổn định!</p>
+      <p class="text-sm mt-1 font-medium opacity-60">Không tìm thấy báo cáo sự cố nào khớp với điều kiện lọc</p>
+      <a href="/incidents/new" class="mt-8 px-8 py-3.5 bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-500/20 hover:bg-rose-700 transition-all inline-block active:scale-95">
+        Tạo ticket sự cố mới
+      </a>
+    </div>
   </div>
   {% endif %}
 </div>

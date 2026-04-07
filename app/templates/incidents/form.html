@@ -1,58 +1,151 @@
 {% extends 'base.html' %}
+{% block title %}{% if item %}Cập nhật ticket INC-{{ "%04d" % item.id }}{% else %}Tạo ticket sự cố mới{% endif %} - IT Asset Hub{% block title_suffix %}{% endblock %}{% endblock %}
+
 {% block content %}
-<h1 class="mb-3">{% if item %}Cập nhật ticket sự cố{% else %}Tạo ticket sự cố{% endif %}</h1>
-<form class="card card-body bg-white" method="post">
-  <div class="row g-3">
-    <div class="col-md-6">
-      <label class="form-label">Thiết bị</label>
-      <select class="form-select" name="asset_id" required>
-        {% for asset in assets %}<option value="{{ asset.id }}" {% if item and item.asset_id == asset.id %}selected{% endif %}>{{ asset.asset_code }} - {{ asset.asset_name }}</option>{% endfor %}
-      </select>
+<div class="max-w-4xl mx-auto">
+  <!-- Header -->
+  <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2 text-rose-600/60 text-xs font-bold uppercase tracking-widest">
+        <i data-lucide="shield-alert" class="w-3.5 h-3.5"></i>
+        <span>Hệ thống ticket sự cố</span>
+      </div>
+      <h1 class="text-3xl font-black tracking-tight text-on-surface headline">
+        {% if item %}Cập nhật ticket <span class="text-rose-600">#{{ item.id }}</span>{% else %}Báo cáo sự cố mới{% endif %}
+      </h1>
+      <p class="text-on-surface/50 text-sm font-medium">Vui lòng cung cấp chi tiết sự cố để đội ngũ IT hỗ trợ nhanh nhất.</p>
     </div>
-    <div class="col-md-3">
-      <label class="form-label">Người báo</label>
-      <input class="form-control" name="reported_by" value="{{ item.reported_by if item else (current_user.full_name or current_user.username) }}" {% if not current_user.can_edit_incidents %}readonly{% endif %}>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Bộ phận</label>
-      <input class="form-control" name="requester_department" value="{{ item.requester_department if item else '' }}" placeholder="Nhập bộ phận yêu cầu">
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Ưu tiên</label>
-      <select class="form-select" name="priority">
-        {% for priority in incident_priorities %}
-        <option value="{{ priority }}" {% if (item and item.priority == priority) or (not item and priority == 'medium') %}selected{% endif %}>{{ priority_label(priority) }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    {% if current_user.can_edit_incidents %}
-    <div class="col-md-3">
-      <label class="form-label">Trạng thái</label>
-      <select class="form-select" name="status">
-        {% for status_value in incident_statuses %}
-        <option value="{{ status_value }}" {% if (item and item.status == status_value) or (not item and status_value == 'open') %}selected{% endif %}>{{ status_label(status_value) }}</option>
-        {% endfor %}
-      </select>
-      <div class="form-text">Workflow chuẩn: Mới tiếp nhận → Đang xử lý → Chờ phản hồi/nhà cung cấp → Đã xử lý xong → Đóng.</div>
-    </div>
-    {% else %}
-    <input type="hidden" name="status" value="open">
-    {% endif %}
-    {% if item %}
-    <div class="col-md-3">
-      <label class="form-label">Báo lúc</label>
-      <input class="form-control" value="{{ format_bangkok_datetime(item.reported_at) if format_bangkok_datetime is defined else '' }}" readonly>
-    </div>
-    <div class="col-md-3">
-      <label class="form-label">Hoàn tất lúc</label>
-      <input class="form-control" value="{{ format_bangkok_datetime(item.resolved_at) if format_bangkok_datetime is defined else '' }}" readonly>
-    </div>
-    {% endif %}
-    <div class="col-12"><label class="form-label">Nội dung yêu cầu</label><textarea class="form-control" name="issue_description" rows="5" required>{{ item.issue_description if item else '' }}</textarea></div>
-    {% if current_user.can_edit_incidents %}
-    <div class="col-12"><label class="form-label">Hướng xử lý / kết quả</label><textarea class="form-control" name="resolution" rows="4" placeholder="Ghi lại hướng xử lý, kết quả, nguyên nhân hoặc lưu ý bàn giao">{{ item.resolution if item else '' }}</textarea></div>
-    {% endif %}
+    <a href="/incidents" class="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-surface-container-high text-on-surface/60 font-bold text-sm hover:bg-outline-variant/20 transition-all active:scale-95 border border-outline-variant/10">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Danh sách
+    </a>
   </div>
-  <div class="mt-3 d-flex gap-2"><button class="btn btn-danger">{% if item %}Cập nhật ticket{% else %}Lưu ticket{% endif %}</button><a class="btn btn-secondary" href="/incidents/">Quay lại</a></div>
-</form>
+
+  <form method="post" class="space-y-8">
+    <!-- Main Content Card -->
+    <div class="bg-surface-container-lowest rounded-[40px] p-8 md:p-10 shadow-sm border border-outline-variant/10 relative overflow-hidden">
+      <!-- Section: Nguồn gốc sự cố -->
+      <div class="space-y-8">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-8 h-8 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-600 shadow-inner">
+            <i data-lucide="monitor" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-sm font-black uppercase tracking-widest text-on-surface/80">Nguồn gốc sự cố</h3>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Thiết bị gặp sự cố</label>
+            <div class="relative group">
+              <i data-lucide="monitor" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+              <select name="asset_id" required class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer font-bold">
+                <option value="" disabled selected>Chọn thiết bị...</option>
+                {% for asset in assets %}
+                <option value="{{ asset.id }}" {% if item and item.asset_id == asset.id %}selected{% endif %}>{{ asset.asset_code }} - {{ asset.asset_name }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none group-hover:text-rose-500 transition-colors"></i>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Bộ phận yêu cầu</label>
+            <div class="relative group">
+              <i data-lucide="building-2" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+              <input type="text" name="requester_department" value="{{ item.requester_department if item else '' }}" placeholder="VD: Kế toán, Nhân sự..." 
+                class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface placeholder:text-on-surface/20 transition-all font-bold">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Người báo sự cố</label>
+            <div class="relative group">
+              <i data-lucide="user" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+              <input type="text" name="reported_by" value="{{ item.reported_by if item else (current_user.full_name or current_user.username) }}" 
+                {% if not current_user.can_edit_incidents %}readonly{% endif %}
+                class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface placeholder:text-on-surface/20 transition-all font-bold {% if not current_user.can_edit_incidents %}opacity-60 cursor-not-allowed{% endif %}">
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Mức độ ưu tiên</label>
+            <div class="relative group">
+              <i data-lucide="flame" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+              <select name="priority" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer font-bold">
+                {% for priority in incident_priorities %}
+                <option value="{{ priority }}" {% if (item and item.priority == priority) or (not item and priority == 'medium') %}selected{% endif %}>{{ priority_label(priority) }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="h-px bg-gradient-to-r from-transparent via-outline-variant/20 to-transparent my-12"></div>
+
+      <!-- Section: Chi tiết sự cố -->
+      <div class="space-y-8">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 shadow-inner">
+            <i data-lucide="file-question" class="w-4 h-4"></i>
+          </div>
+          <h3 class="text-sm font-black uppercase tracking-widest text-on-surface/80">Chi tiết & Xử lý</h3>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Nội dung yêu cầu / Mô tả lỗi</label>
+          <div class="relative group">
+            <i data-lucide="message-square" class="absolute left-4 top-5 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+            <textarea name="issue_description" rows="5" required placeholder="Mô tả chi tiết tình trạng lỗi hoặc yêu cầu hỗ trợ..."
+              class="w-full bg-surface-container-low border border-outline-variant/20 rounded-3xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface placeholder:text-on-surface/20 transition-all font-medium leading-relaxed">{{ item.issue_description if item else '' }}</textarea>
+          </div>
+        </div>
+
+        {% if current_user.can_edit_incidents %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+          <div class="space-y-2 md:col-span-1">
+            <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Trạng thái ticket</label>
+            <div class="relative group">
+              <i data-lucide="activity" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+              <select name="status" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer font-bold">
+                {% for status_value in incident_statuses %}
+                <option value="{{ status_value }}" {% if (item and item.status == status_value) or (not item and status_value == 'open') %}selected{% endif %}>{{ status_label(status_value) }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
+            </div>
+            <div class="flex items-start gap-2 mt-2 px-2">
+              <i data-lucide="info" class="w-3.5 h-3.5 text-on-surface/30 mt-0.5"></i>
+              <p class="text-[10px] text-on-surface/40 leading-relaxed font-medium">Workflow: Mới tiếp nhận → Đang xử lý → Chờ phản hồi → Đã xử lý → Đóng ticket.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-2 pt-4">
+          <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Hướng xử lý / Kết quả</label>
+          <div class="relative group">
+            <i data-lucide="check-circle" class="absolute left-4 top-5 w-4 h-4 text-on-surface/30 group-focus-within:text-emerald-500 transition-colors"></i>
+            <textarea name="resolution" rows="4" placeholder="Ghi nhận phương án xử lý, nguyên nhân hoặc lưu ý bàn giao..."
+              class="w-full bg-surface-container-low border border-outline-variant/20 rounded-3xl py-4 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500/40 text-on-surface placeholder:text-on-surface/20 transition-all font-medium leading-relaxed">{{ item.resolution if item else '' }}</textarea>
+          </div>
+        </div>
+        {% else %}
+        <input type="hidden" name="status" value="open">
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Submit Area -->
+    <div class="flex flex-col md:flex-row items-center justify-end gap-4 pb-12">
+      <a href="/incidents" class="order-2 md:order-1 px-8 py-4 rounded-2xl bg-surface-container-highest text-on-surface font-bold text-sm hover:bg-outline-variant/20 transition-all active:scale-95">Hủy bỏ</a>
+      <button type="submit" class="order-1 md:order-2 w-full md:w-auto px-10 py-4 bg-rose-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-rose-500/20 hover:bg-rose-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3">
+        <i data-lucide="save" class="w-5 h-5"></i>
+        <span>{% if item %}Cập nhật ticket{% else %}Gửi yêu cầu hỗ trợ{% endif %}</span>
+      </button>
+    </div>
+  </form>
+</div>
 {% endblock %}

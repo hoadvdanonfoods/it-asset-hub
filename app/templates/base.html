@@ -63,13 +63,49 @@
           <i data-lucide="sun" id="theme-icon" class="w-5 h-5"></i>
         </button>
         
-        <div class="flex items-center gap-3 bg-surface-container-lowest px-3 py-1.5 rounded-full shadow-sm border border-outline-variant/10">
-          <div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
-            <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="Admin">
-          </div>
-          <div class="hidden sm:block">
-            <p class="text-xs font-bold text-on-surface leading-none">Admin User</p>
-            <p class="text-[10px] text-on-surface/50">IT Department</p>
+        <div class="relative inline-block text-left" id="user-menu-container">
+          <button type="button" id="user-menu-button" class="flex items-center gap-3 bg-surface-container-lowest px-3 py-1.5 rounded-full shadow-sm border border-outline-variant/10 hover:bg-surface-container-low transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-inner
+              {% if current_user.role == 'admin' %}bg-indigo-500 text-white
+              {% elif current_user.role == 'technician' %}bg-amber-500 text-white
+              {% else %}bg-slate-500 text-white
+              {% endif %}">
+              {% if current_user.role == 'admin' %}
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+              {% elif current_user.role == 'technician' %}
+              <i data-lucide="wrench" class="w-4 h-4"></i>
+              {% else %}
+              <i data-lucide="user" class="w-4 h-4"></i>
+              {% endif %}
+            </div>
+            <div class="hidden sm:block text-left">
+              <p class="text-xs font-bold text-on-surface leading-none">{{ current_user.full_name or current_user.username or 'Khách' }}</p>
+              <p class="text-[10px] text-on-surface/50">{{ (current_user.role or 'User') | capitalize }}</p>
+            </div>
+            <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-on-surface/30"></i>
+          </button>
+          
+          <!-- Dropdown menu -->
+          <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-56 origin-top-right divide-y divide-outline-variant/10 rounded-2xl bg-surface-container-lowest shadow-xl ring-1 ring-on-surface/5 focus:outline-none z-[100] border border-outline-variant/10 overflow-hidden transform opacity-0 scale-95 transition-all duration-200">
+            <div class="px-4 py-3 bg-surface-container-low/30">
+              <p class="text-[10px] text-on-surface/50 font-bold uppercase tracking-wider">Đang đăng nhập</p>
+              <p class="text-sm font-bold text-on-surface truncate">{{ current_user.username or 'Chưa đăng nhập' }}</p>
+            </div>
+            <div class="py-1">
+              {% if current_user and current_user.can_manage_users %}
+              <a href="/users/{{ current_user.id }}/edit" class="group flex items-center px-4 py-2.5 text-sm text-on-surface/70 hover:bg-primary/5 hover:text-primary transition-colors">
+                <i data-lucide="user" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> Hồ sơ của tôi
+              </a>
+              {% endif %}
+              <a href="/users/change-password" class="group flex items-center px-4 py-2.5 text-sm text-on-surface/70 hover:bg-primary/5 hover:text-primary transition-colors">
+                <i data-lucide="key-round" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> Đổi mật khẩu
+              </a>
+            </div>
+            <div class="py-1">
+              <a href="/logout" class="group flex items-center px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors">
+                <i data-lucide="log-out" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> Đăng xuất
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -88,22 +124,23 @@
       </div>
       
       <nav class="flex-1 px-4 space-y-1 overflow-y-auto pb-4 custom-scrollbar">
-        <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 bg-primary/5 text-primary font-bold border-r-4 border-primary">
+        {% set p = request.url.path %}
+        <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p == '/' else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-sm">Dashboard</span>
         </a>
-        <a href="/assets" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/assets" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/assets') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm">Tài sản (Assets)</span>
         </a>
-        <a href="/resources" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/resources" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm">Vật tư (Resources)</span>
         </a>
-        <a href="/maintenance" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/maintenance" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/maintenance') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm">Bảo trì (Maintenance)</span>
         </a>
-        <a href="/incidents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/incidents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/incidents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm">Sự cố (Incidents)</span>
         </a>
-        <a href="/documents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/documents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm">Tài liệu (Documents)</span>
         </a>
 
@@ -111,10 +148,10 @@
             <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2">Quản trị Hệ Thống</p>
         </div>
         
-        <a href="/users" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/users" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/users') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="users" class="w-5 h-5"></i><span class="text-sm">Người dùng (Users)</span>
         </a>
-        <a href="/system/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+        <a href="/system/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/system') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm">Công cụ hệ thống</span>
         </a>
       </nav>
@@ -122,16 +159,25 @@
       <div class="p-4 mt-auto">
         <div class="bg-primary rounded-2xl p-6 text-white overflow-hidden relative group cursor-pointer shadow-xl shadow-primary/10">
           <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary-container rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
-          <h4 class="font-bold relative z-10">Pro Support</h4>
-          <p class="text-xs text-white/80 relative z-10 mt-1">Get 24/7 dedicated IT assistance</p>
-          <button class="mt-4 bg-white text-primary text-xs font-bold py-2 px-4 rounded-lg relative z-10 hover:bg-white/90 transition-colors">Contact Support</button>
+          <h4 class="font-bold relative z-10">Hỗ trợ kỹ thuật</h4>
+          <p class="text-xs text-white/80 relative z-10 mt-1">SĐT: 0838641091 (Hòa IT)</p>
+          <a href="tel:0838641091" class="mt-4 inline-block bg-white text-primary text-xs font-bold py-2 px-4 rounded-lg relative z-10 hover:bg-white/90 transition-colors">Gọi Hỗ Trợ</a>
         </div>
       </div>
     </aside>
 
     <nav class="lg:hidden fixed bottom-0 left-0 w-full glass-effect flex justify-around items-center px-4 pb-6 pt-2 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] border-t border-outline-variant/10">
-        <a href="/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors text-primary bg-primary/5">
+        <a href="/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p == '/' else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Home</span>
+        </a>
+        <a href="/assets" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/assets') else 'text-on-surface/40 hover:text-primary' }}">
+          <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Assets</span>
+        </a>
+        <a href="/maintenance" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/maintenance') else 'text-on-surface/40 hover:text-primary' }}">
+          <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Maint</span>
+        </a>
+        <a href="/incidents" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/incidents') else 'text-on-surface/40 hover:text-primary' }}">
+          <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Incid</span>
         </a>
     </nav>
     
@@ -162,6 +208,41 @@
       function updateIcon(theme) {
           themeIcon.setAttribute('data-lucide', theme === 'light' ? 'moon' : 'sun');
           lucide.createIcons();
+      }
+
+      // User Menu Dropdown Toggle
+      const userMenuButton = document.getElementById('user-menu-button');
+      const userMenuDropdown = document.getElementById('user-menu-dropdown');
+      
+      if (userMenuButton && userMenuDropdown) {
+          userMenuButton.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const isHidden = userMenuDropdown.classList.contains('hidden');
+              if (isHidden) {
+                  userMenuDropdown.classList.remove('hidden');
+                  // Trigger transition
+                  setTimeout(() => {
+                      userMenuDropdown.classList.remove('opacity-0', 'scale-95');
+                      userMenuDropdown.classList.add('opacity-100', 'scale-100');
+                  }, 10);
+              } else {
+                  closeUserMenu();
+              }
+          });
+          
+          document.addEventListener('click', (e) => {
+              if (!userMenuDropdown.contains(e.target) && !userMenuButton.contains(e.target)) {
+                  closeUserMenu();
+              }
+          });
+          
+          function closeUserMenu() {
+              userMenuDropdown.classList.add('opacity-0', 'scale-95');
+              userMenuDropdown.classList.remove('opacity-100', 'scale-100');
+              setTimeout(() => {
+                  userMenuDropdown.classList.add('hidden');
+              }, 200);
+          }
       }
     </script>
     {% block extra_js %}{% endblock %}

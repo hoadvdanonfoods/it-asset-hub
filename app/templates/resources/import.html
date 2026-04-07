@@ -1,50 +1,94 @@
 {% extends 'base.html' %}
-{% block title %}Import tài nguyên - IT Asset Hub{% endblock %}
+{% block title %}Nhập dữ liệu tài nguyên - IT Asset Hub{% endblock %}
 
 {% block content %}
-<div class="mb-8">
-  <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Import tài nguyên từ Excel</h1>
-  <p class="text-on-surface/60 mt-1">Tải lên file Excel để nhập hàng loạt tài nguyên vào hệ thống</p>
-</div>
-
-{% if error %}
-<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
-  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
-  <p class="text-sm font-medium">{{ error }}</p>
-</div>
-{% endif %}
-
-{% if summary %}
-<div class="flex items-start gap-3 bg-emerald-50 border border-emerald-300/40 text-emerald-800 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
-  <i data-lucide="check-circle-2" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
-  <p class="text-sm font-medium">
-    Import hoàn tất: tạo mới <strong>{{ summary.created }}</strong>, cập nhật <strong>{{ summary.updated }}</strong>, tổng xử lý <strong>{{ summary.total }}</strong> dòng.
-  </p>
-</div>
-{% endif %}
-
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-2xl space-y-6">
-  <!-- Info box -->
-  <div class="flex items-start gap-3 bg-blue-50/60 border border-blue-300/30 text-blue-700 rounded-2xl px-5 py-4 text-sm">
-    <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
-    <p>Hỗ trợ 2 kiểu file Excel: (1) file nguồn danh sách IP / User / Password để chuẩn hoá thành tài nguyên camera, hoặc (2) file <strong>Export Excel</strong> từ chính màn Tài nguyên để import lại sang máy/server khác.</p>
+<div class="max-w-3xl mx-auto">
+  <!-- Header -->
+  <div class="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2 text-emerald-600/60 text-xs font-bold uppercase tracking-widest">
+        <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+        <span>Nhập dữ liệu hàng loạt</span>
+      </div>
+      <h1 class="text-3xl font-black tracking-tight text-on-surface headline">
+        Import <span class="text-emerald-600">tài nguyên</span> từ Excel
+      </h1>
+      <p class="text-on-surface/50 text-sm font-medium">Tải lên tệp cấu hình để cập nhật nhanh kho dữ liệu hỗ trợ.</p>
+    </div>
+    <a href="/resources" class="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-surface-container-high text-on-surface/60 font-bold text-sm hover:bg-outline-variant/20 transition-all active:scale-95 border border-outline-variant/10">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Danh sách
+    </a>
   </div>
 
-  <form method="post" enctype="multipart/form-data" class="space-y-5">
+  {% if error %}
+  <div class="flex items-start gap-4 bg-rose-500/10 border border-rose-500/20 text-rose-700 rounded-[28px] px-6 py-5 mb-8 animate-shake">
+    <div class="w-10 h-10 rounded-full bg-rose-500/20 flex items-center justify-center flex-shrink-0 animate-pulse">
+      <i data-lucide="alert-circle" class="w-5 h-5"></i>
+    </div>
     <div>
-      <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Chọn file Excel (.xlsx) <span class="text-rose-500">*</span></label>
-      <input type="file" name="import_file" accept=".xlsx" required
-        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary cursor-pointer">
+      <h4 class="text-sm font-black uppercase tracking-tight mb-1">Lỗi nhập liệu</h4>
+      <p class="text-sm font-medium opacity-90">{{ error }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if summary %}
+  <div class="flex items-start gap-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 rounded-[28px] px-6 py-5 mb-8 shadow-sm">
+    <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+      <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+    </div>
+    <div>
+      <h4 class="text-sm font-black uppercase tracking-tight mb-1">Nhập dữ liệu thành công</h4>
+      <p class="text-sm font-medium opacity-90">
+        Xử lý hoàn tất: <span class="font-black underline underline-offset-4 decoration-emerald-500/30">Tạo mới {{ summary.created }}</span>, <span class="font-black underline underline-offset-4 decoration-emerald-500/30">Cập nhật {{ summary.updated }}</span> dòng.
+      </p>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="bg-surface-container-lowest rounded-[40px] p-8 md:p-10 shadow-sm border border-outline-variant/10 space-y-10">
+    <!-- Instruction Box -->
+    <div class="flex items-start gap-5 bg-blue-500/5 border border-blue-500/10 text-blue-700 rounded-[32px] p-6 text-sm relative overflow-hidden group">
+      <div class="absolute -right-4 -top-4 opacity-[0.03] group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
+        <i data-lucide="file-spreadsheet" class="w-32 h-32"></i>
+      </div>
+      <div class="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-inner">
+        <i data-lucide="help-circle" class="w-6 h-6"></i>
+      </div>
+      <div class="space-y-2 relative z-10">
+        <p class="font-bold text-on-surface/80 tracking-tight">Quy trình nhập dữ liệu hỗ trợ 2 định dạng:</p>
+        <ul class="space-y-2 text-on-surface/60 font-medium">
+          <li class="flex items-center gap-2">
+            <i data-lucide="check" class="w-3.5 h-3.5 text-blue-500"></i>
+            <span>File <strong>Export</strong> từ hệ thống để đồng bộ/migration.</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <i data-lucide="check" class="w-3.5 h-3.5 text-blue-500"></i>
+            <span>File nguồn camera (IP/User/Pass) để chuẩn hoá hàng loạt.</span>
+          </li>
+        </ul>
+      </div>
     </div>
 
-    <div class="flex gap-3 pt-2">
-      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
-        <i data-lucide="upload" class="w-4 h-4"></i> Import vào Tài nguyên
-      </button>
-      <a href="/resources/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
-        <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
-      </a>
-    </div>
-  </form>
+    <!-- Upload Form -->
+    <form method="post" enctype="multipart/form-data" class="space-y-10">
+      <div class="space-y-4">
+        <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Tệp Excel cấu chuẩn (.xlsx) <span class="text-rose-500">*</span></label>
+        <div class="group relative">
+          <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+          <input type="file" name="import_file" accept=".xlsx" required
+            class="w-full bg-surface-container-low border-2 border-dashed border-outline-variant/30 rounded-3xl py-12 px-8 text-sm focus:outline-none focus:border-emerald-500/50 text-on-surface transition-all file:mr-6 file:py-3 file:px-6 file:rounded-2xl file:border-0 file:text-xs file:font-black file:bg-emerald-600 file:text-white file:shadow-lg file:shadow-emerald-500/20 file:cursor-pointer hover:bg-emerald-500/[0.02] cursor-pointer">
+        </div>
+      </div>
+
+      <div class="flex flex-col md:flex-row items-center justify-end gap-4">
+        <a href="/resources" class="order-2 md:order-1 px-8 py-4 rounded-2xl bg-surface-container-highest text-on-surface font-bold text-sm hover:bg-outline-variant/20 transition-all active:scale-95">Hủy bỏ</a>
+        <button type="submit" class="order-1 md:order-2 w-full md:w-auto px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm shadow-xl shadow-emerald-500/20 hover:bg-emerald-700 hover:-translate-y-1 transition-all active:scale-95 flex items-center justify-center gap-3 group">
+          <i data-lucide="upload-cloud" class="w-5 h-5 group-hover:translate-y-[-2px] transition-transform"></i>
+          <span>Bắt đầu Import dữ liệu</span>
+        </button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}

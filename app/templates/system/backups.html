@@ -2,6 +2,28 @@
 {% block title %}Danh sách backup - IT Asset Hub{% endblock %}
 
 {% block content %}
+{% if not is_sqlite %}
+<div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4 shadow-sm">
+  <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+    <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+  </div>
+  <div>
+    <h3 class="font-bold text-amber-900">Tính năng này bị giới hạn</h3>
+    <p class="text-sm text-amber-800/80 leading-relaxed">
+      Hệ thống hiện đang sử dụng <strong>PostgreSQL</strong>. Tính năng Backup tự động qua giao diện web chỉ hỗ trợ <strong>SQLite</strong>. 
+      Vui lòng sử dụng các công cụ quản lý database chuyên dụng (như <code>pg_dump</code>) để sao lưu dữ liệu an toàn.
+    </p>
+  </div>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-800">
+  <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
+  <span class="text-sm font-medium">{{ error }}</span>
+</div>
+{% endif %}
+
 <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
   <div>
     <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Danh sách backup</h1>
@@ -9,7 +31,7 @@
   </div>
   <div class="flex gap-3">
     <form method="post" action="/system/backup">
-      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5 cursor-pointer">
+      <button type="submit" {% if not is_sqlite %}disabled{% endif %} class="flex items-center gap-2 {% if is_sqlite %}bg-primary hover:bg-primary-container shadow-lg hover:-translate-y-0.5{% else %}bg-outline-variant/20 text-on-surface/40 cursor-not-allowed{% endif %} text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
         <i data-lucide="save" class="w-4 h-4"></i> Backup DB ngay
       </button>
     </form>

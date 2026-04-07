@@ -1,53 +1,204 @@
 {% extends 'base.html' %}
+{% block title %}Chi tiết sự cố #{{ item.id }} - IT Asset Hub{% endblock %}
+
 {% block content %}
 {% if item %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="mb-0">Chi tiết sự cố #{{ item.id }}</h1>
-  <div class="d-flex gap-2">
-    <a class="btn btn-outline-secondary" href="/static/forms/MP3TT-17-BMIT-01-phieu-yeu-cau-ho-tro-ky-thuat-IT-ver-00_1_1.pdf" target="_blank">Mở mẫu phiếu yêu cầu công ty</a>
-    {% if current_user.can_edit_incidents %}<a class="btn btn-outline-primary" href="/incidents/{{ item.id }}/edit">Cập nhật</a>{% endif %}
+<!-- Breadcrumbs & Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+  <div class="space-y-2">
+    <div class="flex items-center gap-2 text-on-surface/40 text-xs font-bold uppercase tracking-widest">
+      <a href="/incidents" class="hover:text-rose-600 transition-colors">Sự cố</a>
+      <i data-lucide="chevron-right" class="w-3 h-3"></i>
+      <span class="text-on-surface/20">Ticket #{{ item.id }}</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="w-14 h-14 rounded-3xl bg-rose-500/10 flex items-center justify-center text-rose-600 shadow-sm border border-rose-500/10">
+        <i data-lucide="shield-alert" class="w-7 h-7"></i>
+      </div>
+      <div>
+        <h1 class="text-3xl font-black tracking-tight text-on-surface headline">INC-{{ "%04d" % item.id }}</h1>
+        <div class="flex items-center gap-3 mt-1">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 text-rose-600 text-[10px] font-black tracking-wide uppercase border border-rose-500/10">
+            <i data-lucide="flame" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-highest text-on-surface/60 text-[10px] font-black tracking-wide uppercase border border-outline-variant/20">
+            <i data-lucide="hash" class="w-3 h-3 opacity-40"></i>{{ status_label(item.status) }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="flex items-center gap-3">
+    <a href="/static/forms/MP3TT-17-BMIT-01-phieu-yeu-cau-ho-tro-ky-thuat-IT-ver-00_1_1.pdf" target="_blank" 
+       class="flex items-center gap-2 bg-rose-600/10 text-rose-600 px-5 py-3 rounded-2xl font-bold text-sm hover:bg-rose-600/20 transition-all active:scale-95 border border-rose-600/10">
+      <i data-lucide="file-text" class="w-4 h-4"></i> Mẫu phiếu hỗ trợ
+    </a>
+    {% if current_user.can_edit_incidents %}
+    <a href="/incidents/{{ item.id }}/edit" 
+       class="flex items-center gap-2 bg-on-surface text-surface-container-lowest px-6 py-3 rounded-2xl font-bold text-sm hover:bg-on-surface/90 transition-all shadow-lg active:scale-95">
+      <i data-lucide="pencil" class="w-4 h-4"></i> Cập nhật xử lý
+    </a>
+    {% endif %}
   </div>
 </div>
-<div class="row g-3">
-  <div class="col-lg-5">
-    <ul class="list-group shadow-sm">
-      <li class="list-group-item"><strong>Thiết bị:</strong> {{ item.asset.asset_code if item.asset else '' }}</li>
-      <li class="list-group-item"><strong>Người báo:</strong> {{ item.reported_by or '' }}</li>
-      <li class="list-group-item"><strong>Bộ phận:</strong> {{ item.requester_department or '' }}</li>
-      <li class="list-group-item"><strong>Ưu tiên:</strong> <span class="badge {{ priority_badge_class(item.priority) }}">{{ priority_label(item.priority) }}</span></li>
-      <li class="list-group-item"><strong>Trạng thái:</strong> <span class="badge {{ status_badge_class(item.status) }}">{{ status_label(item.status) }}</span></li>
-      <li class="list-group-item"><strong>Báo cáo lúc:</strong> {{ format_bangkok_datetime(item.reported_at) }}</li>
-      <li class="list-group-item"><strong>Hoàn tất lúc:</strong> {{ format_bangkok_datetime(item.resolved_at) }}</li>
-      <li class="list-group-item"><strong>Thời gian xử lý:</strong> {{ format_duration(item.reported_at, item.resolved_at) or '' }}</li>
-      <li class="list-group-item"><strong>Nội dung yêu cầu:</strong><br>{{ item.issue_description }}</li>
-      <li class="list-group-item"><strong>Hướng xử lý:</strong><br>{{ item.resolution or '' }}</li>
-    </ul>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+  <!-- Left Side: Detailed Info -->
+  <div class="lg:col-span-4 space-y-8">
+    <!-- Main Info Card -->
+    <div class="bg-surface-container-lowest rounded-[40px] p-8 shadow-sm border border-outline-variant/10 relative overflow-hidden group">
+      <div class="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.08] transition-opacity pointer-events-none group-hover:rotate-12 duration-700">
+        <i data-lucide="info" class="w-32 h-32"></i>
+      </div>
+      
+      <h3 class="text-xs font-black uppercase tracking-[0.2em] text-on-surface/30 mb-8 border-b border-outline-variant/10 pb-4">Thông tin cơ bản</h3>
+      
+      <div class="space-y-8 relative z-10">
+        <!-- Asset Link -->
+        {% if item.asset %}
+        <div class="flex items-center gap-4 p-4 rounded-3xl bg-surface-container-low border border-outline-variant/10 hover:border-rose-500/20 transition-colors group/asset">
+          <div class="w-12 h-12 rounded-2xl bg-on-surface/[0.03] flex items-center justify-center text-on-surface/40 group-hover/asset:text-rose-600 transition-colors">
+            <i data-lucide="monitor" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30">Thiết bị</div>
+            <a href="/assets/{{ item.asset.id }}" class="text-sm font-black text-on-surface hover:text-rose-600 transition-colors">{{ item.asset.asset_code }}</a>
+            <div class="text-[10px] text-on-surface/40 font-medium truncate max-w-[150px]">{{ item.asset.asset_name }}</div>
+          </div>
+          <i data-lucide="external-link" class="w-4 h-4 ml-auto text-on-surface/10 group-hover/asset:text-rose-400 transition-colors"></i>
+        </div>
+        {% endif %}
+
+        <div class="grid grid-cols-2 gap-8">
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Người yêu cầu</div>
+            <div class="text-sm font-bold text-on-surface">{{ item.reported_by or 'N/A' }}</div>
+          </div>
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Bộ phận</div>
+            <div class="text-sm font-bold text-on-surface">{{ item.requester_department or 'N/A' }}</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-8">
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Thời điểm báo</div>
+            <div class="text-xs font-bold text-on-surface/60">{{ format_bangkok_datetime(item.reported_at) }}</div>
+          </div>
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Hoàn tất lúc</div>
+            <div class="text-xs font-bold text-on-surface/60">{{ format_bangkok_datetime(item.resolved_at) if item.resolved_at else '—' }}</div>
+          </div>
+        </div>
+
+        {% if item.resolved_at %}
+        <div class="pt-4 mt-4 border-t border-outline-variant/10">
+          <div class="text-[10px] font-black underline decoration-rose-500/30 underline-offset-4 uppercase tracking-[0.15em] text-on-surface/30 mb-1">Thời gian xử lý</div>
+          <div class="text-lg font-black text-rose-600 tracking-tight">{{ format_duration(item.reported_at, item.resolved_at) }}</div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Quick Stats/Alerts if needed -->
+    {% if item.priority == 'high' and item.status != 'resolved' and item.status != 'closed' %}
+    <div class="bg-rose-500/10 border border-rose-500/20 rounded-[32px] p-6 flex gap-4 items-start animate-pulse-subtle">
+      <div class="p-2.5 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
+        <i data-lucide="zap" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="text-sm font-black text-rose-700 uppercase tracking-tight">Sự cố khẩn cấp</div>
+        <p class="text-xs font-medium text-rose-600/80 mt-1">Sự cố này cần được ưu tiên xử lý ngay để đảm bảo SLA của bộ phận IT.</p>
+      </div>
+    </div>
+    {% endif %}
   </div>
-  <div class="col-lg-7">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Nhật ký xử lý sự cố</h5>
+
+  <!-- Right Side: Content & Timeline -->
+  <div class="lg:col-span-8 space-y-8">
+    <!-- Description & Resolution -->
+    <div class="bg-surface-container-lowest rounded-[40px] p-8 shadow-sm border border-outline-variant/10">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-[0.2em] text-on-surface/30 mb-6 flex items-center gap-2">
+            <i data-lucide="message-square" class="w-3.5 h-3.5 text-rose-500"></i> Nội dung yêu cầu
+          </h3>
+          <div class="prose prose-sm max-w-none text-on-surface/80 leading-relaxed font-medium bg-surface-container-low p-6 rounded-[32px] border border-outline-variant/5">
+            {{ item.issue_description | replace('\n', '<br>') | safe }}
+          </div>
+        </div>
+        <div>
+          <h3 class="text-xs font-black uppercase tracking-[0.2em] text-on-surface/30 mb-6 flex items-center gap-2">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-500"></i> Hướng xử lý
+          </h3>
+          <div class="prose prose-sm max-w-none text-on-surface/80 leading-relaxed font-medium bg-surface-container-low p-6 rounded-[32px] border border-outline-variant/5">
+            {% if item.resolution %}
+              {{ item.resolution | replace('\n', '<br>') | safe }}
+            {% else %}
+              <div class="flex flex-col items-center justify-center py-4 text-on-surface/20 italic">
+                <i data-lucide="loader-2" class="w-6 h-6 mb-2 animate-spin-slow"></i>
+                Đang chờ cập nhật phương án...
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline of Events -->
+    <div class="bg-surface-container-lowest rounded-[40px] p-8 shadow-sm border border-outline-variant/10">
+      <h3 class="text-xs font-black uppercase tracking-[0.2em] text-on-surface/30 mb-10 border-b border-outline-variant/10 pb-4">Nhật ký xử lý hệ thống</h3>
+      
+      <div class="relative pl-10 space-y-12 before:content-[''] before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[2px] before:bg-gradient-to-b before:from-rose-500/40 before:via-outline-variant/20 before:to-transparent">
         {% if item.events %}
           {% for event in item.events %}
-          <div class="border-bottom pb-2 mb-2">
-            <div class="d-flex justify-content-between gap-3">
+          <div class="relative group">
+            <!-- Timeline Dot -->
+            <div class="absolute -left-[30px] top-1.5 w-[21px] h-[21px] rounded-full bg-surface-container-lowest border-4 border-rose-500 shadow-sm z-10 group-hover:scale-125 transition-transform"></div>
+            
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-[28px] bg-surface-container-low border border-outline-variant/10 group-hover:border-rose-500/20 transition-all hover:translate-x-1">
               <div>
-                <div class="fw-semibold">{{ event.title }}</div>
-                {% if event.description %}<div class="text-muted small">{{ event.description }}</div>{% endif %}
-                <div class="small text-secondary">{{ event.actor or 'system' }}</div>
+                <div class="text-[10px] font-black text-rose-600/40 uppercase tracking-widest mb-1">{{ format_bangkok_datetime(event.created_at) }}</div>
+                <div class="text-sm font-bold text-on-surface">{{ event.title }}</div>
+                {% if event.description %}
+                <p class="text-[11px] text-on-surface/50 mt-1 font-medium leading-relaxed italic">{{ event.description }}</p>
+                {% endif %}
               </div>
-              <div class="small text-muted text-nowrap">{{ format_bangkok_datetime(event.created_at) }}</div>
+              <div class="flex items-center gap-3 self-start md:self-center">
+                <div class="flex items-center gap-3">
+                  <div class="flex flex-col items-end">
+                    <div class="text-[10px] font-black text-on-surface tracking-tight">{{ event.actor or 'system' }}</div>
+                    <div class="text-[9px] text-on-surface/30 font-bold uppercase tracking-tighter">Thực hiện</div>
+                  </div>
+                  <div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface/40 border border-outline-variant/20 shadow-inner">
+                    <i data-lucide="user-cog" class="w-4 h-4"></i>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           {% endfor %}
         {% else %}
-          <div class="text-muted">Chưa có log xử lý.</div>
+          <div class="flex flex-col items-center justify-center py-10 opacity-20">
+            <i data-lucide="clipboard-list" class="w-12 h-12 mb-4"></i>
+            <p class="text-xs font-bold uppercase tracking-widest">Chưa có nhật ký ghi nhận</p>
+          </div>
         {% endif %}
       </div>
     </div>
   </div>
 </div>
 {% else %}
-<div class="alert alert-warning">Không tìm thấy ticket.</div>
+<div class="py-24 flex flex-col items-center justify-center text-on-surface/40">
+  <div class="w-24 h-24 rounded-full bg-surface-container-highest flex items-center justify-center mb-6 shadow-inner ring-8 ring-surface-container-lowest">
+    <i data-lucide="search-x" class="w-12 h-12 opacity-30"></i>
+  </div>
+  <h2 class="text-2xl font-black tracking-tight mb-2">Ticket không tồn tại</h2>
+  <p class="text-sm font-medium opacity-60">Sự cố bạn đang tìm kiếm có thể đã bị xóa hoặc sai mã ID.</p>
+  <a href="/incidents" class="mt-8 px-8 py-3.5 bg-rose-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-rose-500/20 hover:bg-rose-700 transition-all active:scale-95">
+    Quay lại danh sách
+  </a>
+</div>
 {% endif %}
 {% endblock %}

@@ -7,10 +7,25 @@
   <p class="text-on-surface/60 mt-1">Khôi phục database từ một file backup đã có</p>
 </div>
 
+{% if not is_sqlite %}
+<div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4 shadow-sm max-w-2xl">
+  <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
+    <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+  </div>
+  <div>
+    <h3 class="font-bold text-amber-900">Tính năng này bị giới hạn</h3>
+    <p class="text-sm text-amber-800/80 leading-relaxed">
+      Hệ thống hiện đang sử dụng <strong>PostgreSQL</strong>. Tính năng Restore database qua giao diện web chỉ hỗ trợ <strong>SQLite</strong>. 
+      Để khôi phục dữ liệu cho PostgreSQL, vui lòng sử dụng lệnh <code>psql</code> hoặc các công cụ quản lý chuyên dụng.
+    </p>
+  </div>
+</div>
+{% else %}
 <div class="flex items-start gap-3 bg-amber-50 border border-amber-300/40 text-amber-800 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
   <i data-lucide="triangle-alert" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
   <p class="text-sm font-medium">Thao tác này sẽ <strong>ghi đè</strong> database hiện tại. Hệ thống sẽ tự tạo một backup an toàn trước khi restore.</p>
 </div>
+{% endif %}
 
 {% if error %}
 <div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6 max-w-2xl">
@@ -38,7 +53,7 @@
     </div>
 
     <div class="flex gap-3 pt-2">
-      <button type="submit" class="flex items-center gap-2 bg-rose-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-700 transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+      <button type="submit" {% if not is_sqlite %}disabled{% endif %} class="flex items-center gap-2 {% if is_sqlite %}bg-rose-600 hover:bg-rose-700 shadow-md hover:-translate-y-0.5{% else %}bg-outline-variant/20 text-on-surface/40 cursor-not-allowed{% endif %} text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
         <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restore DB
       </button>
       <a href="/system/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">

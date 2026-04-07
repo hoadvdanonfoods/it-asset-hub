@@ -1,3 +1,4 @@
+from dataclasses import asdict, dataclass
 from datetime import datetime
 import base64
 import io
@@ -34,6 +35,41 @@ IMPORT_HEADERS = [
     'Ghi chú',
 ]
 REQUIRED_IMPORT_HEADERS = ['Mã thiết bị', 'Tên thiết bị', 'Loại thiết bị']
+
+
+@dataclass
+class AssetImportDTO:
+    asset_code: str
+    asset_name: str
+    asset_type: str
+    model: str | None = None
+    serial_number: str | None = None
+    ip_address: str | None = None
+    department: str | None = None
+    assigned_user: str | None = None
+    location: str | None = None
+    purchase_date: str | None = None
+    warranty_expiry: str | None = None
+    status: str = 'active'
+    notes: str | None = None
+
+    @classmethod
+    def from_row(cls, row_map: dict[str, str]):
+        return cls(
+            asset_code=row_map.get('Mã thiết bị', '').strip(),
+            asset_name=row_map.get('Tên thiết bị', '').strip(),
+            asset_type=row_map.get('Loại thiết bị', '').strip(),
+            model=row_map.get('Model', '').strip() or None,
+            serial_number=row_map.get('Serial', '').strip() or None,
+            ip_address=row_map.get('IP', '').strip() or None,
+            department=row_map.get('Bộ phận', '').strip() or None,
+            assigned_user=row_map.get('Người dùng', '').strip() or None,
+            location=row_map.get('Vị trí', '').strip() or None,
+            purchase_date=row_map.get('Ngày mua', '').strip() or None,
+            warranty_expiry=row_map.get('Hết bảo hành', '').strip() or None,
+            status=_normalize_status(row_map.get('Trạng thái', '').strip() or 'active'),
+            notes=row_map.get('Ghi chú', '').strip() or None,
+        )
 
 
 def _render_form(request: Request, asset: Asset | None = None, error: str | None = None, current_user=None):
@@ -131,7 +167,7 @@ def _load_import_rows(file_bytes: bytes):
     if missing_headers:
         raise ValueError(f'Thiếu cột bắt buộc: {", ".join(missing_headers)}')
 
-    normalized_rows = []
+    dtos = []
     for index, row in enumerate(rows[1:], start=2):
         row_map = {}
         has_data = False
@@ -144,42 +180,39 @@ def _load_import_rows(file_bytes: bytes):
             row_map[header] = value
         if not has_data:
             continue
-        normalized_rows.append((index, row_map))
-    return normalized_rows
+        dtos.append((index, AssetImportDTO.from_row(row_map)))
+    return dtos
 
 
-def _preview_token_from_rows(rows: list[tuple[int, dict]], filename: str):
-    payload = {'filename': filename, 'rows': rows}
+def _preview_token_from_rows(rows: list[tuple[int, AssetImportDTO]], filename: str):
+    payload = {'filename': filename, 'rows': [(idx, asdict(dto)) for idx, dto in rows]}
     return base64.urlsafe_b64encode(json.dumps(payload, ensure_ascii=False).encode('utf-8')).decode('ascii')
 
 
 def _rows_from_preview_token(token: str):
     decoded = base64.urlsafe_b64decode(token.encode('ascii'))
     payload = json.loads(decoded.decode('utf-8'))
-    return [(int(item[0]), item[1]) for item in payload['rows']], payload.get('filename', 'import.xlsx')
+    return [(int(item[0]), AssetImportDTO(**item[1])) for item in payload['rows']], payload.get('filename', 'import.xlsx')
 
 
-def _build_import_preview(rows: list[tuple[int, dict]], db: Session, filename: str):
+def _build_import_preview(rows: list[tuple[int, AssetImportDTO]], db: Session, filename: str):
     created = 0
     updated = 0
     skipped: list[str] = []
     sample_rows = []
-    for row_number, row in rows:
-        asset_code = row.get('Mã thiết bị', '').strip()
-        asset_name = row.get('Tên thiết bị', '').strip()
-        asset_type = row.get('Loại thiết bị', '').strip()
-        if not asset_code or not asset_name or not asset_type:
+    for row_number, dto in rows:
+        if not dto.asset_code or not dto.asset_name or not dto.asset_type:
             skipped.append(f'Dòng {row_number}: thiếu Mã thiết bị / Tên thiết bị / Loại thiết bị')
-            sample_rows.append({'row_number': row_number, 'asset_code': asset_code, 'asset_name': asset_name, 'asset_type': asset_type, 'action': 'skip'})
+            sample_rows.append({'row_number': row_number, 'asset_code': dto.asset_code, 'asset_name': dto.asset_name, 'asset_type': dto.asset_type, 'action': 'skip'})
             continue
-        asset = db.scalar(select(Asset).where(Asset.asset_code == asset_code))
+        asset = db.scalar(select(Asset).where(Asset.asset_code == dto.asset_code))
         action = 'update' if asset else 'create'
         if action == 'create':
             created += 1
         else:
             updated += 1
         if len(sample_rows) < 20:
-            sample_rows.append({'row_number': row_number, 'asset_code': asset_code, 'asset_name': asset_name, 'asset_type': asset_type, 'action': action})
+            sample_rows.append({'row_number': row_number, 'asset_code': dto.asset_code, 'asset_name': dto.asset_name, 'asset_type': dto.asset_type, 'action': action})
     return {
         'filename': filename,
         'created': created,
@@ -225,62 +258,43 @@ def _apply_assignment_change(db: Session, asset: Asset, new_user: str | None, ac
     asset.assigned_user = new_user
 
 
-def _commit_import_rows(rows: list[tuple[int, dict]], db: Session, actor: str):
+def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, actor: str):
     created = 0
     updated = 0
     skipped: list[str] = []
-    for row_number, row in rows:
-        asset_code = row.get('Mã thiết bị', '').strip()
-        asset_name = row.get('Tên thiết bị', '').strip()
-        asset_type = row.get('Loại thiết bị', '').strip()
-        if not asset_code or not asset_name or not asset_type:
+    for row_number, dto in rows:
+        if not dto.asset_code or not dto.asset_name or not dto.asset_type:
             skipped.append(f'Dòng {row_number}: thiếu Mã thiết bị / Tên thiết bị / Loại thiết bị')
             continue
 
-        incoming = {
-            'asset_code': asset_code,
-            'asset_name': asset_name,
-            'asset_type': asset_type,
-            'model': row.get('Model', '').strip() or None,
-            'serial_number': row.get('Serial', '').strip() or None,
-            'ip_address': row.get('IP', '').strip() or None,
-            'department': row.get('Bộ phận', '').strip() or None,
-            'assigned_user': row.get('Người dùng', '').strip() or None,
-            'location': row.get('Vị trí', '').strip() or None,
-            'purchase_date': row.get('Ngày mua', '').strip() or None,
-            'warranty_expiry': row.get('Hết bảo hành', '').strip() or None,
-            'status': _normalize_status(row.get('Trạng thái', '').strip() or 'active'),
-            'notes': row.get('Ghi chú', '').strip() or None,
-        }
-
-        asset = db.scalar(select(Asset).where(Asset.asset_code == asset_code))
+        asset = db.scalar(select(Asset).where(Asset.asset_code == dto.asset_code))
         if not asset:
-            now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if incoming['assigned_user'] else None
-            asset = Asset(**incoming, assigned_at=now_str)
+            now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if dto.assigned_user else None
+            asset = Asset(**asdict(dto), assigned_at=now_str)
             db.add(asset)
             db.flush()
             _log_event(db, asset.id, 'asset_imported', 'Import asset mới', f'Import từ Excel: {asset.asset_code}', actor)
-            if incoming['assigned_user']:
-                db.add(AssetAssignment(asset_id=asset.id, assigned_user=incoming['assigned_user'], assigned_by=actor, note='Import từ Excel'))
-                _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {incoming["assigned_user"]} (import Excel)', actor)
+            if dto.assigned_user:
+                db.add(AssetAssignment(asset_id=asset.id, assigned_user=dto.assigned_user, assigned_by=actor, note='Import từ Excel'))
+                _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {dto.assigned_user} (import Excel)', actor)
             created += 1
             continue
 
         previous_user = asset.assigned_user
-        asset.asset_name = incoming['asset_name']
-        asset.asset_type = incoming['asset_type']
-        asset.model = incoming['model']
-        asset.serial_number = incoming['serial_number']
-        asset.ip_address = incoming['ip_address']
-        asset.department = incoming['department']
-        asset.location = incoming['location']
-        asset.purchase_date = incoming['purchase_date']
-        asset.warranty_expiry = incoming['warranty_expiry']
-        asset.status = incoming['status']
-        asset.notes = incoming['notes']
-        _apply_assignment_change(db, asset, incoming['assigned_user'], actor, 'Import từ Excel')
-        if previous_user == incoming['assigned_user']:
-            asset.assigned_user = incoming['assigned_user']
+        asset.asset_name = dto.asset_name
+        asset.asset_type = dto.asset_type
+        asset.model = dto.model
+        asset.serial_number = dto.serial_number
+        asset.ip_address = dto.ip_address
+        asset.department = dto.department
+        asset.location = dto.location
+        asset.purchase_date = dto.purchase_date
+        asset.warranty_expiry = dto.warranty_expiry
+        asset.status = dto.status
+        asset.notes = dto.notes
+        _apply_assignment_change(db, asset, dto.assigned_user, actor, 'Import từ Excel')
+        if previous_user == dto.assigned_user:
+            asset.assigned_user = dto.assigned_user
         _log_event(db, asset.id, 'asset_imported', 'Cập nhật asset từ import', f'Cập nhật từ Excel: {asset.asset_code}', actor)
         updated += 1
     db.commit()
