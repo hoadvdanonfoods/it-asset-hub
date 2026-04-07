@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">Hệ thống</h1>
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <h5 class="card-title">Backup DB</h5>
+      <p class="text-muted">Tạo ngay một bản sao database hiện tại.</p>
+      <form method="post" action="/system/backup">
+        <button class="btn btn-primary">Backup DB ngay</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <h5 class="card-title">Danh sách backup</h5>
+      <p class="text-muted">Xem các file backup đã tạo và tải về nếu cần.</p>
+      <a class="btn btn-outline-secondary" href="/system/backups">Mở danh sách backup</a>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card"><div class="card-body">
+      <h5 class="card-title">Restore DB</h5>
+      <p class="text-muted">Khôi phục database từ một file backup đã có.</p>
+      <a class="btn btn-outline-danger" href="/system/restore">Mở trang restore</a>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

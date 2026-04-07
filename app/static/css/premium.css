@@ -1,0 +1,23 @@
+/* Premium Theme Variables for IT Asset Hub */
+
+:root {
+  --color-primary: #3525cd;
+  --color-primary-container: #4f46e5;
+  --color-surface: #f7f9fb;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-surface: #191c1e;
+  --color-outline-variant: #c7c4d8;
+}
+
+[data-theme="dark"] {
+  --color-primary: #818cf8;
+  --color-primary-container: #4f46e5;
+  --color-surface: #0f172a;
+  --color-surface-container-lowest: #1e293b;
+  --color-surface-container-low: #334155;
+  --color-surface-container-highest: #475569;
+  --color-on-surface: #f8fafc;
+  --color-outline-variant: #475569;
+}

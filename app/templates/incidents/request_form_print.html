@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phiếu yêu cầu hỗ trợ kỹ thuật IT</title>
+  <style>
+    body {
+      font-family: "Times New Roman", Arial, sans-serif;
+      color: #000;
+      margin: 0;
+      background: #fff;
+      font-size: 14px;
+      line-height: 1.35;
+    }
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      padding: 10mm 12mm 12mm;
+      box-sizing: border-box;
+    }
+    .print-actions {
+      margin: 16px auto;
+      width: 210mm;
+      display: flex;
+      gap: 8px;
+    }
+    .print-actions button {
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    .header td {
+      border: 1px solid #000;
+      vertical-align: middle;
+      padding: 6px 8px;
+    }
+    .header-left {
+      width: 28%;
+      text-align: left;
+      font-size: 15px;
+    }
+    .header-center {
+      width: 42%;
+      text-align: center;
+      font-weight: 700;
+      font-size: 28px;
+      line-height: 1.15;
+      letter-spacing: 0.3px;
+    }
+    .header-right {
+      width: 30%;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .spacer { height: 18px; }
+    .row-inline {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 10px;
+      align-items: baseline;
+    }
+    .field {
+      flex: 1;
+      white-space: nowrap;
+    }
+    .field-label { font-weight: 700; }
+    .dots {
+      display: inline-block;
+      border-bottom: 1px dotted #000;
+      min-width: 160px;
+      padding: 0 4px 2px;
+      line-height: 1.1;
+      white-space: normal;
+      vertical-align: bottom;
+    }
+    .dots.short { min-width: 145px; }
+    .dots.long { min-width: 520px; }
+    .section-label {
+      font-weight: 700;
+      margin: 10px 0 6px;
+    }
+    .lined-block {
+      min-height: 96px;
+      padding: 2px 0;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 22px,
+        rgba(0,0,0,0.55) 22px,
+        rgba(0,0,0,0.55) 23px
+      );
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .lined-block .text {
+      display: inline;
+      background: #fff;
+      padding-right: 2px;
+    }
+    .lined-short {
+      min-height: 48px;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent 0,
+        transparent 22px,
+        rgba(0,0,0,0.55) 22px,
+        rgba(0,0,0,0.55) 23px
+      );
+    }
+    .sign-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 18px;
+      text-align: center;
+      gap: 30px;
+    }
+    .sign-col {
+      flex: 1;
+    }
+    .sign-title { font-weight: 700; }
+    .sign-sub { margin-top: 2px; }
+    .sign-space { height: 90px; }
+    .bullet { margin-top: 14px; font-weight: 700; }
+    .check-line { margin-top: 12px; }
+    .checkbox {
+      display: inline-block;
+      width: 13px;
+      height: 13px;
+      border: 1px solid #000;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    .reason-block {
+      margin-top: 12px;
+    }
+    .reason-sign {
+      text-align: center;
+      margin-top: 26px;
+      padding-left: 55%;
+    }
+    .reason-sign .space { height: 80px; }
+    @media print {
+      .print-actions { display: none; }
+      .page { padding: 8mm 10mm 10mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-actions">
+    <button onclick="window.print()">In phiếu</button>
+    <button onclick="window.close()">Đóng</button>
+  </div>
+
+  <div class="page">
+    <table class="header">
+      <tr>
+        <td class="header-left">
+          <div><strong>DOF CORP – MP3</strong></div>
+          <div>Branch</div>
+        </td>
+        <td class="header-center">
+          PHIẾU YÊU CẦU<br>
+          HỖ TRỢ KỸ THUẬT IT
+        </td>
+        <td class="header-right">
+          <div><strong>Ký hiệu:</strong> MP3/TT-17-BMIT-01</div>
+          <div><strong>Ngày ban hành:</strong><br>03/01/2019</div>
+          <div><strong>Lần sửa đổi:</strong><br>00</div>
+          <div><strong>BP biên soạn:</strong> IT <strong>Trang:</strong> 1/1</div>
+        </td>
+      </tr>
+    </table>
+
+    <div class="spacer"></div>
+
+    <div class="row-inline">
+      <div class="field"><span class="field-label">Người yêu cầu:</span><span class="dots">{{ item.reported_by or '' }}</span></div>
+      <div class="field"><span class="field-label">Bộ phận:</span><span class="dots short">{{ item.requester_department or '' }}</span></div>
+    </div>
+    <div class="row-inline">
+      <div class="field"><span class="field-label">Ngày yêu cầu:</span><span class="dots short">{{ format_vn_date(item.reported_at) }}</span></div>
+      <div class="field"><span class="field-label">Ngày hoàn thành:</span><span class="dots short">{{ format_vn_date(item.resolved_at) }}</span></div>
+    </div>
+
+    <div class="section-label">Nội dung yêu cầu:</div>
+    <div class="lined-block"><span class="text">{{ item.issue_description or '' }}</span></div>
+
+    <div class="section-label" style="margin-top: 16px;">Ý kiến TBP:</div>
+    <div class="lined-short"></div>
+    <div class="lined-short"></div>
+
+    <div class="sign-row">
+      <div class="sign-col">
+        <div class="sign-title">Xác nhận của bộ phận IT</div>
+        <div class="sign-sub">Ký tên</div>
+        <div class="sign-space"></div>
+      </div>
+      <div class="sign-col">
+        <div class="sign-title">Xác nhận của TBP</div>
+        <div class="sign-sub">Ký tên</div>
+        <div class="sign-space"></div>
+      </div>
+    </div>
+
+    <div class="bullet">• Nghiệm thu kết quả:</div>
+    <div class="check-line"><span class="checkbox"></span>Đạt yêu cầu</div>
+    <div class="check-line"><span class="checkbox"></span>Không đạt yêu cầu  ghi lý do và đề xuất ý kiến:</div>
+
+    <div class="reason-block">
+      <div class="lined-short"></div>
+      <div class="lined-short"></div>
+    </div>
+
+    <div class="reason-sign">
+      <div><strong>Người xác nhận ký tên</strong></div>
+      <div class="space"></div>
+    </div>
+  </div>
+</body>
+</html>

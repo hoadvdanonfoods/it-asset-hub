@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Danonfoods IT Asset Hub{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS with custom config -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: ['class', '[data-theme="dark"]'],
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              display: ['Plus Jakarta Sans', 'sans-serif'],
+            },
+            colors: {
+              primary: 'var(--color-primary, #3525cd)',
+              'primary-container': 'var(--color-primary-container, #4f46e5)',
+              surface: 'var(--color-surface, #f7f9fb)',
+              'surface-container-lowest': 'var(--color-surface-container-lowest, #ffffff)',
+              'surface-container-low': 'var(--color-surface-container-low, #f2f4f6)',
+              'surface-container-highest': 'var(--color-surface-container-highest, #e0e3e5)',
+              'on-surface': 'var(--color-on-surface, #191c1e)',
+              'outline-variant': 'var(--color-outline-variant, #c7c4d8)',
+            }
+          }
+        }
+      }
+    </script>
+    
+    <!-- Custom Theme Variables -->
+    <link rel="stylesheet" href="/static/css/premium.css">
+    
+    <!-- Icons: Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        .headline { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.025em; }
+        .glass-effect { backdrop-filter: blur(24px); background-color: rgba(255, 255, 255, 0.8); }
+        [data-theme="dark"] .glass-effect { background-color: rgba(30, 41, 59, 0.8); }
+    </style>
+</head>
+<body class="min-h-screen bg-surface text-on-surface font-sans transition-colors duration-300">
+    
+    <!-- Header -->
+    <header class="fixed top-0 w-full z-50 glass-effect shadow-sm flex justify-between items-center px-6 py-3 border-b border-outline-variant/10">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-primary/10 rounded-lg text-primary">
+          <i data-lucide="laptop" class="w-5 h-5"></i>
+        </div>
+        <span class="text-lg font-bold tracking-tight text-on-surface headline">Danonfoods IT Asset Hub</span>
+      </div>
+      
+      <div class="flex items-center gap-4">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="p-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface/70 cursor-pointer">
+          <i data-lucide="sun" id="theme-icon" class="w-5 h-5"></i>
+        </button>
+        
+        <div class="flex items-center gap-3 bg-surface-container-lowest px-3 py-1.5 rounded-full shadow-sm border border-outline-variant/10">
+          <div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-highest">
+            <img class="w-full h-full object-cover" src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="Admin">
+          </div>
+          <div class="hidden sm:block">
+            <p class="text-xs font-bold text-on-surface leading-none">Admin User</p>
+            <p class="text-[10px] text-on-surface/50">IT Department</p>
+          </div>
+        </div>
+      </div>
+    </header>
+    
+    <!-- Sidebar -->
+    <aside class="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low pt-20 z-40 border-r border-outline-variant/20">
+      <div class="px-6 mb-8 flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+          <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-primary font-extrabold text-xl leading-tight headline">HUB</h3>
+          <p class="text-on-surface/50 text-[10px] font-medium uppercase tracking-widest">Workspace</p>
+        </div>
+      </div>
+      
+      <nav class="flex-1 px-4 space-y-1 overflow-y-auto pb-4 custom-scrollbar">
+        <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 bg-primary/5 text-primary font-bold border-r-4 border-primary">
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-sm">Dashboard</span>
+        </a>
+        <a href="/assets" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm">Tài sản (Assets)</span>
+        </a>
+        <a href="/resources" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm">Vật tư (Resources)</span>
+        </a>
+        <a href="/maintenance" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm">Bảo trì (Maintenance)</span>
+        </a>
+        <a href="/incidents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm">Sự cố (Incidents)</span>
+        </a>
+        <a href="/documents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm">Tài liệu (Documents)</span>
+        </a>
+
+        <div class="pt-4 pb-2">
+            <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2">Quản trị Hệ Thống</p>
+        </div>
+        
+        <a href="/users" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="users" class="w-5 h-5"></i><span class="text-sm">Người dùng (Users)</span>
+        </a>
+        <a href="/system-tools" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50">
+            <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm">Công cụ hệ thống</span>
+        </a>
+      </nav>
+      
+      <div class="p-4 mt-auto">
+        <div class="bg-primary rounded-2xl p-6 text-white overflow-hidden relative group cursor-pointer shadow-xl shadow-primary/10">
+          <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary-container rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
+          <h4 class="font-bold relative z-10">Pro Support</h4>
+          <p class="text-xs text-white/80 relative z-10 mt-1">Get 24/7 dedicated IT assistance</p>
+          <button class="mt-4 bg-white text-primary text-xs font-bold py-2 px-4 rounded-lg relative z-10 hover:bg-white/90 transition-colors">Contact Support</button>
+        </div>
+      </div>
+    </aside>
+
+    <nav class="lg:hidden fixed bottom-0 left-0 w-full glass-effect flex justify-around items-center px-4 pb-6 pt-2 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.05)] border-t border-outline-variant/10">
+        <a href="/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors text-primary bg-primary/5">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Home</span>
+        </a>
+    </nav>
+    
+    <main class="lg:ml-72 pt-24 pb-24 lg:pb-12 px-6 lg:px-10 min-h-screen">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <script>
+      lucide.createIcons();
+      
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeIcon = document.getElementById('theme-icon');
+      const htmlEl = document.documentElement;
+      
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      htmlEl.setAttribute('data-theme', savedTheme);
+      updateIcon(savedTheme);
+      
+      themeToggle.addEventListener('click', () => {
+          let currentTheme = htmlEl.getAttribute('data-theme');
+          let newTheme = currentTheme === 'light' ? 'dark' : 'light';
+          htmlEl.setAttribute('data-theme', newTheme);
+          localStorage.setItem('theme', newTheme);
+          updateIcon(newTheme);
+          window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: newTheme }}));
+      });
+      
+      function updateIcon(theme) {
+          themeIcon.setAttribute('data-lucide', theme === 'light' ? 'moon' : 'sun');
+          lucide.createIcons();
+      }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

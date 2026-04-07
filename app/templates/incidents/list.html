@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="mb-1">Danh sách sự cố</h1>
+    <div class="text-muted">Theo dõi ticket lỗi, trạng thái xử lý và thời gian hoàn tất</div>
+  </div>
+  <div class="d-flex gap-2">
+    {% if current_user.can_export_incidents %}
+    <a class="btn btn-outline-success" href="/incidents/export?status={{ status }}&priority={{ priority }}">Xuất Excel</a>
+    {% endif %}
+    {% if current_user.can_create_incidents %}<a class="btn btn-danger" href="/incidents/new">+ Tạo sự cố</a>{% endif %}
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body py-3">
+    <form method="get" class="mb-0">
+      <div class="row g-2 align-items-center">
+        <div class="col-md-4">
+          <select class="form-select" name="status">
+            <option value="">-- Trạng thái --</option>
+            {% for item in incident_statuses %}
+            <option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ status_label(item) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <select class="form-select" name="priority">
+            <option value="">-- Ưu tiên --</option>
+            {% for item in incident_priorities %}
+            <option value="{{ item }}" {% if priority == item %}selected{% endif %}>{{ priority_label(item) }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-grid">
+          <button class="btn btn-dark">Lọc</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<table class="table table-striped table-bordered bg-white">
+  <thead><tr><th>ID</th><th>Thiết bị</th><th>Người báo</th><th>Ưu tiên</th><th>Trạng thái</th><th>Báo lúc</th><th>Hoàn tất lúc</th><th>Thời gian xử lý</th><th></th></tr></thead>
+  <tbody>
+  {% for item in items %}
+    <tr>
+      <td><a href="/incidents/{{ item.id }}">{{ item.id }}</a></td>
+      <td>{{ item.asset.asset_code if item.asset else '' }}</td>
+      <td>{{ item.reported_by or '' }}</td>
+      <td><span class="badge {% if item.priority == 'high' %}text-bg-danger{% elif item.priority == 'low' %}text-bg-secondary{% else %}text-bg-warning{% endif %}">{{ priority_label(item.priority) }}</span></td>
+      <td><span class="badge {{ status_badge_class(item.status) }}">{{ status_label(item.status) }}</span></td>
+      <td>{{ format_bangkok_datetime(item.reported_at) }}</td>
+      <td>{{ format_bangkok_datetime(item.resolved_at) }}</td>
+      <td>{{ format_duration(item.reported_at, item.resolved_at) }}</td>
+      <td>{% if current_user.can_edit_incidents %}<a class="btn btn-sm btn-outline-primary" href="/incidents/{{ item.id }}/edit">Cập nhật</a>{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if item %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Chi tiết sự cố #{{ item.id }}</h1>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="/static/forms/MP3TT-17-BMIT-01-phieu-yeu-cau-ho-tro-ky-thuat-IT-ver-00_1_1.pdf" target="_blank">Mở mẫu phiếu yêu cầu công ty</a>
+    {% if current_user.can_edit_incidents %}<a class="btn btn-outline-primary" href="/incidents/{{ item.id }}/edit">Cập nhật</a>{% endif %}
+  </div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-5">
+    <ul class="list-group shadow-sm">
+      <li class="list-group-item"><strong>Thiết bị:</strong> {{ item.asset.asset_code if item.asset else '' }}</li>
+      <li class="list-group-item"><strong>Người báo:</strong> {{ item.reported_by or '' }}</li>
+      <li class="list-group-item"><strong>Bộ phận:</strong> {{ item.requester_department or '' }}</li>
+      <li class="list-group-item"><strong>Ưu tiên:</strong> <span class="badge {{ priority_badge_class(item.priority) }}">{{ priority_label(item.priority) }}</span></li>
+      <li class="list-group-item"><strong>Trạng thái:</strong> <span class="badge {{ status_badge_class(item.status) }}">{{ status_label(item.status) }}</span></li>
+      <li class="list-group-item"><strong>Báo cáo lúc:</strong> {{ format_bangkok_datetime(item.reported_at) }}</li>
+      <li class="list-group-item"><strong>Hoàn tất lúc:</strong> {{ format_bangkok_datetime(item.resolved_at) }}</li>
+      <li class="list-group-item"><strong>Thời gian xử lý:</strong> {{ format_duration(item.reported_at, item.resolved_at) or '' }}</li>
+      <li class="list-group-item"><strong>Nội dung yêu cầu:</strong><br>{{ item.issue_description }}</li>
+      <li class="list-group-item"><strong>Hướng xử lý:</strong><br>{{ item.resolution or '' }}</li>
+    </ul>
+  </div>
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Nhật ký xử lý sự cố</h5>
+        {% if item.events %}
+          {% for event in item.events %}
+          <div class="border-bottom pb-2 mb-2">
+            <div class="d-flex justify-content-between gap-3">
+              <div>
+                <div class="fw-semibold">{{ event.title }}</div>
+                {% if event.description %}<div class="text-muted small">{{ event.description }}</div>{% endif %}
+                <div class="small text-secondary">{{ event.actor or 'system' }}</div>
+              </div>
+              <div class="small text-muted text-nowrap">{{ format_bangkok_datetime(event.created_at) }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-muted">Chưa có log xử lý.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Không tìm thấy ticket.</div>
+{% endif %}
+{% endblock %}

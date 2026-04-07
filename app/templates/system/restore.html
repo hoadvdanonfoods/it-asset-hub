@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">Restore DB</h1>
+<div class="alert alert-warning">
+  Thao tác này sẽ ghi đè database hiện tại. Hệ thống sẽ tự tạo một backup an toàn trước khi restore.
+</div>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form class="card card-body bg-white" method="post">
+  <div class="mb-3">
+    <label class="form-label">Chọn file backup</label>
+    <select class="form-select" name="backup_name" required>
+      <option value="">-- Chọn backup --</option>
+      {% for item in backups %}<option value="{{ item.name }}">{{ item.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Nhập chữ <code>RESTORE</code> để xác nhận</label>
+    <input class="form-control" name="confirm_text" required>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-danger">Restore DB</button>
+    <a class="btn btn-secondary" href="/system/">Quay lại</a>
+  </div>
+</form>
+{% endblock %}

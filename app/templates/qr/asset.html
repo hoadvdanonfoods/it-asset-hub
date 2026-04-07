@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if asset %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card text-center bg-white">
+      <div class="card-body p-4">
+        <h2 class="mb-2">QR thiết bị</h2>
+        <div class="text-muted mb-3">{{ asset.asset_code }} - {{ asset.asset_name }}</div>
+        <img src="{{ qr_url }}" alt="QR Code" class="img-fluid" style="max-width:320px;">
+        <div class="mt-3 small text-muted">Quét để xem mã tra cứu và tên thiết bị, không cần cùng mạng</div>
+        <div class="mt-2"><pre class="bg-light border rounded p-3 text-start small mb-0" style="white-space: pre-wrap;">{{ qr_text }}</pre></div>
+        <div class="mt-3 d-flex justify-content-center gap-2">
+          <a class="btn btn-outline-primary" href="{{ qr_url }}" download="{{ asset.asset_code }}.png">Tải PNG</a>
+          <a class="btn btn-secondary" href="/assets/{{ asset.id }}">Về thiết bị</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="alert alert-warning">Không tìm thấy thiết bị.</div>
+{% endif %}
+{% endblock %}

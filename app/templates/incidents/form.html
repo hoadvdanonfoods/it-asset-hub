@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">{% if item %}Cập nhật ticket sự cố{% else %}Tạo ticket sự cố{% endif %}</h1>
+<form class="card card-body bg-white" method="post">
+  <div class="row g-3">
+    <div class="col-md-6">
+      <label class="form-label">Thiết bị</label>
+      <select class="form-select" name="asset_id" required>
+        {% for asset in assets %}<option value="{{ asset.id }}" {% if item and item.asset_id == asset.id %}selected{% endif %}>{{ asset.asset_code }} - {{ asset.asset_name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Người báo</label>
+      <input class="form-control" name="reported_by" value="{{ item.reported_by if item else (current_user.full_name or current_user.username) }}" {% if not current_user.can_edit_incidents %}readonly{% endif %}>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Bộ phận</label>
+      <input class="form-control" name="requester_department" value="{{ item.requester_department if item else '' }}" placeholder="Nhập bộ phận yêu cầu">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Ưu tiên</label>
+      <select class="form-select" name="priority">
+        {% for priority in incident_priorities %}
+        <option value="{{ priority }}" {% if (item and item.priority == priority) or (not item and priority == 'medium') %}selected{% endif %}>{{ priority_label(priority) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    {% if current_user.can_edit_incidents %}
+    <div class="col-md-3">
+      <label class="form-label">Trạng thái</label>
+      <select class="form-select" name="status">
+        {% for status_value in incident_statuses %}
+        <option value="{{ status_value }}" {% if (item and item.status == status_value) or (not item and status_value == 'open') %}selected{% endif %}>{{ status_label(status_value) }}</option>
+        {% endfor %}
+      </select>
+      <div class="form-text">Workflow chuẩn: Mới tiếp nhận → Đang xử lý → Chờ phản hồi/nhà cung cấp → Đã xử lý xong → Đóng.</div>
+    </div>
+    {% else %}
+    <input type="hidden" name="status" value="open">
+    {% endif %}
+    {% if item %}
+    <div class="col-md-3">
+      <label class="form-label">Báo lúc</label>
+      <input class="form-control" value="{{ format_bangkok_datetime(item.reported_at) if format_bangkok_datetime is defined else '' }}" readonly>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">Hoàn tất lúc</label>
+      <input class="form-control" value="{{ format_bangkok_datetime(item.resolved_at) if format_bangkok_datetime is defined else '' }}" readonly>
+    </div>
+    {% endif %}
+    <div class="col-12"><label class="form-label">Nội dung yêu cầu</label><textarea class="form-control" name="issue_description" rows="5" required>{{ item.issue_description if item else '' }}</textarea></div>
+    {% if current_user.can_edit_incidents %}
+    <div class="col-12"><label class="form-label">Hướng xử lý / kết quả</label><textarea class="form-control" name="resolution" rows="4" placeholder="Ghi lại hướng xử lý, kết quả, nguyên nhân hoặc lưu ý bàn giao">{{ item.resolution if item else '' }}</textarea></div>
+    {% endif %}
+  </div>
+  <div class="mt-3 d-flex gap-2"><button class="btn btn-danger">{% if item %}Cập nhật ticket{% else %}Lưu ticket{% endif %}</button><a class="btn btn-secondary" href="/incidents/">Quay lại</a></div>
+</form>
+{% endblock %}

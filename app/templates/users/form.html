@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">{% if user_obj and user_obj.id %}Cập nhật user{% else %}Thêm user{% endif %}</h1>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form class="card card-body bg-white" method="post">
+  {% if not user_obj or not user_obj.id %}
+  <div class="mb-3"><label class="form-label">Tài khoản</label><input class="form-control" name="username" value="{{ user_obj.username if user_obj else '' }}" required></div>
+  {% else %}
+  <div class="mb-3"><label class="form-label">Tài khoản</label><input class="form-control" value="{{ user_obj.username }}" disabled></div>
+  {% endif %}
+  <div class="mb-3"><label class="form-label">Họ tên</label><input class="form-control" name="full_name" value="{{ user_obj.full_name if user_obj else '' }}"></div>
+  <div class="mb-3"><label class="form-label">Vai trò</label>
+    <select class="form-select" name="role">
+      <option value="admin" {% if user_obj and user_obj.role == 'admin' %}selected{% endif %}>admin</option>
+      <option value="user" {% if not user_obj or user_obj.role == 'user' %}selected{% endif %}>user</option>
+      <option value="technician" {% if user_obj and user_obj.role == 'technician' %}selected{% endif %}>technician</option>
+    </select>
+    <div class="form-text">Admin có toàn quyền. Technician được gợi ý quyền xử lý bảo trì/sự cố. User thì cấp quyền theo checkbox bên dưới.</div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Quyền xem module</label>
+    <div class="row g-2">
+      <div class="col-md-4"><div class="form-check border rounded p-2"><input class="form-check-input" type="checkbox" value="true" id="can_view_dashboard" name="can_view_dashboard" {% if not user_obj or user_obj.can_view_dashboard %}checked{% endif %}><label class="form-check-label" for="can_view_dashboard">Dashboard</label></div></div>
+      <div class="col-md-4"><div class="form-check border rounded p-2"><input class="form-check-input" type="checkbox" value="true" id="can_view_assets" name="can_view_assets" {% if not user_obj or user_obj.can_view_assets %}checked{% endif %}><label class="form-check-label" for="can_view_assets">Thiết bị</label></div></div>
+      <div class="col-md-4"><div class="form-check border rounded p-2"><input class="form-check-input" type="checkbox" value="true" id="can_view_maintenance" name="can_view_maintenance" {% if not user_obj or user_obj.can_view_maintenance %}checked{% endif %}><label class="form-check-label" for="can_view_maintenance">Bảo trì</label></div></div>
+      <div class="col-md-4"><div class="form-check border rounded p-2"><input class="form-check-input" type="checkbox" value="true" id="can_view_incidents" name="can_view_incidents" {% if not user_obj or user_obj.can_view_incidents %}checked{% endif %}><label class="form-check-label" for="can_view_incidents">Sự cố</label></div></div>
+      <div class="col-md-4"><div class="form-check border rounded p-2"><input class="form-check-input" type="checkbox" value="true" id="can_view_resources" name="can_view_resources" {% if user_obj and user_obj.can_view_resources %}checked{% endif %}><label class="form-check-label" for="can_view_resources">Tài nguyên</label></div></div>
+      <div class="col-md-4"><div class="form-check border rounded p-2"><input class="form-check-input" type="checkbox" value="true" id="can_view_documents" name="can_view_documents" {% if user_obj and user_obj.can_view_documents %}checked{% endif %}><label class="form-check-label" for="can_view_documents">Tài liệu</label></div></div>
+    </div>
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Quyền thao tác</label>
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Thiết bị</div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_create_assets" name="can_create_assets" {% if user_obj and user_obj.can_create_assets %}checked{% endif %}><label class="form-check-label" for="can_create_assets">Tạo mới</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_edit_assets" name="can_edit_assets" {% if user_obj and user_obj.can_edit_assets %}checked{% endif %}><label class="form-check-label" for="can_edit_assets">Chỉnh sửa / retire / restore</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_import_assets" name="can_import_assets" {% if user_obj and user_obj.can_import_assets %}checked{% endif %}><label class="form-check-label" for="can_import_assets">Import Excel</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_export_assets" name="can_export_assets" {% if user_obj and user_obj.can_export_assets %}checked{% endif %}><label class="form-check-label" for="can_export_assets">Export Excel</label></div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Bảo trì</div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_create_maintenance" name="can_create_maintenance" {% if user_obj and user_obj.can_create_maintenance %}checked{% endif %}><label class="form-check-label" for="can_create_maintenance">Tạo mới</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_edit_maintenance" name="can_edit_maintenance" {% if user_obj and user_obj.can_edit_maintenance %}checked{% endif %}><label class="form-check-label" for="can_edit_maintenance">Chỉnh sửa</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_export_maintenance" name="can_export_maintenance" {% if user_obj and user_obj.can_export_maintenance %}checked{% endif %}><label class="form-check-label" for="can_export_maintenance">Export Excel</label></div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Sự cố</div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_create_incidents" name="can_create_incidents" {% if not user_obj or user_obj.can_create_incidents %}checked{% endif %}><label class="form-check-label" for="can_create_incidents">Tạo ticket</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_edit_incidents" name="can_edit_incidents" {% if user_obj and user_obj.can_edit_incidents %}checked{% endif %}><label class="form-check-label" for="can_edit_incidents">Cập nhật / đổi trạng thái</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_export_incidents" name="can_export_incidents" {% if user_obj and user_obj.can_export_incidents %}checked{% endif %}><label class="form-check-label" for="can_export_incidents">Export Excel</label></div>
+        </div>
+      </div>
+      <div class="col-lg-4">
+        <div class="border rounded p-3 h-100">
+          <div class="fw-semibold mb-2">Quản trị</div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_manage_users" name="can_manage_users" {% if user_obj and user_obj.can_manage_users %}checked{% endif %}><label class="form-check-label" for="can_manage_users">Quản lý người dùng</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_manage_system" name="can_manage_system" {% if user_obj and user_obj.can_manage_system %}checked{% endif %}><label class="form-check-label" for="can_manage_system">Backup / Restore hệ thống</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_manage_resources" name="can_manage_resources" {% if user_obj and user_obj.can_manage_resources %}checked{% endif %}><label class="form-check-label" for="can_manage_resources">Quản lý tài nguyên nội bộ</label></div>
+          <div class="form-check"><input class="form-check-input" type="checkbox" value="true" id="can_manage_documents" name="can_manage_documents" {% if user_obj and user_obj.can_manage_documents %}checked{% endif %}><label class="form-check-label" for="can_manage_documents">Quản lý tài liệu chia sẻ</label></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if user_obj and user_obj.id %}
+  <div class="mb-3 form-check">
+    <input class="form-check-input" type="checkbox" value="true" id="is_active" name="is_active" {% if user_obj.is_active %}checked{% endif %}>
+    <label class="form-check-label" for="is_active">User đang hoạt động</label>
+  </div>
+  {% endif %}
+  <div class="mb-3"><label class="form-label">Mật khẩu {% if user_obj and user_obj.id %}(để trống nếu không đổi){% endif %}</label><input class="form-control" type="password" name="password" {% if not user_obj or not user_obj.id %}required{% endif %}></div>
+  <div class="d-flex gap-2"><button class="btn btn-primary">Lưu</button><a class="btn btn-secondary" href="/users/">Quay lại</a></div>
+</form>
+{% endblock %}

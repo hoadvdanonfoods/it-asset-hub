@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Quản lý người dùng</h1>
+  <a class="btn btn-primary" href="/users/new">+ Thêm user</a>
+</div>
+<table class="table table-striped table-bordered bg-white">
+  <thead><tr><th>ID</th><th>Tài khoản</th><th>Họ tên</th><th>Vai trò</th><th>Quyền chính</th><th>Trạng thái</th><th></th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.id }}</td>
+    <td>{{ u.username }}</td>
+    <td>{{ u.full_name or '' }}</td>
+    <td><span class="badge text-bg-secondary">{{ u.role }}</span></td>
+    <td>
+      <div class="d-flex gap-1 flex-wrap">
+        {% if u.can_manage_users %}<span class="badge text-bg-dark">users</span>{% endif %}
+        {% if u.can_manage_system %}<span class="badge text-bg-dark">system</span>{% endif %}
+        {% if u.can_manage_resources %}<span class="badge text-bg-dark">resources</span>{% endif %}
+        {% if u.can_manage_documents %}<span class="badge text-bg-dark">documents</span>{% endif %}
+        {% if u.can_edit_assets %}<span class="badge text-bg-primary">asset edit</span>{% endif %}
+        {% if u.can_edit_maintenance %}<span class="badge text-bg-success">maintenance edit</span>{% endif %}
+        {% if u.can_edit_incidents %}<span class="badge text-bg-danger">incident edit</span>{% endif %}
+      </div>
+    </td>
+    <td>{% if u.is_active %}<span class="badge text-bg-success">active</span>{% else %}<span class="badge text-bg-warning">archived</span>{% endif %}</td>
+    <td>
+      <div class="d-flex gap-1 flex-wrap">
+        <a class="btn btn-sm btn-outline-primary" href="/users/{{ u.id }}/edit">Sửa</a>
+        {% if u.is_active %}
+        <form method="post" action="/users/{{ u.id }}/archive" onsubmit="return confirm('Archive user này?');">
+          <button class="btn btn-sm btn-outline-warning">Archive</button>
+        </form>
+        {% else %}
+        <form method="post" action="/users/{{ u.id }}/restore" onsubmit="return confirm('Khôi phục user này?');">
+          <button class="btn btn-sm btn-outline-success">Restore</button>
+        </form>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

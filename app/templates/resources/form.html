@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">{% if item %}Sửa tài nguyên{% else %}Thêm tài nguyên{% endif %}</h1>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form class="card card-body bg-white" method="post">
+  <div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Tên</label><input class="form-control" name="title" value="{{ item.title if item else '' }}" required></div>
+    <div class="col-md-3"><label class="form-label">Nhóm</label><input class="form-control" name="category" value="{{ item.category if item else '' }}" placeholder="dashboard/camera/app"></div>
+    <div class="col-md-3"><label class="form-label">Loại</label><input class="form-control" name="resource_type" value="{{ item.resource_type if item else 'web' }}"></div>
+    <div class="col-md-6"><label class="form-label">URL</label><input class="form-control" name="url" value="{{ item.url if item else '' }}"></div>
+    <div class="col-md-6"><label class="form-label">Đường dẫn file</label><input class="form-control" name="file_path" value="{{ item.file_path if item else '' }}"></div>
+    <div class="col-md-6"><label class="form-label">User</label><input class="form-control" name="username_hint" value="{{ item.username_hint if item else '' }}"></div>
+    <div class="col-md-6"><label class="form-label">Password</label><input class="form-control" name="password_hint" value="{{ item._decrypted_password if item else '' }}"></div>
+    <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control" name="note" rows="4">{{ item.note if item else '' }}</textarea></div>
+    {% if item %}
+    <div class="col-12 form-check ms-2">
+      <input class="form-check-input" type="checkbox" value="true" id="is_active" name="is_active" {% if item.is_active %}checked{% endif %}>
+      <label class="form-check-label" for="is_active">Tài nguyên đang hoạt động</label>
+    </div>
+    {% endif %}
+  </div>
+  <div class="mt-3 d-flex gap-2"><button class="btn btn-primary">Lưu</button><a class="btn btn-secondary" href="/resources/">Quay lại</a></div>
+</form>
+{% endblock %}

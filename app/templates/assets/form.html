@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">{% if asset %}Sửa thiết bị{% else %}Thêm thiết bị mới{% endif %}</h1>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form class="card card-body bg-white" method="post">
+  <div class="row g-3">
+    <div class="col-md-4"><label class="form-label">Mã thiết bị</label><input class="form-control" name="asset_code" value="{{ asset.asset_code if asset else '' }}" required></div>
+    <div class="col-md-4"><label class="form-label">Tên thiết bị</label><input class="form-control" name="asset_name" value="{{ asset.asset_name if asset else '' }}" required></div>
+    <div class="col-md-4"><label class="form-label">Loại thiết bị</label><input class="form-control" name="asset_type" value="{{ asset.asset_type if asset else '' }}" placeholder="PC, Printer, Camera..." required></div>
+    <div class="col-md-3"><label class="form-label">IP</label><input class="form-control" name="ip_address" value="{{ asset.ip_address if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Model</label><input class="form-control" name="model" value="{{ asset.model if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Serial</label><input class="form-control" name="serial_number" value="{{ asset.serial_number if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Bộ phận</label><input class="form-control" name="department" value="{{ asset.department if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Người dùng</label><input class="form-control" name="assigned_user" value="{{ asset.assigned_user if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Vị trí</label><input class="form-control" name="location" value="{{ asset.location if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Ngày mua</label><input class="form-control" name="purchase_date" placeholder="YYYY-MM-DD" value="{{ asset.purchase_date if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Hết bảo hành</label><input class="form-control" name="warranty_expiry" placeholder="YYYY-MM-DD" value="{{ asset.warranty_expiry if asset else '' }}"></div>
+    <div class="col-md-3"><label class="form-label">Trạng thái</label>
+      <select class="form-select" name="status">
+        {% set current = asset.status if asset else 'active' %}
+        {% for item in ['active', 'in_repair', 'inactive', 'retired', 'lost', 'disposed'] %}
+        <option value="{{ item }}" {% if current == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-12"><label class="form-label">Ghi chú</label><textarea class="form-control" name="notes" rows="4">{{ asset.notes if asset else '' }}</textarea></div>
+  </div>
+  <div class="mt-3 d-flex gap-2"><button class="btn btn-primary">{% if asset %}Cập nhật{% else %}Lưu thiết bị{% endif %}</button><a class="btn btn-secondary" href="/assets/">Quay lại</a></div>
+</form>
+{% endblock %}

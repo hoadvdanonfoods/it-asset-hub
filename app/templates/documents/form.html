@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="mb-3">{% if item %}Cập nhật tài liệu{% else %}Tải tài liệu lên{% endif %}</h1>
+{% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+<form class="card card-body bg-white" method="post" enctype="multipart/form-data">
+  <div class="row g-3">
+    <div class="col-md-6"><label class="form-label">Tên tài liệu</label><input class="form-control" name="title" value="{{ item.title if item else '' }}" required></div>
+    <div class="col-md-3"><label class="form-label">Nhóm</label><input class="form-control" name="category" value="{{ item.category if item else 'Biểu mẫu' }}"></div>
+    <div class="col-md-3"><label class="form-label">File {% if item %}(chọn nếu muốn thay file){% endif %}</label><input class="form-control" type="file" name="{% if item %}replace_file{% else %}file{% endif %}" {% if not item %}required{% endif %} accept=".pdf,.doc,.docx,.xls,.xlsx"></div>
+    <div class="col-12"><label class="form-label">Mô tả</label><textarea class="form-control" name="description" rows="4">{{ item.description if item else '' }}</textarea></div>
+    {% if item %}
+    <div class="col-12 small text-muted">File hiện tại: {{ item.original_filename }}</div>
+    {% endif %}
+  </div>
+  <div class="mt-3 d-flex gap-2"><button class="btn btn-primary">Lưu</button><a class="btn btn-secondary" href="/documents/">Quay lại</a></div>
+</form>
+{% endblock %}

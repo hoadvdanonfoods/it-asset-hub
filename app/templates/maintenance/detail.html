@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if item %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="mb-0">Chi tiết bảo trì #{{ item.id }}</h1>
+  {% if current_user.role == 'admin' %}<a class="btn btn-outline-primary" href="/maintenance/{{ item.id }}/edit">Cập nhật</a>{% endif %}
+</div>
+<ul class="list-group shadow-sm">
+  <li class="list-group-item"><strong>Thiết bị:</strong> {{ item.asset.asset_code if item.asset else '' }}</li>
+  <li class="list-group-item"><strong>Ngày bảo trì:</strong> {{ item.maintenance_date }}</li>
+  <li class="list-group-item"><strong>Kỹ thuật viên:</strong> {{ item.technician or '' }}</li>
+  <li class="list-group-item"><strong>Chi phí:</strong> {{ item.cost or '' }}</li>
+  <li class="list-group-item"><strong>Ngày bảo trì tiếp theo:</strong> {{ item.next_maintenance_date or '' }}</li>
+  <li class="list-group-item"><strong>Nội dung:</strong><br>{{ item.description }}</li>
+  <li class="list-group-item"><strong>Kết quả:</strong><br>{{ item.result or '' }}</li>
+</ul>
+{% else %}
+<div class="alert alert-warning">Không tìm thấy phiếu bảo trì.</div>
+{% endif %}
+{% endblock %}
