@@ -1,9 +1,4 @@
 from collections import defaultdict
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 import os
 import datetime
 import openpyxl
@@ -11,7 +6,13 @@ import zipfile
 import io
 import json
 import re
-from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
+from fastapi import APIRouter, Depends, Request, Query, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
+from sqlalchemy import select, delete
+from sqlalchemy.orm import Session
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 from app.auth import require_module_access, require_permission, get_current_user, has_permission
 from app.db.session import get_db
@@ -61,8 +62,15 @@ def checklist_index(request: Request, db: Session = Depends(get_db), current_use
     for loc in grouped_cameras:
         grouped_cameras[loc] = sorted(grouped_cameras[loc], key=_ip_sort_key)
 
-    # Tạo map NVR objects bằng IP_ADDRESS của NVR để view dễ lấy tên
-    nvr_map = {n.ip_address: n for n in nvrs if n.ip_address}
+    # Tạo map NVR objects bằng IP_ADDRESS, Tên và Mã của NVR để tăng khả năng khớp dữ liệu
+    nvr_map = {}
+    for n in nvrs:
+        if n.ip_address:
+            nvr_map[n.ip_address.strip()] = n
+        if n.asset_name:
+            nvr_map[n.asset_name.strip()] = n
+        if n.asset_code:
+            nvr_map[n.asset_code.strip()] = n
 
     # Current day for date picker default
     today = datetime.datetime.now().day
@@ -97,6 +105,8 @@ async def checklist_save(request: Request, db: Session = Depends(get_db)):
     except (ValueError, TypeError):
         selected_day = datetime.datetime.now().day
 
+    active_nvr = form_data.get("active_nvr", "").strip()
+
     for key, value in form_data.items():
         if key.startswith("cam_"):
             try:
@@ -106,6 +116,10 @@ async def checklist_save(request: Request, db: Session = Depends(get_db)):
 
                 asset = db.get(Asset, asset_id)
                 if not asset:
+                    continue
+
+                # NEW: Only save if this camera belongs to the active NVR tab
+                if active_nvr and asset.location != active_nvr:
                     continue
 
                 if status_eval == 'ok':
@@ -123,16 +137,37 @@ async def checklist_save(request: Request, db: Session = Depends(get_db)):
                 else:
                     continue
 
+                # 1. LOG TO DATABASE (WITH OVERWRITE LOGIC)
+                event_date = datetime.datetime.now()
+                try:
+                    if 1 <= selected_day <= 31:
+                        event_date = event_date.replace(day=selected_day)
+                except ValueError:
+                    pass
+
+                # Find and remove existing checklists for this asset on this specific day
+                start_of_day = event_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_of_day = event_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                
+                db.execute(
+                    delete(AssetEvent)
+                    .where(AssetEvent.asset_id == asset.id)
+                    .where(AssetEvent.event_type == "daily_checklist")
+                    .where(AssetEvent.created_at >= start_of_day)
+                    .where(AssetEvent.created_at <= end_of_day)
+                )
+
                 new_event = AssetEvent(
                     asset_id=asset.id,
                     event_type="daily_checklist",
                     title=title,
                     description=desc,
-                    actor=actor
+                    actor=actor,
+                    created_at=event_date
                 )
                 db.add(new_event)
 
-                # Group for excel update
+                # 2. Collect for legacy Excel sync
                 nvr_ip = asset.location.strip() if asset.location else ""
                 if nvr_ip:
                     excel_updates[nvr_ip].append({
@@ -149,11 +184,11 @@ async def checklist_save(request: Request, db: Session = Depends(get_db)):
 
     db.commit()
 
-    # ------ Update Excel Files with DYNAMIC row/col scanning ------
+    # ------ LEGACY: Update legacy Excel Files (Best Effort) ------
     checklist_dir = "data/camera_checklists"
     if os.path.exists(checklist_dir):
         for nvr_ip, cams in excel_updates.items():
-            # Find matching file (look for IP in filename)
+            # Find matching file
             for root, dirs, files in os.walk(checklist_dir):
                 for file in files:
                     if file.endswith(".xlsx") and not file.startswith('~') and nvr_ip in file:
@@ -161,70 +196,34 @@ async def checklist_save(request: Request, db: Session = Depends(get_db)):
                         try:
                             wb = openpyxl.load_workbook(filepath)
                             ws = wb.active
-
-                            # === DYNAMIC ROW SCAN: Find the row for selected_day ===
-                            # Scan column A (col 1) from row 10 onwards to find the day number
+                            
+                            # Find day row
                             row_idx = None
                             for r in range(10, ws.max_row + 1):
-                                cell_val = ws.cell(row=r, column=1).value
-                                if cell_val is not None:
-                                    try:
-                                        if int(cell_val) == selected_day:
-                                            row_idx = r
-                                            break
-                                    except (ValueError, TypeError):
-                                        pass
-                            if row_idx is None:
-                                print(f"Day {selected_day} not found in column A of {filepath}")
-                                wb.close()
-                                continue
-
-                            # === DYNAMIC COL SCAN: Build map from D-code -> column index ===
-                            # Scan row 8 to find D1, D2, D3 etc.
-                            d_col_map = {}  # {"D1": 3, "D2": 4, ...}
-                            for c in range(1, ws.max_column + 1):
-                                hdr = ws.cell(row=8, column=c).value
-                                if hdr and str(hdr).strip().startswith("D"):
-                                    d_col_map[str(hdr).strip()] = c
-
-                            # === Find "Ghi chú" column from row 7 ===
-                            note_col_idx = None
-                            for c in range(ws.max_column, 0, -1):
-                                val = ws.cell(row=7, column=c).value
-                                if val and 'Ghi chú' in str(val):
-                                    note_col_idx = c
+                                if str(ws.cell(row=r, column=1).value) == str(selected_day):
+                                    row_idx = r
                                     break
-
-                            day_notes = []
-                            for cam in cams:
-                                try:
-                                    # Extract D-index from cam_code e.g. "CAM-192.168.1.1-D5" -> "D5"
-                                    d_code = "D" + cam["cam_code"].split("-D")[-1]
-                                    col_idx = d_col_map.get(d_code)
-                                    if col_idx is None:
-                                        print(f"Column {d_code} not found in row 8 of {filepath}")
-                                        continue
-
-                                    mark = 'v' if cam["status"] == 'ok' else 'F'
-                                    ws.cell(row=row_idx, column=col_idx).value = mark
-
-                                    # Also update camera name in Row 9 to sync with DB
-                                    ws.cell(row=9, column=col_idx).value = cam["cam_name"]
-
-                                    if cam["note"]:
-                                        day_notes.append(f'{d_code}: {cam["note"]}')
-                                except Exception as ex:
-                                    print(f"Error updating excel cell for {cam['cam_code']}: {ex}")
-
-                            if day_notes and note_col_idx:
-                                existing_note = ws.cell(row=row_idx, column=note_col_idx).value or ""
-                                combined = existing_note + " | " + " | ".join(day_notes) if existing_note else " | ".join(day_notes)
-                                ws.cell(row=row_idx, column=note_col_idx).value = combined
-
-                            wb.save(filepath)
+                            
+                            if row_idx:
+                                # Find D-code cols
+                                d_col_map = {}
+                                for c in range(1, ws.max_column + 1):
+                                    hdr = ws.cell(row=8, column=c).value
+                                    if hdr and str(hdr).strip().startswith("D"):
+                                        d_col_map[str(hdr).strip()] = c
+                                
+                                for cam in cams:
+                                    try:
+                                        m = re.search(r"-D(\d+)$", cam["cam_code"])
+                                        if m:
+                                            d_code = "D" + m.group(1)
+                                            col_idx = d_col_map.get(d_code)
+                                            if col_idx:
+                                                ws.cell(row=row_idx, column=col_idx).value = 'v' if cam["status"] == 'ok' else 'F'
+                                    except: pass
+                                wb.save(filepath)
                             wb.close()
-                        except Exception as e:
-                            print(f"Error saving to excel file {filepath}: {e}")
+                        except: pass
                         break
 
     return RedirectResponse(url=f"/checklist/?success=1&count={checked_count}", status_code=303)
@@ -272,7 +271,7 @@ async def api_list_cameras(request: Request, db: Session = Depends(get_db)):
     """List all cameras grouped by NVR, returned as JSON."""
     current_user = get_current_user(request)
     if not current_user:
-        return {"error": "Unauthorized"}, 401
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
 
     cameras = db.scalars(select(Asset).where(Asset.asset_type == "Camera").order_by(Asset.asset_name)).all()
     nvrs = db.scalars(select(Asset).where(Asset.asset_type == "NVR").order_by(Asset.asset_name)).all()
@@ -302,7 +301,7 @@ async def api_create_camera(request: Request, db: Session = Depends(get_db)):
     """Create a new Camera or NVR asset."""
     current_user = get_current_user(request)
     if not current_user or not has_permission(current_user, "can_edit_assets"):
-        return {"error": "Unauthorized"}, 403
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=403)
 
     data = await request.json()
     asset_type = data.get("asset_type", "Camera")  # "Camera" or "NVR"
@@ -315,12 +314,12 @@ async def api_create_camera(request: Request, db: Session = Depends(get_db)):
     notes = data.get("notes", "").strip()
 
     if not asset_code or not asset_name:
-        return {"error": "Mã tài sản và Tên là bắt buộc"}, 400
+        return JSONResponse(content={"error": "Mã tài sản và Tên là bắt buộc"}, status_code=400)
 
     # Check duplicate code
     existing = db.scalar(select(Asset).where(Asset.asset_code == asset_code))
     if existing:
-        return {"error": f"Mã tài sản '{asset_code}' đã tồn tại"}, 400
+        return JSONResponse(content={"error": f"Mã tài sản '{asset_code}' đã tồn tại"}, status_code=400)
 
     new_asset = Asset(
         asset_code=asset_code,
@@ -352,12 +351,12 @@ async def api_update_camera(asset_id: int, request: Request, db: Session = Depen
     """Update an existing Camera or NVR asset."""
     current_user = get_current_user(request)
     if not current_user or not has_permission(current_user, "can_edit_assets"):
-        return {"error": "Unauthorized"}, 403
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=403)
 
     data = await request.json()
     asset = db.get(Asset, asset_id)
     if not asset:
-        return {"error": "Không tìm thấy tài sản"}, 404
+        return JSONResponse(content={"error": "Không tìm thấy tài sản"}, status_code=404)
 
     if "asset_name" in data and data["asset_name"].strip():
         asset.asset_name = data["asset_name"].strip()
@@ -376,7 +375,7 @@ async def api_update_camera(asset_id: int, request: Request, db: Session = Depen
         if new_code != asset.asset_code:
             dup = db.scalar(select(Asset).where(Asset.asset_code == new_code))
             if dup:
-                return {"error": f"Mã tài sản '{new_code}' đã tồn tại"}, 400
+                return JSONResponse(content={"error": f"Mã tài sản '{new_code}' đã tồn tại"}, status_code=400)
             asset.asset_code = new_code
 
     db.commit()
@@ -395,11 +394,11 @@ async def api_delete_camera(asset_id: int, request: Request, db: Session = Depen
     """Delete a Camera or NVR asset."""
     current_user = get_current_user(request)
     if not current_user or not has_permission(current_user, "can_edit_assets"):
-        return {"error": "Unauthorized"}, 403
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=403)
 
     asset = db.get(Asset, asset_id)
     if not asset:
-        return {"error": "Không tìm thấy tài sản"}, 404
+        return JSONResponse(content={"error": "Không tìm thấy tài sản"}, status_code=404)
 
     db.delete(asset)
     db.commit()
@@ -407,39 +406,332 @@ async def api_delete_camera(asset_id: int, request: Request, db: Session = Depen
 
 
 # ---------------------------------------------------------------------------
-# POST /checklist/api/bulk-update-ips — One-time migration: assign IPs by D-index
+# CAMERA IMPORT / EXPORT
 # ---------------------------------------------------------------------------
-@router.post("/api/bulk-update-ips")
-def bulk_update_camera_ips(request: Request, db: Session = Depends(get_db)):
-    """Bulk update camera ip_address = NVR_subnet.D_index (e.g. D23 on 192.168.40.x -> 192.168.40.23)."""
-    current_user = get_current_user(request)
-    if not current_user or not has_permission(current_user, "can_edit_assets"):
-        return {"error": "Unauthorized"}
 
-    cameras = db.scalars(select(Asset).where(Asset.asset_type == "Camera")).all()
-    updated = 0
-    skipped = 0
+@router.get("/import", response_class=HTMLResponse)
+@require_permission("can_edit_assets")
+def checklist_import_page(request: Request, current_user=None):
+    return templates.TemplateResponse("assets/camera_import.html", {
+        "request": request,
+        "current_user": current_user,
+    })
 
-    for cam in cameras:
-        nvr_ip = cam.location  # stored NVR IP
-        if not nvr_ip:
-            skipped += 1
-            continue
-        parts = nvr_ip.split(".")
-        if len(parts) != 4:
-            skipped += 1
-            continue
-        m = re.search(r"-D(\d+)$", cam.asset_code)
-        if not m:
-            skipped += 1
-            continue
-        d_idx = m.group(1)
-        new_ip = f"{parts[0]}.{parts[1]}.{parts[2]}.{d_idx}"
-        if cam.ip_address != new_ip:
-            cam.ip_address = new_ip
-            updated += 1
-        else:
-            skipped += 1
+@router.post("/import")
+@require_permission("can_edit_assets")
+async def checklist_import_action(request: Request, file: UploadFile = File(...), db: Session = Depends(get_db), current_user=None):
+    try:
+        content = await file.read()
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        ws = wb.active
+        
+        # Standardize column names (Header is in row 1)
+        headers = [str(ws.cell(row=1, column=c).value).strip() if ws.cell(row=1, column=c).value else "" for c in range(1, ws.max_column + 1)]
+        
+        # Headers map (Vietnamese to internal)
+        header_map = {
+            "Loại thiết bị": "asset_type",
+            "Mã thiết bị": "asset_code",
+            "Tên thiết bị": "asset_name",
+            "Địa chỉ IP": "ip_address",
+            "IP Đầu ghi (NVR)": "location",
+            "Bộ phận": "department",
+            "Model": "model",
+            "Serial": "serial_number",
+            "Trạng thái": "status",
+            "Ghi chú": "notes"
+        }
+        
+        # Reverse map to find column index for each internal field
+        col_idx_map = {} # { "asset_code": 2, ... }
+        for en_h, en_k in header_map.items():
+            if en_h in headers:
+                col_idx_map[en_k] = headers.index(en_h) + 1
+        
+        summary = {"total_rows": 0, "created": 0, "updated": 0}
+        
+        # Process from row 2
+        for r in range(2, ws.max_row + 1):
+            if not ws.cell(row=r, column=1).value and not ws.cell(row=r, column=2).value:
+                continue # Skip empty rows
+                
+            summary["total_rows"] += 1
+            
+            # Extract data using map
+            data = {}
+            for key, idx in col_idx_map.items():
+                val = ws.cell(row=r, column=idx).value
+                data[key] = str(val).strip() if val is not None else None
+            
+            asset_code = data.get("asset_code")
+            if not asset_code:
+                continue
+                
+            # Find existing
+            asset = db.scalar(select(Asset).where(Asset.asset_code == asset_code))
+            if asset:
+                # Update
+                for k, v in data.items():
+                    if k != "asset_code" and v is not None:
+                        setattr(asset, k, v)
+                summary["updated"] += 1
+            else:
+                # Create
+                new_asset = Asset(
+                    asset_code=asset_code,
+                    asset_name=data.get("asset_name") or "Unnamed Camera",
+                    asset_type=data.get("asset_type") or "Camera",
+                    ip_address=data.get("ip_address"),
+                    location=data.get("location"),
+                    model=data.get("model"),
+                    serial_number=data.get("serial_number"),
+                    notes=data.get("notes"),
+                    status="active"
+                )
+                db.add(new_asset)
+                summary["created"] += 1
+        
+        db.commit()
+        return templates.TemplateResponse("assets/camera_import.html", {
+            "request": request,
+            "summary": summary,
+            "current_user": get_current_user(request)
+        })
+        
+    except Exception as e:
+        return templates.TemplateResponse("assets/camera_import.html", {
+            "request": request,
+            "error": f"Lỗi xử lý file (OpenPyXL): {str(e)}",
+            "current_user": get_current_user(request)
+        })
 
-    db.commit()
-    return {"success": True, "updated": updated, "skipped": skipped}
+@router.get("/import/template")
+@require_permission("can_edit_assets")
+def checklist_import_template(request: Request, current_user=None):
+    output = io.BytesIO()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Camera_NVR_Template"
+    
+    headers = ["Loại thiết bị", "Mã thiết bị", "Tên thiết bị", "Địa chỉ IP", "IP Đầu ghi (NVR)", "Bộ phận", "Model", "Serial", "Trạng thái", "Ghi chú"]
+    ws.append(headers)
+    
+    # Add examples
+    ws.append(["NVR", "NVR-01", "Dau ghi Cang", "192.168.1.10", "", "IT", "HIK-7608", "SN123", "active", "Main Gate"])
+    ws.append(["Camera", "CAM-01-D1", "Camera Gate 1", "192.168.1.101", "192.168.1.10", "IT", "DS-2CD", "SN456", "active", ""])
+    
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=\"camera_import_template.xlsx\""}
+    )
+
+@router.get("/export-cameras")
+@require_permission("can_export_assets")
+def checklist_export_cameras(request: Request, db: Session = Depends(get_db), current_user=None):
+    # Export only Cameras and NVRs
+    assets = db.scalars(select(Asset).where(Asset.asset_type.in_(["Camera", "NVR"])).order_by(Asset.asset_type, Asset.asset_name)).all()
+    
+    output = io.BytesIO()
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Camera_List"
+    
+    headers = ["Loại thiết bị", "Mã thiết bị", "Tên thiết bị", "Địa chỉ IP", "IP Đầu ghi (NVR)", "Bộ phận", "Model", "Serial", "Trạng thái", "Ghi chú"]
+    ws.append(headers)
+    
+    for a in assets:
+        ws.append([
+            a.asset_type, a.asset_code, a.asset_name, a.ip_address, a.location, a.department, a.model, a.serial_number, a.status, a.notes
+        ])
+        
+    wb.save(output)
+    output.seek(0)
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=\"Camera_List_Export.xlsx\""}
+    )
+
+# ---------------------------------------------------------------------------
+# CHECKLIST REPORT EXPORT
+# ---------------------------------------------------------------------------
+
+@router.get("/export-report")
+@require_permission("can_export_assets")
+def checklist_export_report(
+    request: Request,
+    start_date: str, 
+    end_date: str, 
+    nvr_ip: list[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    try:
+        # 1. Parse dates and generate full range
+        start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        
+        all_dates = []
+        curr = start_dt
+        while curr <= end_dt:
+            all_dates.append(curr.strftime("%Y-%m-%d"))
+            curr += datetime.timedelta(days=1)
+        
+        # 2. Get cameras and group by NVR
+        query = select(Asset).where(Asset.asset_type == "Camera")
+        if nvr_ip:
+            query = query.where(Asset.location.in_(nvr_ip))
+        
+        cameras = db.scalars(query.order_by(Asset.location, Asset.asset_name)).all()
+        if not cameras:
+            return RedirectResponse(url="/checklist/?error=No+cameras+found+for+selected+NVRs", status_code=303)
+            
+        cam_ids = [c.id for c in cameras]
+        nvr_to_cams = defaultdict(list)
+        for cam in cameras:
+            nvr_key = cam.location or "Chưa phân loại"
+            nvr_to_cams[nvr_key].append(cam)
+            
+        # 3. Fetch events in range
+        events = db.execute(
+            select(AssetEvent)
+            .where(AssetEvent.asset_id.in_(cam_ids))
+            .where(AssetEvent.event_type == "daily_checklist")
+            .where(AssetEvent.created_at >= start_dt)
+            .where(AssetEvent.created_at <= end_dt)
+            .order_by(AssetEvent.created_at.asc())
+        ).scalars().all()
+        
+        # Chronological data pivot: Date -> { CamID -> {"status": status, "note": note} }
+        report_data = defaultdict(dict)
+        for ev in events:
+            date_str = ev.created_at.strftime("%Y-%m-%d")
+            # Logic: If title contains OK/Tốt -> '✓', if Error/Lỗi -> 'F'
+            st_text = ev.title.lower()
+            if "ok" in st_text or "tốt" in st_text:
+                status = "✓"
+            elif "err" in st_text or "lỗi" in st_text:
+                status = "F"
+            else:
+                status = ev.title.split(": ")[-1] if ": " in ev.title else ev.title
+            
+            report_data[date_str][ev.asset_id] = {
+                "status": status,
+                "note": ev.description or ""
+            }
+            
+        # 4. Build Excel with multiple sheets
+        output = io.BytesIO()
+        wb = openpyxl.Workbook()
+        # Remove default sheet
+        wb.remove(wb.active)
+        
+        # Define Styles
+        title_font = Font(size=14, bold=True, color="FFFFFF")
+        header_font = Font(size=10, bold=True)
+        status_font_ok = Font(size=11, bold=True, color="008000") # Green
+        status_font_err = Font(size=11, bold=True, color="FF0000") # Red
+        center_align = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        border_side = Side(style='thin', color="000000")
+        thin_border = Border(left=border_side, right=border_side, top=border_side, bottom=border_side)
+        fill_title = PatternFill(start_color="3525CD", end_color="3525CD", fill_type="solid")
+        fill_header = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+        
+        for nvr_name, nvr_cameras in sorted(nvr_to_cams.items()):
+            # Sanitize sheet name (31 chars max, no : \ / ? * [ ])
+            safe_name = re.sub(r'[\\/*?:\[\]]', '', nvr_name)[:31]
+            ws = wb.create_sheet(title=safe_name)
+            
+            # Header Layout
+            # R1: MAIN TITLE (Merged)
+            # R2: Info Headers
+            # Data rows...
+            
+            num_cams = len(nvr_cameras)
+            ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=num_cams + 1)
+            cell_title = ws.cell(row=1, column=1)
+            cell_title.value = f"BÁO CÁO CHI TIẾT CAMERA - {nvr_name} ({start_date} -> {end_date})"
+            cell_title.font = title_font
+            cell_title.fill = fill_title
+            cell_title.alignment = center_align
+            
+            # Row 2: Headers
+            headers = ["Ngày \ Camera"] + [c.asset_name for c in nvr_cameras]
+            for c_idx, h_text in enumerate(headers, start=1):
+                cell = ws.cell(row=2, column=c_idx)
+                cell.value = h_text
+                cell.font = header_font
+                cell.fill = fill_header
+                cell.border = thin_border
+                cell.alignment = center_align
+                
+            # Row 3: IP Address sub-header
+            ws.cell(row=3, column=1).value = "Địa chỉ IP"
+            ws.cell(row=3, column=1).font = header_font
+            ws.cell(row=3, column=1).border = thin_border
+            ws.cell(row=3, column=1).fill = fill_header
+            
+            for c_idx, cam in enumerate(nvr_cameras, start=2):
+                cell = ws.cell(row=3, column=c_idx)
+                cell.value = cam.ip_address or ""
+                cell.font = Font(size=9, italic=True)
+                cell.border = thin_border
+                cell.alignment = center_align
+                
+            # Data Rows (All dates)
+            curr_row = 4
+            for d_str in all_dates:
+                # Date Cell
+                date_cell = ws.cell(row=curr_row, column=1)
+                date_cell.value = d_str
+                date_cell.border = thin_border
+                date_cell.alignment = center_align
+                
+                # Camera Status Cells
+                for c_idx, cam in enumerate(nvr_cameras, start=2):
+                    data = report_data[d_str].get(cam.id, {"status": "", "note": ""})
+                    status = data["status"]
+                    note = data["note"]
+                    
+                    cell = ws.cell(row=curr_row, column=c_idx)
+                    if status and note:
+                        cell.value = f"{status}\n({note})"
+                    else:
+                        cell.value = status
+                        
+                    cell.border = thin_border
+                    cell.alignment = center_align
+                    
+                    if status == "✓":
+                        cell.font = status_font_ok
+                    elif status == "F":
+                        cell.font = status_font_err
+                
+                curr_row += 1
+                
+            # Freeze Panes (Freeze rows 1-3 and col A)
+            ws.freeze_panes = "B4"
+            
+            # Column widths
+            ws.column_dimensions['A'].width = 15
+            for c in range(2, num_cams + 2):
+                ws.column_dimensions[get_column_letter(c)].width = 14
+                
+        wb.save(output)
+        output.seek(0)
+        
+        filename = f"Bao_Cao_Camera_{start_date}_{end_date}.xlsx"
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f"attachment; filename=\"{filename}\""}
+        )
+        
+    except Exception as e:
+        print(f"Report Export Error: {e}")
+        return RedirectResponse(url=f"/checklist/?error=Report+Export+Failed: {str(e)}", status_code=303)

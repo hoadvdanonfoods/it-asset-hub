@@ -34,13 +34,21 @@
                 </select>
             </div>
 
-            <button onclick="document.getElementById('deviceModal').classList.remove('hidden')" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+            <a href="/checklist/import" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-3 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+                <i data-lucide="upload" class="w-4 h-4 text-primary"></i>
+                <span class="hidden lg:inline">Import Camera</span>
+            </a>
+            <a href="/checklist/export-cameras" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-3 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+                <i data-lucide="download" class="w-4 h-4 text-primary"></i>
+                <span class="hidden lg:inline">Export Camera</span>
+            </a>
+            <button onclick="document.getElementById('deviceModal').classList.remove('hidden')" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm" title="Quản lý danh sách NVR/Camera">
                 <i data-lucide="settings-2" class="w-4 h-4"></i>
-                <span>Quản lý thiết bị</span>
+                <span>Quản lý</span>
             </button>
-            <button onclick="document.getElementById('downloadModal').classList.remove('hidden')" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
-                <i data-lucide="download" class="w-4 h-4"></i>
-                <span>Tải về Excel</span>
+            <button onclick="document.getElementById('reportModal').classList.remove('hidden')" class="flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+                <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+                <span>Xuất Báo Cáo</span>
             </button>
             <button form="checklistForm" type="submit" class="flex items-center gap-2 bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-[0_4px_12px_rgba(53,37,205,0.25)] hover:shadow-[0_6px_16px_rgba(53,37,205,0.35)] hover:-translate-y-0.5">
                 <i data-lucide="save" class="w-4 h-4"></i>
@@ -49,23 +57,25 @@
         </div>
     </div>
 
-    <!-- NVR Tabs -->
-    <div class="border-b border-outline-variant/20 mb-6 flex overflow-x-auto custom-scrollbar">
-        {% set first_tab = true %}
-        {% for loc, camera_list in grouped_cameras.items() %}
-        <button type="button"
-                id="tab-btn-{{ loop.index }}"
-                onclick="openTab({{ loop.index }})"
-                class="tab-btn flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm whitespace-nowrap transition-colors {{ 'border-primary text-primary' if first_tab else 'border-transparent text-on-surface/60 hover:bg-surface-container-low/50' }}">
-            <i data-lucide="server" class="w-4 h-4"></i>
-            {{ nvr_map[loc].asset_name if loc in nvr_map else loc }}
-            <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] {{ 'bg-primary/10 text-primary' if first_tab else 'bg-surface-container-highest text-on-surface/60' }}">{{ camera_list|length }}</span>
-        </button>
-        {% set first_tab = false %}
-        {% endfor %}
+    <!-- NVR Multi-Selector (Dropdown) -->
+    <div class="mb-6 flex flex-col md:flex-row items-center gap-4 bg-surface-container-low/30 p-4 rounded-2xl border border-outline-variant/10">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-primary/10 rounded-lg text-primary">
+                <i data-lucide="server" class="w-5 h-5"></i>
+            </div>
+            <label for="nvrSelector" class="font-bold text-sm text-on-surface/80">Chọn Đầu ghi / NVR:</label>
+        </div>
+        <select id="nvrSelector" onchange="openTab(this.value);" class="flex-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 font-bold text-sm text-primary outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer shadow-sm">
+            {% for loc, camera_list in grouped_cameras.items() %}
+            <option value="{{ loop.index }}" data-nvr-ip="{{ loc }}">
+                {{ nvr_map[loc].asset_name if loc in nvr_map else loc }} ({{ camera_list|length }} camera)
+            </option>
+            {% endfor %}
+        </select>
     </div>
 
-    <form id="checklistForm" method="POST" action="/checklist/save">
+    <form id="checklistForm" method="POST" action="/checklist/save" onsubmit="return handleChecklistSubmit(event);">
+        <input type="hidden" name="active_nvr" id="activeNvrInput" value="">
         <div class="relative">
             {% set first_content = true %}
             {% for loc, camera_list in grouped_cameras.items() %}
@@ -148,30 +158,61 @@
         </div>
     </form>
 
-    <!-- ========== Download Modal ========== -->
-    <div id="downloadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-sm">
-        <div class="bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-2xl p-6 border border-outline-variant/20">
-            <h3 class="text-xl font-bold mb-4">Tải Excel Checklist</h3>
-            <form action="/checklist/download" method="GET">
-                <div class="flex items-center gap-2 mb-4 pb-4 border-b border-outline-variant/10">
-                    <input type="checkbox" id="selectAllNvr" class="w-4 h-4 rounded text-primary border-outline-variant/50 focus:ring-primary" checked onchange="document.querySelectorAll('.nvr-dl-cb').forEach(c => c.checked = this.checked)">
-                    <label for="selectAllNvr" class="font-bold cursor-pointer">Chọn tất cả / Select All</label>
+    <!-- ========== Report Export Modal (NEW) ========== -->
+    <div id="reportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest w-full max-w-lg rounded-3xl shadow-2xl p-6 border border-outline-variant/20">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-bold flex items-center gap-3">
+                    <div class="p-2 bg-primary/10 rounded-lg text-primary"><i data-lucide="file-spreadsheet" class="w-5 h-5"></i></div>
+                    Xuất Báo Cáo Checklist
+                </h3>
+                <button onclick="document.getElementById('reportModal').classList.add('hidden')" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
+                </button>
+            </div>
+            
+            <form action="/checklist/export-report" method="GET">
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface/60 mb-2 uppercase tracking-wider">Từ ngày</label>
+                        <input type="date" name="start_date" required 
+                               class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-on-surface/60 mb-2 uppercase tracking-wider">Đến ngày</label>
+                        <input type="date" name="end_date" required 
+                               class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none">
+                    </div>
                 </div>
-                <div class="max-h-[50vh] overflow-y-auto mb-6 flex flex-col gap-3 custom-scrollbar">
-                    {% for loc, camera_list in grouped_cameras.items() %}
-                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container-low rounded-xl transition-colors border border-transparent hover:border-outline-variant/20">
-                        <input type="checkbox" name="nvr" value="{{ loc }}" class="nvr-dl-cb w-4 h-4 rounded text-primary border-outline-variant/50 focus:ring-primary" checked>
-                        <div class="flex flex-col">
-                            <span class="font-bold text-sm">{{ nvr_map[loc].asset_name if loc in nvr_map else loc }}</span>
-                            <span class="text-xs text-on-surface/50">{{ camera_list|length }} camera</span>
+
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <label class="text-xs font-bold text-on-surface/60 uppercase tracking-wider">Chọn Đầu ghi (NVR)</label>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="document.querySelectorAll('.report-nvr-cb').forEach(c => c.checked = true)" class="text-[11px] text-primary font-bold hover:underline">Chọn tất cả</button>
+                            <span class="text-on-surface/10">|</span>
+                            <button type="button" onclick="document.querySelectorAll('.report-nvr-cb').forEach(c => c.checked = false)" class="text-[11px] text-on-surface/60 font-bold hover:underline">Bỏ chọn</button>
                         </div>
-                    </label>
-                    {% endfor %}
+                    </div>
+                    <div class="max-h-48 overflow-y-auto bg-surface-container-low/50 rounded-2xl border border-outline-variant/10 p-2 custom-scrollbar">
+                        <div class="flex flex-col gap-1">
+                            {% for loc, camera_list in grouped_cameras.items() %}
+                            <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container-low rounded-lg transition-colors border border-transparent hover:border-outline-variant/10">
+                                <input type="checkbox" name="nvr_ip" value="{{ loc }}" class="report-nvr-cb w-4 h-4 rounded text-primary border-outline-variant/50 focus:ring-primary" checked>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-xs">{{ nvr_map[loc].asset_name if loc in nvr_map else loc }}</span>
+                                    <span class="text-[10px] text-on-surface/50">{{ camera_list|length }} camera</span>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
+
                 <div class="flex justify-end gap-3">
-                    <button type="button" onclick="document.getElementById('downloadModal').classList.add('hidden')" class="px-5 py-2.5 rounded-xl font-bold bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl font-bold bg-primary text-white hover:bg-primary-container transition-colors flex items-center gap-2">
-                        <i data-lucide="download" class="w-4 h-4"></i> Tải .ZIP
+                    <button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-white hover:bg-primary-container transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
+                        <i data-lucide="download" class="w-4 h-4"></i> Tải Báo Cáo (.xlsx)
                     </button>
                 </div>
             </form>
@@ -187,7 +228,7 @@
                     <div class="p-2 bg-primary/10 rounded-lg text-primary"><i data-lucide="settings-2" class="w-5 h-5"></i></div>
                     Quản lý thiết bị Camera & NVR
                 </h3>
-                <button onclick="document.getElementById('deviceModal').classList.add('hidden')" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                <button onclick="handleCloseDeviceModal()" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
                     <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
                 </button>
             </div>
@@ -276,35 +317,64 @@
     .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgb(var(--color-outline-variant) / 0.3); border-radius: 10px; }
 </style>
 <script>
-    // ===== Tab switching =====
+    // ===== Form Submission with Confirmation =====
+    function handleChecklistSubmit(event) {
+        console.log("Form submission triggered");
+        const day = document.getElementById('dayPicker').value;
+        const msg = `Bạn có chắc chắn muốn lưu chấm điểm cho ngày ${day} không? Dữ liệu cũ của ngày này (nếu có) sẽ bị ghi đè.`;
+        if (confirm(msg)) {
+            return true;
+        }
+        if (event) event.preventDefault();
+        return false;
+    }
+
+    // ===== Tab switching (Now with Dropdown) =====
     function openTab(index) {
         document.querySelectorAll('.tab-content-pane').forEach(el => {
             el.classList.remove('block', 'opacity-100');
             el.classList.add('hidden', 'opacity-0');
         });
-        document.querySelectorAll('.tab-btn').forEach(el => {
-            el.classList.remove('border-primary', 'text-primary');
-            el.classList.add('border-transparent', 'text-on-surface/60');
-            el.querySelector('span').classList.remove('bg-primary/10', 'text-primary');
-            el.querySelector('span').classList.add('bg-surface-container-highest', 'text-on-surface/60');
-        });
+        
         const content = document.getElementById(`content-${index}`);
-        content.classList.remove('hidden');
-        setTimeout(() => {
-            content.classList.remove('opacity-0');
-            content.classList.add('opacity-100');
-        }, 10);
-        const btn = document.getElementById(`tab-btn-${index}`);
-        btn.classList.remove('border-transparent', 'text-on-surface/60');
-        btn.classList.add('border-primary', 'text-primary');
-        btn.querySelector('span').classList.remove('bg-surface-container-highest', 'text-on-surface/60');
-        btn.querySelector('span').classList.add('bg-primary/10', 'text-primary');
+        if(content) {
+            content.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('opacity-0');
+                content.classList.add('opacity-100');
+            }, 10);
+        }
+
+        // Update hidden input for active NVR
+        const selector = document.getElementById('nvrSelector');
+        const selectedOption = selector.options[selector.selectedIndex];
+        if(selectedOption) {
+            document.getElementById('activeNvrInput').value = selectedOption.getAttribute('data-nvr-ip');
+        }
+
         lucide.createIcons();
     }
+
+    // Initialize the active NVR on load
+    window.addEventListener('DOMContentLoaded', () => {
+        const selector = document.getElementById('nvrSelector');
+        if(selector && selector.value) {
+            openTab(selector.value);
+        }
+    });
 
     // ===== Device Management =====
     let allDevices = { cameras: [], nvrs: [] };
     let currentDeviceTab = 'nvr';
+    let needsReload = false;
+
+    function handleCloseDeviceModal() {
+        if (needsReload) {
+            location.reload();
+        } else {
+            document.getElementById('deviceModal').classList.add('hidden');
+        }
+    }
 
     function showDeviceTab(tab) {
         currentDeviceTab = tab;
@@ -362,8 +432,8 @@
                 <td class="py-3 px-4 text-on-surface/60 text-xs">${item.model || '—'}</td>
                 <td class="py-3 px-4 text-center">
                     <div class="flex items-center justify-center gap-1">
-                        <button onclick="editDeviceById(${item.id})" class="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors" title="Sửa"><i data-lucide="pencil" class="w-4 h-4"></i></button>
-                        <button onclick="deleteDeviceById(${item.id})" class="p-1.5 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors" title="Xóa"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                        <button onclick="editDeviceById('${item.id}')" class="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors" title="Sửa"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button onclick="deleteDeviceById('${item.id}')" class="p-1.5 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors" title="Xóa"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                     </div>
                 </td>
             </tr>`;
@@ -395,14 +465,22 @@
     }
 
     function editDeviceById(id) {
+        console.log("Editing device ID:", id);
         const item = window._deviceItems[id];
-        if (!item) return;
+        if (!item) {
+            console.error("Device not found for ID:", id);
+            return;
+        }
         editDevice(item);
     }
 
     function deleteDeviceById(id) {
+        console.log("Deleting device ID:", id);
         const item = window._deviceItems[id];
-        if (!item) return;
+        if (!item) {
+            console.error("Device not found for deletion ID:", id);
+            return;
+        }
         deleteDevice(item.id, item.asset_name);
     }
 
@@ -440,20 +518,42 @@
         try {
             let res;
             if (id) {
-                res = await fetch(`/checklist/api/camera/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                res = await fetch(`/checklist/api/camera/${id}`, { 
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(body) 
+                });
             } else {
-                res = await fetch('/checklist/api/camera', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                res = await fetch('/checklist/api/camera', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(body) 
+                });
             }
+
             const data = await res.json();
-            if (data.error) {
-                errDiv.textContent = data.error;
+            
+            if (!res.ok) {
+                console.error("Save failed:", data);
+                errDiv.textContent = data.detail || data.error || 'Lỗi lưu dữ liệu';
                 errDiv.classList.remove('hidden');
-            } else {
-                closeEditForm();
-                await loadDevices();
+                return;
             }
+
+            closeEditForm();
+            needsReload = true;
+            await loadDevices();
+            
+            // Show a temporary success message
+            const successMsg = document.createElement('div');
+            successMsg.className = 'fixed bottom-4 right-4 bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-2xl z-[100] animate-bounce font-bold flex items-center gap-2';
+            successMsg.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> Đã lưu thành công!';
+            document.body.appendChild(successMsg);
+            lucide.createIcons();
+            setTimeout(() => { successMsg.remove(); }, 3000);
         } catch (e) {
-            errDiv.textContent = 'Lỗi kết nối server';
+            console.error("Connection error:", e);
+            errDiv.textContent = 'Lỗi kết nối server hoặc phiên làm việc hết hạn';
             errDiv.classList.remove('hidden');
         }
     }
@@ -463,7 +563,10 @@
         try {
             const res = await fetch(`/checklist/api/camera/${id}`, { method: 'DELETE' });
             const data = await res.json();
-            if (data.success) await loadDevices();
+            if (data.success) {
+                needsReload = true;
+                await loadDevices();
+            }
             else alert(data.error || 'Lỗi khi xóa');
         } catch (e) {
             alert('Lỗi kết nối server');

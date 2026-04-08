@@ -141,6 +141,9 @@ def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None =
         stmt = stmt.where(or_(Asset.asset_code.ilike(like), Asset.asset_name.ilike(like), Asset.ip_address.ilike(like), Asset.assigned_user.ilike(like), Asset.serial_number.ilike(like)))
     if asset_type:
         stmt = stmt.where(Asset.asset_type == asset_type)
+    else:
+        # Tách biệt hoàn toàn: Loại bỏ Camera khỏi module Tài sản (quản lý riêng bên menu Checklist)
+        stmt = stmt.where(Asset.asset_type != "Camera")
     if department:
         stmt = stmt.where(Asset.department == department)
     if status:
@@ -305,7 +308,7 @@ def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, act
 @require_module_access('assets')
 def asset_list(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     assets = _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty)
-    asset_types = db.scalars(select(Asset.asset_type).distinct().order_by(Asset.asset_type.asc())).all()
+    asset_types = db.scalars(select(Asset.asset_type).where(Asset.asset_type != 'Camera').distinct().order_by(Asset.asset_type.asc())).all()
     departments = db.scalars(select(Asset.department).where(Asset.department.is_not(None)).distinct().order_by(Asset.department.asc())).all()
     statuses = [item for item in ASSET_STATUSES if item in {a.status for a in db.scalars(select(Asset)).all()} or item == status or item == 'active']
     return templates.TemplateResponse('assets/list.html', {'request': request, 'assets': assets, 'q': q or '', 'asset_type': asset_type or '', 'department': department or '', 'status': status or '', 'warranty': warranty or '', 'asset_types': asset_types, 'departments': departments, 'statuses': statuses, 'current_user': current_user, 'days_to_warranty': _days_to_warranty})

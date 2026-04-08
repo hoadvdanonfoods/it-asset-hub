@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Import Camera - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Import danh sách Camera</h1>
+    <p class="text-on-surface/60 mt-1">Nạp file Excel chuẩn để cập nhật danh sách Camera và NVR vào hệ thống.</p>
+  </div>
+  <div class="flex gap-3">
+    <a href="/checklist/import/template" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="file-down" class="w-4 h-4"></i> Tải file mẫu
+    </a>
+    <a href="/checklist" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại Checklist
+    </a>
+  </div>
+</div>
+
+<!-- Success/Error Message Area -->
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
+</div>
+{% endif %}
+
+{% if summary %}
+<div class="flex items-start gap-3 bg-emerald-50 border border-emerald-300/40 text-emerald-800 rounded-2xl px-5 py-4 mb-6">
+  <i data-lucide="check-circle-2" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <div class="text-sm">
+    <p class="font-bold">Import thành công!</p>
+    <p>Tổng xử lý: <strong>{{ summary.total_rows }}</strong> dòng &nbsp;·&nbsp; Tạo mới: <strong>{{ summary.created }}</strong> &nbsp;·&nbsp; Cập nhật: <strong>{{ summary.updated }}</strong></p>
+  </div>
+</div>
+{% endif %}
+
+<!-- Import Form -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-6">
+        <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6">
+            <h3 class="font-bold text-on-surface mb-4 flex items-center gap-2">
+                <i data-lucide="file-up" class="w-5 h-5 text-primary"></i>
+                Chọn file Excel (.xlsx)
+            </h3>
+            <form method="post" enctype="multipart/form-data" action="/checklist/import" class="space-y-4">
+                <div class="relative group">
+                    <input type="file" name="file" accept=".xlsx" required
+                        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-8 px-6 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white cursor-pointer hover:bg-surface-container-highest/50">
+                    <p class="text-xs text-on-surface/40 mt-2 text-center">Hệ thống chỉ chấp nhận tệp định dạng .xlsx (Microsoft Excel)</p>
+                </div>
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-2xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg shadow-primary/20 hover:-translate-y-0.5">
+                        <i data-lucide="upload-cloud" class="w-5 h-5"></i> Bắt đầu Import
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-primary/5 rounded-3xl p-6 border border-primary/10">
+            <h4 class="font-bold text-primary mb-3 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4"></i> Lưu ý khi Import
+            </h4>
+            <ul class="space-y-2 text-sm text-on-surface/70">
+                <li class="flex items-start gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></span>
+                    <span>Hệ thống phân biệt Camera và NVR dựa trên cột <strong>Loại thiết bị</strong>.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></span>
+                    <span><strong>Mã thiết bị</strong> là duy nhất. Nếu mã đã tồn tại, thông tin sẽ được cập nhật.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></span>
+                    <span>Cột <strong>IP Đầu ghi (NVR)</strong> sẽ được dùng để gom nhóm Camera vào đúng tab tương ứng.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Column Help -->
+    <div class="space-y-6">
+        <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6">
+            <h4 class="text-xs font-bold text-on-surface/40 uppercase tracking-widest mb-4">Các cột dữ liệu chuẩn</h4>
+            <div class="space-y-3">
+                <div class="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                    <p class="text-xs font-bold text-primary mb-1">Loại thiết bị <span class="text-rose-500">*</span></p>
+                    <p class="text-[11px] text-on-surface/60">"Camera" hoặc "NVR"</p>
+                </div>
+                <div class="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                    <p class="text-xs font-bold text-primary mb-1">Mã thiết bị <span class="text-rose-500">*</span></p>
+                    <p class="text-[11px] text-on-surface/60">Mã định danh duy nhất (VD: CAM-D1)</p>
+                </div>
+                <div class="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                    <p class="text-xs font-bold text-primary mb-1">Tên thiết bị <span class="text-rose-500">*</span></p>
+                    <p class="text-[11px] text-on-surface/60">Tên hiển thị (VD: Camera Cảng)</p>
+                </div>
+                <div class="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                    <p class="text-xs font-bold text-on-surface/60 mb-1">Địa chỉ IP</p>
+                    <p class="text-[11px] text-on-surface/60">Địa chỉ IP tĩnh của thiết bị</p>
+                </div>
+                <div class="p-3 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                    <p class="text-xs font-bold text-on-surface/60 mb-1">IP Đầu ghi (NVR)</p>
+                    <p class="text-[11px] text-on-surface/60">IP của NVR quản lý Camera này</p>
+                </div>
+            </div>
+            <p class="text-[10px] text-on-surface/40 mt-4 italic">* Các cột đánh dấu sao là bắt buộc</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
