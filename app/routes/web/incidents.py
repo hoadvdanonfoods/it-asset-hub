@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 import io
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Form, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import openpyxl
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth import require_module_access, require_permission
 from app.db.models import Asset, Incident, IncidentEvent
 from app.db.session import get_db
+from app.services.zalo import send_zalo_notification
 
 router = APIRouter(prefix='/incidents', tags=['incidents'])
 templates = Jinja2Templates(directory='app/templates')
@@ -214,7 +215,7 @@ def incident_new(request: Request, db: Session = Depends(get_db), current_user=N
 
 @router.post('/new')
 @require_permission('can_create_incidents')
-def incident_create(request: Request, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), status: str = Form(default='open'), db: Session = Depends(get_db), current_user=None):
+def incident_create(request: Request, background_tasks: BackgroundTasks, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), status: str = Form(default='open'), db: Session = Depends(get_db), current_user=None):
     normalized_priority = _normalize_priority(priority)
     normalized_status = _normalize_status(status if current_user and getattr(current_user, 'can_edit_incidents', False) else 'open')
     effective_reported_by = reported_by.strip() or (current_user.full_name or current_user.username if current_user else None)
@@ -224,6 +225,17 @@ def incident_create(request: Request, asset_id: int = Form(...), reported_by: st
     db.flush()
     _log_incident_event(db, item.id, 'incident_created', 'Báo cáo sự cố', f'Ticket được tạo với trạng thái {status_label(item.status)}', current_user.username if current_user else None)
     db.commit()
+    
+    # Tạm ẩn tính năng gửi Zalo theo yêu cầu
+    # background_tasks.add_task(
+    #     send_zalo_notification,
+    #     title=f"SỰ CỐ MỚI (Mã ID: {item.id})",
+    #     description=issue_description.strip(),
+    #     Mức_độ=priority_label(item.priority),
+    #     Người_báo=effective_reported_by or "Không xác định",
+    #     Phòng_ban=requester_department.strip() or "Không xác định"
+    # )
+    
     return RedirectResponse(url='/incidents/', status_code=303)
 
 
@@ -275,7 +287,7 @@ def incident_edit(incident_id: int, request: Request, db: Session = Depends(get_
 
 @router.post('/{incident_id}/edit')
 @require_permission('can_edit_incidents')
-def incident_update(request: Request, incident_id: int, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), status: str = Form(default='open'), resolution: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def incident_update(request: Request, incident_id: int, background_tasks: BackgroundTasks, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), status: str = Form(default='open'), resolution: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     item = db.get(Incident, incident_id)
     old_status = item.status
     old_priority = item.priority
@@ -303,4 +315,17 @@ def incident_update(request: Request, incident_id: int, asset_id: int = Form(...
         _log_incident_event(db, item.id, 'department_updated', 'Cập nhật bộ phận yêu cầu', f'{old_department or "(trống)"} -> {item.requester_department or "(trống)"}', current_user.username if current_user else None)
 
     db.commit()
+    
+    # Gửi thông báo Zalo nếu trạng thái chuyển sang Đã giải quyết (hoặc closed)
+    # Tạm ẩn tính năng Zalo
+    # if item.status in ['resolved', 'closed'] and old_status not in ['resolved', 'closed']:
+    #      background_tasks.add_task(
+    #         send_zalo_notification,
+    #         title=f"SỰ CỐ ĐÃ XỬ LÝ XONG (Mã ID: {item.id})",
+    #         description=f"Hướng xử lý: {item.resolution or 'Không có thông tin'}",
+    #         Trạng_thái=status_label(item.status),
+    #         Mức_độ=priority_label(item.priority),
+    #         Người_báo=item.reported_by or "Không rõ"
+    #     )
+         
     return RedirectResponse(url=f'/incidents/{incident_id}', status_code=303)

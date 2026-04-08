@@ -28,3 +28,8 @@ DEFAULT_ADMIN_USERNAME = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
 DEFAULT_ADMIN_PASSWORD = os.getenv('DEFAULT_ADMIN_PASSWORD', 'admin123')
 AUTO_CREATE_DEFAULT_ADMIN = os.getenv('AUTO_CREATE_DEFAULT_ADMIN', 'true').lower() == 'true'
 AUTO_BACKFILL_ASSET_EVENTS = os.getenv('AUTO_BACKFILL_ASSET_EVENTS', 'true').lower() == 'true'
+
+# Zalo Bot Notification
+ZALO_BOT_URL = os.getenv('ZALO_BOT_URL', '')
+ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '')
+ZALO_NOTIFICATION_TARGET = os.getenv('ZALO_NOTIFICATION_TARGET', '')

@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+{% block title %}Camera Checklist - {{ APP_NAME }}{% endblock %}
+
+{% block content %}
+<div class="w-full">
+    <!-- Header Area -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-on-surface flex items-center gap-3 headline">
+                <div class="p-2 bg-primary/10 rounded-lg text-primary">
+                    <i data-lucide="cctv" class="w-6 h-6"></i>
+                </div>
+                Camera Daily Checklist
+            </h2>
+            <p class="text-on-surface/60 text-sm mt-1">Kiểm tra và đánh giá tình trạng các camera theo từng Đầu ghi (NVR).</p>
+        </div>
+        <div class="flex items-center gap-3 flex-wrap">
+            {% if request.query_params.get('success') %}
+            <div id="success-badge" class="flex items-center gap-2 bg-emerald-500/10 text-emerald-600 px-4 py-2 rounded-xl text-sm font-bold border border-emerald-500/20 transition-opacity duration-500">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                <span>Đã lưu {{ request.query_params.get('count') }} camera</span>
+            </div>
+            <script>setTimeout(() => { const el = document.getElementById('success-badge'); if(el) { el.style.opacity = '0'; setTimeout(() => el.style.display='none', 500); } }, 3000);</script>
+            {% endif %}
+
+            <!-- Day Selector -->
+            <div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-3 py-2 shadow-sm">
+                <i data-lucide="calendar" class="w-4 h-4 text-on-surface/50"></i>
+                <label for="dayPicker" class="text-xs font-bold text-on-surface/60 uppercase tracking-wider whitespace-nowrap">Ngày:</label>
+                <select id="dayPicker" form="checklistForm" name="selected_day" class="bg-transparent text-on-surface font-bold text-sm outline-none cursor-pointer min-w-[48px]">
+                    {% for d in range(1, 32) %}
+                    <option value="{{ d }}" {{ 'selected' if d == today else '' }}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button onclick="document.getElementById('deviceModal').classList.remove('hidden')" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+                <i data-lucide="settings-2" class="w-4 h-4"></i>
+                <span>Quản lý thiết bị</span>
+            </button>
+            <button onclick="document.getElementById('downloadModal').classList.remove('hidden')" class="flex items-center gap-2 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface/80 border border-outline-variant/30 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>Tải về Excel</span>
+            </button>
+            <button form="checklistForm" type="submit" class="flex items-center gap-2 bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-[0_4px_12px_rgba(53,37,205,0.25)] hover:shadow-[0_6px_16px_rgba(53,37,205,0.35)] hover:-translate-y-0.5">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                <span>Lưu Chấm Điểm</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- NVR Tabs -->
+    <div class="border-b border-outline-variant/20 mb-6 flex overflow-x-auto custom-scrollbar">
+        {% set first_tab = true %}
+        {% for loc, camera_list in grouped_cameras.items() %}
+        <button type="button"
+                id="tab-btn-{{ loop.index }}"
+                onclick="openTab({{ loop.index }})"
+                class="tab-btn flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm whitespace-nowrap transition-colors {{ 'border-primary text-primary' if first_tab else 'border-transparent text-on-surface/60 hover:bg-surface-container-low/50' }}">
+            <i data-lucide="server" class="w-4 h-4"></i>
+            {{ nvr_map[loc].asset_name if loc in nvr_map else loc }}
+            <span class="ml-1 px-2 py-0.5 rounded-full text-[10px] {{ 'bg-primary/10 text-primary' if first_tab else 'bg-surface-container-highest text-on-surface/60' }}">{{ camera_list|length }}</span>
+        </button>
+        {% set first_tab = false %}
+        {% endfor %}
+    </div>
+
+    <form id="checklistForm" method="POST" action="/checklist/save">
+        <div class="relative">
+            {% set first_content = true %}
+            {% for loc, camera_list in grouped_cameras.items() %}
+            <div id="content-{{ loop.index }}" class="tab-content-pane transition-opacity duration-300 {{ 'block opacity-100' if first_content else 'hidden opacity-0' }}">
+
+                <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-surface-container-low/50 text-on-surface/50 text-xs uppercase tracking-widest border-b border-outline-variant/20 font-bold">
+                                    <th class="py-4 px-4 w-12 text-center">#</th>
+                                    <th class="py-4 px-4">Tên Camera</th>
+                                    <th class="py-4 px-4 w-96 text-center">Đánh giá</th>
+                                    <th class="py-4 px-4 w-72">Ghi chú sự vụ</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant/10 text-sm">
+                                {% for cam in camera_list %}
+                                <tr class="hover:bg-primary/5 transition-colors group">
+                                    <td class="py-3 px-4 text-center text-on-surface/40 font-bold">{{ loop.index }}</td>
+                                    <td class="py-3 px-4">
+                                        <div class="font-bold text-on-surface">{{ cam.asset_name }}</div>
+                                        <div class="text-xs text-on-surface/50 font-mono mt-0.5">{{ cam.asset_code }}</div>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <!-- Custom Tailwind Segmented Radio Controls -->
+                                        <div class="flex rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm bg-surface-container-low/50">
+                                            <!-- OK -->
+                                            <label class="flex-1 relative cursor-pointer group/ok">
+                                                <input type="radio" name="cam_{{ cam.id }}" value="ok" class="peer sr-only" checked>
+                                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-emerald-500 hover:bg-emerald-500/10 active:bg-emerald-500/20">
+                                                    <i data-lucide="check" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/ok:text-emerald-500 peer-checked:group-hover/ok:text-white transition-colors"></i>
+                                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/ok:text-emerald-600 peer-checked:group-hover/ok:text-white transition-colors uppercase tracking-wider">Tốt</span>
+                                                </div>
+                                            </label>
+                                            <div class="w-px bg-outline-variant/20"></div>
+                                            <!-- Warn -->
+                                            <label class="flex-1 relative cursor-pointer group/warn">
+                                                <input type="radio" name="cam_{{ cam.id }}" value="warn" class="peer sr-only">
+                                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-amber-500 hover:bg-amber-500/10 active:bg-amber-500/20">
+                                                    <i data-lucide="eye-off" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/warn:text-amber-500 peer-checked:group-hover/warn:text-white transition-colors"></i>
+                                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/warn:text-amber-600 peer-checked:group-hover/warn:text-white transition-colors uppercase tracking-wider">Mờ/Nhiễu</span>
+                                                </div>
+                                            </label>
+                                            <div class="w-px bg-outline-variant/20"></div>
+                                            <!-- Err -->
+                                            <label class="flex-1 relative cursor-pointer group/err">
+                                                <input type="radio" name="cam_{{ cam.id }}" value="err" class="peer sr-only">
+                                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-rose-500 hover:bg-rose-500/10 active:bg-rose-500/20">
+                                                    <i data-lucide="x" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/err:text-rose-500 peer-checked:group-hover/err:text-white transition-colors"></i>
+                                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/err:text-rose-600 peer-checked:group-hover/err:text-white transition-colors uppercase tracking-wider">Mất Hình</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <input type="text" name="notes_{{ cam.id }}" placeholder="Nhập ghi chú..."
+                                               class="w-full bg-surface-container-low border border-transparent hover:border-outline-variant/30 focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-sm text-on-surface transition-all outline-none placeholder:text-on-surface/30">
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+            {% set first_content = false %}
+            {% endfor %}
+
+            {% if not grouped_cameras %}
+            <div class="flex flex-col items-center justify-center py-20 px-4 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/20 border-dashed">
+                <div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
+                    <i data-lucide="camera-off" class="w-10 h-10 text-on-surface/30"></i>
+                </div>
+                <h3 class="text-xl font-bold text-on-surface mb-2 headline">Chưa có dữ liệu Camera</h3>
+                <p class="text-on-surface/60 text-sm max-w-sm">Hệ thống của bạn chưa có bất kì Camera nào để đánh giá. Vui lòng thiết lập thêm tài sản loại Camera.</p>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+
+    <!-- ========== Download Modal ========== -->
+    <div id="downloadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest w-full max-w-md rounded-3xl shadow-2xl p-6 border border-outline-variant/20">
+            <h3 class="text-xl font-bold mb-4">Tải Excel Checklist</h3>
+            <form action="/checklist/download" method="GET">
+                <div class="flex items-center gap-2 mb-4 pb-4 border-b border-outline-variant/10">
+                    <input type="checkbox" id="selectAllNvr" class="w-4 h-4 rounded text-primary border-outline-variant/50 focus:ring-primary" checked onchange="document.querySelectorAll('.nvr-dl-cb').forEach(c => c.checked = this.checked)">
+                    <label for="selectAllNvr" class="font-bold cursor-pointer">Chọn tất cả / Select All</label>
+                </div>
+                <div class="max-h-[50vh] overflow-y-auto mb-6 flex flex-col gap-3 custom-scrollbar">
+                    {% for loc, camera_list in grouped_cameras.items() %}
+                    <label class="flex items-center gap-3 cursor-pointer p-2 hover:bg-surface-container-low rounded-xl transition-colors border border-transparent hover:border-outline-variant/20">
+                        <input type="checkbox" name="nvr" value="{{ loc }}" class="nvr-dl-cb w-4 h-4 rounded text-primary border-outline-variant/50 focus:ring-primary" checked>
+                        <div class="flex flex-col">
+                            <span class="font-bold text-sm">{{ nvr_map[loc].asset_name if loc in nvr_map else loc }}</span>
+                            <span class="text-xs text-on-surface/50">{{ camera_list|length }} camera</span>
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="document.getElementById('downloadModal').classList.add('hidden')" class="px-5 py-2.5 rounded-xl font-bold bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl font-bold bg-primary text-white hover:bg-primary-container transition-colors flex items-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> Tải .ZIP
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== Device Management Modal ========== -->
+    <div id="deviceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-sm">
+        <div class="bg-surface-container-lowest w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border border-outline-variant/20 flex flex-col overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 pb-4 border-b border-outline-variant/10">
+                <h3 class="text-xl font-bold flex items-center gap-3">
+                    <div class="p-2 bg-primary/10 rounded-lg text-primary"><i data-lucide="settings-2" class="w-5 h-5"></i></div>
+                    Quản lý thiết bị Camera & NVR
+                </h3>
+                <button onclick="document.getElementById('deviceModal').classList.add('hidden')" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <!-- Sub-tabs: NVR / Camera -->
+                <div class="flex gap-2 mb-6">
+                    <button onclick="showDeviceTab('nvr')" id="dt-nvr" class="device-tab px-4 py-2 rounded-xl font-bold text-sm bg-primary text-white transition-all">Đầu ghi (NVR)</button>
+                    <button onclick="showDeviceTab('cam')" id="dt-cam" class="device-tab px-4 py-2 rounded-xl font-bold text-sm bg-surface-container-low text-on-surface/60 hover:bg-surface-container-highest transition-all">Camera</button>
+                    <div class="flex-1"></div>
+                    <button onclick="openAddForm()" class="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Thêm mới
+                    </button>
+                </div>
+
+                <!-- Add / Edit Form (hidden by default) -->
+                <div id="deviceEditForm" class="hidden mb-6 bg-surface-container-low/50 rounded-2xl border border-outline-variant/20 p-5">
+                    <h4 id="formTitle" class="font-bold text-sm mb-4 text-primary uppercase tracking-wider">Thêm thiết bị mới</h4>
+                    <input type="hidden" id="editId" value="">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">Loại thiết bị <span class="text-rose-500">*</span></label>
+                            <select id="editType" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                                <option value="Camera">Camera</option>
+                                <option value="NVR">NVR (Đầu ghi)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">Mã tài sản <span class="text-rose-500">*</span></label>
+                            <input id="editCode" type="text" placeholder="VD: CAM-192.168.1.1-D1" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">Tên thiết bị <span class="text-rose-500">*</span></label>
+                            <input id="editName" type="text" placeholder="VD: P1-Dock 01 Z6C1-36" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">Địa chỉ IP</label>
+                            <input id="editIP" type="text" placeholder="VD: 192.168.1.100" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">NVR / Đầu ghi (IP)</label>
+                            <select id="editLocation" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                                <option value="">— Không gán —</option>
+                                {% for n in nvrs %}
+                                <option value="{{ n.ip_address }}">{{ n.asset_name }} ({{ n.ip_address }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">Model</label>
+                            <input id="editModel" type="text" placeholder="VD: DS-7604NI" class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-on-surface/60 mb-1.5 uppercase tracking-wider">Ghi chú</label>
+                            <input id="editNotes" type="text" placeholder="Ghi chú thêm..." class="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-5">
+                        <button onclick="closeEditForm()" type="button" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
+                        <button onclick="saveDevice()" type="button" id="saveDeviceBtn" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-primary text-white hover:bg-primary-container transition-colors flex items-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i> Lưu
+                        </button>
+                    </div>
+                    <div id="formError" class="hidden mt-3 text-rose-500 text-sm font-bold bg-rose-500/10 px-4 py-2 rounded-xl"></div>
+                </div>
+
+                <!-- Device Table (loaded via JS) -->
+                <div id="deviceTableContainer">
+                    <div class="text-center py-12 text-on-surface/40">
+                        <i data-lucide="loader-2" class="w-8 h-8 mx-auto animate-spin mb-2"></i>
+                        <p class="text-sm">Đang tải danh sách thiết bị...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgb(var(--color-outline-variant) / 0.3); border-radius: 10px; }
+</style>
+<script>
+    // ===== Tab switching =====
+    function openTab(index) {
+        document.querySelectorAll('.tab-content-pane').forEach(el => {
+            el.classList.remove('block', 'opacity-100');
+            el.classList.add('hidden', 'opacity-0');
+        });
+        document.querySelectorAll('.tab-btn').forEach(el => {
+            el.classList.remove('border-primary', 'text-primary');
+            el.classList.add('border-transparent', 'text-on-surface/60');
+            el.querySelector('span').classList.remove('bg-primary/10', 'text-primary');
+            el.querySelector('span').classList.add('bg-surface-container-highest', 'text-on-surface/60');
+        });
+        const content = document.getElementById(`content-${index}`);
+        content.classList.remove('hidden');
+        setTimeout(() => {
+            content.classList.remove('opacity-0');
+            content.classList.add('opacity-100');
+        }, 10);
+        const btn = document.getElementById(`tab-btn-${index}`);
+        btn.classList.remove('border-transparent', 'text-on-surface/60');
+        btn.classList.add('border-primary', 'text-primary');
+        btn.querySelector('span').classList.remove('bg-surface-container-highest', 'text-on-surface/60');
+        btn.querySelector('span').classList.add('bg-primary/10', 'text-primary');
+        lucide.createIcons();
+    }
+
+    // ===== Device Management =====
+    let allDevices = { cameras: [], nvrs: [] };
+    let currentDeviceTab = 'nvr';
+
+    function showDeviceTab(tab) {
+        currentDeviceTab = tab;
+        document.querySelectorAll('.device-tab').forEach(b => {
+            b.classList.remove('bg-primary', 'text-white');
+            b.classList.add('bg-surface-container-low', 'text-on-surface/60');
+        });
+        const active = document.getElementById(`dt-${tab}`);
+        active.classList.remove('bg-surface-container-low', 'text-on-surface/60');
+        active.classList.add('bg-primary', 'text-white');
+        renderDeviceTable();
+    }
+
+    async function loadDevices() {
+        try {
+            const res = await fetch('/checklist/api/cameras');
+            allDevices = await res.json();
+            renderDeviceTable();
+        } catch (e) {
+            document.getElementById('deviceTableContainer').innerHTML =
+                '<p class="text-rose-500 text-sm font-bold py-8 text-center">Lỗi tải dữ liệu</p>';
+        }
+    }
+
+    function renderDeviceTable() {
+        const items = currentDeviceTab === 'nvr' ? allDevices.nvrs : allDevices.cameras;
+        if (!items || items.length === 0) {
+            document.getElementById('deviceTableContainer').innerHTML =
+                `<div class="text-center py-12 text-on-surface/40"><p class="text-sm">Chưa có ${currentDeviceTab === 'nvr' ? 'đầu ghi' : 'camera'} nào.</p></div>`;
+            return;
+        }
+        // Store items globally for click handlers
+        window._deviceItems = {};
+        items.forEach(item => { window._deviceItems[item.id] = item; });
+
+        let html = `<div class="text-xs text-on-surface/50 mb-3 px-1">Tổng: <span class="font-bold text-primary">${items.length}</span> thiết bị</div>`;
+        html += `<table class="w-full text-left border-collapse text-sm">
+            <thead><tr class="bg-surface-container-low/50 text-on-surface/50 text-xs uppercase tracking-widest border-b border-outline-variant/20 font-bold">
+                <th class="py-3 px-4">#</th>
+                <th class="py-3 px-4">Mã TS</th>
+                <th class="py-3 px-4">Tên</th>
+                <th class="py-3 px-4">IP</th>
+                <th class="py-3 px-4">${currentDeviceTab === 'cam' ? 'NVR (Location)' : 'Vị trí'}</th>
+                <th class="py-3 px-4">Model</th>
+                <th class="py-3 px-4 text-center w-32">Thao tác</th>
+            </tr></thead><tbody class="divide-y divide-outline-variant/10">`;
+        items.forEach((item, i) => {
+            const escapedName = (item.asset_name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            html += `<tr class="hover:bg-primary/5 transition-colors">
+                <td class="py-3 px-4 text-on-surface/40 font-bold">${i + 1}</td>
+                <td class="py-3 px-4 font-mono text-xs">${item.asset_code || ''}</td>
+                <td class="py-3 px-4 font-bold">${escapedName}</td>
+                <td class="py-3 px-4"><span class="font-mono text-xs bg-surface-container-low px-2 py-1 rounded-lg border border-outline-variant/10">${item.ip_address || item.location || '—'}</span></td>
+                <td class="py-3 px-4 text-on-surface/60 text-xs">${item.location || '—'}</td>
+                <td class="py-3 px-4 text-on-surface/60 text-xs">${item.model || '—'}</td>
+                <td class="py-3 px-4 text-center">
+                    <div class="flex items-center justify-center gap-1">
+                        <button onclick="editDeviceById(${item.id})" class="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors" title="Sửa"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                        <button onclick="deleteDeviceById(${item.id})" class="p-1.5 hover:bg-rose-500/10 text-rose-500 rounded-lg transition-colors" title="Xóa"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('deviceTableContainer').innerHTML = html;
+        lucide.createIcons();
+    }
+
+    // Open the modal and load data
+    const origOpen = document.getElementById('deviceModal');
+    const observer = new MutationObserver(() => {
+        if (!origOpen.classList.contains('hidden')) loadDevices();
+    });
+    observer.observe(origOpen, { attributes: true, attributeFilter: ['class'] });
+
+    function openAddForm() {
+        document.getElementById('editId').value = '';
+        document.getElementById('editType').value = currentDeviceTab === 'nvr' ? 'NVR' : 'Camera';
+        document.getElementById('editCode').value = '';
+        document.getElementById('editName').value = '';
+        document.getElementById('editIP').value = '';
+        document.getElementById('editLocation').value = '';
+        document.getElementById('editModel').value = '';
+        document.getElementById('editNotes').value = '';
+        document.getElementById('formTitle').textContent = 'Thêm thiết bị mới';
+        document.getElementById('formError').classList.add('hidden');
+        document.getElementById('deviceEditForm').classList.remove('hidden');
+    }
+
+    function editDeviceById(id) {
+        const item = window._deviceItems[id];
+        if (!item) return;
+        editDevice(item);
+    }
+
+    function deleteDeviceById(id) {
+        const item = window._deviceItems[id];
+        if (!item) return;
+        deleteDevice(item.id, item.asset_name);
+    }
+
+    function editDevice(item) {
+        document.getElementById('editId').value = item.id;
+        document.getElementById('editType').value = item.asset_type || 'Camera';
+        document.getElementById('editCode').value = item.asset_code || '';
+        document.getElementById('editName').value = item.asset_name || '';
+        document.getElementById('editIP').value = item.ip_address || '';
+        document.getElementById('editLocation').value = item.location || '';
+        document.getElementById('editModel').value = item.model || '';
+        document.getElementById('editNotes').value = item.notes || '';
+        document.getElementById('formTitle').textContent = `Chỉnh sửa: ${item.asset_name}`;
+        document.getElementById('formError').classList.add('hidden');
+        document.getElementById('deviceEditForm').classList.remove('hidden');
+    }
+
+    function closeEditForm() {
+        document.getElementById('deviceEditForm').classList.add('hidden');
+    }
+
+    async function saveDevice() {
+        const id = document.getElementById('editId').value;
+        const body = {
+            asset_type: document.getElementById('editType').value,
+            asset_code: document.getElementById('editCode').value,
+            asset_name: document.getElementById('editName').value,
+            ip_address: document.getElementById('editIP').value,
+            location: document.getElementById('editLocation').value,
+            model: document.getElementById('editModel').value,
+            notes: document.getElementById('editNotes').value,
+        };
+
+        const errDiv = document.getElementById('formError');
+        try {
+            let res;
+            if (id) {
+                res = await fetch(`/checklist/api/camera/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            } else {
+                res = await fetch('/checklist/api/camera', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+            }
+            const data = await res.json();
+            if (data.error) {
+                errDiv.textContent = data.error;
+                errDiv.classList.remove('hidden');
+            } else {
+                closeEditForm();
+                await loadDevices();
+            }
+        } catch (e) {
+            errDiv.textContent = 'Lỗi kết nối server';
+            errDiv.classList.remove('hidden');
+        }
+    }
+
+    async function deleteDevice(id, name) {
+        if (!confirm(`Bạn có chắc muốn xóa "${name}"?\nThao tác này không thể hoàn tác.`)) return;
+        try {
+            const res = await fetch(`/checklist/api/camera/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) await loadDevices();
+            else alert(data.error || 'Lỗi khi xóa');
+        } catch (e) {
+            alert('Lỗi kết nối server');
+        }
+    }
+</script>
+{% endblock %}

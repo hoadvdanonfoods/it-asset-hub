@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Quét Mạng - IT Asset Hub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header Page -->
+    <div class="mb-8 flex justify-between items-end">
+        <div>
+            <h1 class="text-3xl font-extrabold text-on-surface headline">Quét mạng nội bộ</h1>
+            <p class="text-on-surface/60 mt-1">Tự động rà quét và phát hiện thiết bị mạng (PC, Laptop, Printer) đang online.</p>
+        </div>
+        <a href="/assets" class="bg-surface-container-low hover:bg-surface-container-highest text-on-surface px-4 py-2 rounded-xl font-semibold transition-colors flex items-center gap-2 border border-outline-variant/20 shadow-sm disabled:opacity-50">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Trở về TS
+        </a>
+    </div>
+
+    <!-- Alert Messages -->
+    {% if error %}
+    <div class="bg-rose-50 text-rose-700 border border-rose-200 p-4 rounded-xl mb-6 shadow-sm flex items-start gap-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 text-rose-500 mt-0.5"></i>
+        <span>{{ error }}</span>
+    </div>
+    {% endif %}
+
+    <!-- Scan Form Card -->
+    <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl p-6 shadow-xl shadow-on-surface/5 mb-8">
+        <form action="/discovery/scan" method="POST" id="scanForm">
+            <div class="flex items-end gap-4">
+                <div class="flex-1">
+                    <label class="block text-sm font-bold text-on-surface mb-2">Dải IP (CIDR Format)</label>
+                    <input type="text" name="ip_range" value="{{ selected_ip_range or '192.168.1.0/24' }}" placeholder="VD: 192.168.1.0/24" required
+                           class="w-full bg-surface text-on-surface border border-outline-variant/30 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
+                </div>
+                <!-- Adding Loader capability natively later -->
+                <button type="submit" id="scanBtn" class="bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-primary/20 flex items-center gap-2">
+                    <i data-lucide="radar" class="w-4 h-4"></i> <span>Tiến hành Quét</span>
+                </button>
+            </div>
+            <p class="text-[11px] text-on-surface/50 mt-3 flex items-center gap-1.5"><i data-lucide="info" class="w-3.5 h-3.5"></i> <span>Quá trình quét 1 dải /24 (255 IPs) mất khoảng 10-30 giây.</span></p>
+        </form>
+    </div>
+
+    <!-- Results Section -->
+    {% if results is not none %}
+    <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-xl shadow-on-surface/5 overflow-hidden">
+        <div class="p-5 border-b border-outline-variant/10 flex justify-between items-center bg-surface-container-low/30">
+            <h3 class="font-bold text-on-surface headline">Kết quả Quét: Tìm thấy {{ results|length }} thiết bị Online</h3>
+        </div>
+        
+        <div class="p-6">
+            {% if results|length == 0 %}
+                <div class="text-center py-10">
+                    <div class="w-16 h-16 bg-surface-container-highest/50 rounded-full flex items-center justify-center mx-auto mb-4 text-on-surface/40">
+                        <i data-lucide="ghost" class="w-8 h-8"></i>
+                    </div>
+                    <p class="text-on-surface/50 font-medium">Không tìm thấy thiết bị nào đang online trong dải IP này.</p>
+                </div>
+            {% else %}
+                <form action="/discovery/save" method="POST">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="text-xs uppercase tracking-wider text-on-surface/50 border-b border-outline-variant/10">
+                                    <th class="pb-3 pl-2"><input type="checkbox" id="selectAll" class="rounded text-primary focus:ring-primary"></th>
+                                    <th class="pb-3">IP Address</th>
+                                    <th class="pb-3">Hostname</th>
+                                    <th class="pb-3 text-right pr-2">Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline-variant/10">
+                                {% for host in results %}
+                                <tr class="hover:bg-surface-container-low/30 transition-colors">
+                                    <td class="py-3 pl-2">
+                                        {% if not host.is_existing %}
+                                        <input type="checkbox" name="selected_assets" value="{{ host.ip }}|{{ host.hostname }}" class="ip-checkbox rounded text-primary focus:ring-primary">
+                                        {% else %}
+                                        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-500"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td class="py-3 text-sm font-semibold">{{ host.ip }}</td>
+                                    <td class="py-3 text-sm">
+                                        {{ host.hostname }}
+                                    </td>
+                                    <td class="py-3 text-sm text-right pr-2">
+                                        {% if host.is_existing %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">Đã lưu ({{ host.existing_asset.asset_code }})</span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Phát hiện mới</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-6 pt-5 border-t border-outline-variant/10 flex justify-end gap-3">
+                        <button type="submit" id="saveBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-2">
+                            <i data-lucide="download" class="w-4 h-4"></i> Lưu các máy đã chọn
+                        </button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    document.getElementById('scanForm').addEventListener('submit', function() {
+        const btn = document.getElementById('scanBtn');
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Đang rà quét...';
+        btn.classList.add('opacity-70', 'cursor-not-allowed');
+        lucide.createIcons();
+    });
+
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.ip-checkbox');
+            checkboxes.forEach(cb => cb.checked = this.checked);
+        });
+    }
+</script>
+{% endblock %}
