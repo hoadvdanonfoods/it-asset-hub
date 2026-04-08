@@ -1,3 +1,4 @@
+import asyncio
 from functools import wraps
 from typing import Callable
 
@@ -109,14 +110,24 @@ def _authorized_user_or_redirect(request: Request):
 
 
 def require_login(view_func: Callable):
-    @wraps(view_func)
-    def wrapper(*args, **kwargs):
-        request = _resolve_request(args, kwargs)
-        user, redirect = _authorized_user_or_redirect(request)
-        if redirect:
-            return redirect
-        kwargs['current_user'] = user
-        return view_func(*args, **kwargs)
+    if asyncio.iscoroutinefunction(view_func):
+        @wraps(view_func)
+        async def wrapper(*args, **kwargs):
+            request = _resolve_request(args, kwargs)
+            user, redirect = _authorized_user_or_redirect(request)
+            if redirect:
+                return redirect
+            kwargs['current_user'] = user
+            return await view_func(*args, **kwargs)
+    else:
+        @wraps(view_func)
+        def wrapper(*args, **kwargs):
+            request = _resolve_request(args, kwargs)
+            user, redirect = _authorized_user_or_redirect(request)
+            if redirect:
+                return redirect
+            kwargs['current_user'] = user
+            return view_func(*args, **kwargs)
 
     return wrapper
 
@@ -138,16 +149,28 @@ def require_admin(view_func: Callable):
 
 def require_module_access(module: str):
     def decorator(view_func: Callable):
-        @wraps(view_func)
-        def wrapper(*args, **kwargs):
-            request = _resolve_request(args, kwargs)
-            user, redirect = _authorized_user_or_redirect(request)
-            if redirect:
-                return redirect
-            if not has_module_access(user, module):
-                return RedirectResponse(url=get_default_landing_path(user), status_code=303)
-            kwargs['current_user'] = user
-            return view_func(*args, **kwargs)
+        if asyncio.iscoroutinefunction(view_func):
+            @wraps(view_func)
+            async def wrapper(*args, **kwargs):
+                request = _resolve_request(args, kwargs)
+                user, redirect = _authorized_user_or_redirect(request)
+                if redirect:
+                    return redirect
+                if not has_module_access(user, module):
+                    return RedirectResponse(url=get_default_landing_path(user), status_code=303)
+                kwargs['current_user'] = user
+                return await view_func(*args, **kwargs)
+        else:
+            @wraps(view_func)
+            def wrapper(*args, **kwargs):
+                request = _resolve_request(args, kwargs)
+                user, redirect = _authorized_user_or_redirect(request)
+                if redirect:
+                    return redirect
+                if not has_module_access(user, module):
+                    return RedirectResponse(url=get_default_landing_path(user), status_code=303)
+                kwargs['current_user'] = user
+                return view_func(*args, **kwargs)
 
         return wrapper
 
@@ -156,16 +179,28 @@ def require_module_access(module: str):
 
 def require_permission(field_name: str):
     def decorator(view_func: Callable):
-        @wraps(view_func)
-        def wrapper(*args, **kwargs):
-            request = _resolve_request(args, kwargs)
-            user, redirect = _authorized_user_or_redirect(request)
-            if redirect:
-                return redirect
-            if not has_permission(user, field_name):
-                return RedirectResponse(url=get_default_landing_path(user), status_code=303)
-            kwargs['current_user'] = user
-            return view_func(*args, **kwargs)
+        if asyncio.iscoroutinefunction(view_func):
+            @wraps(view_func)
+            async def wrapper(*args, **kwargs):
+                request = _resolve_request(args, kwargs)
+                user, redirect = _authorized_user_or_redirect(request)
+                if redirect:
+                    return redirect
+                if not has_permission(user, field_name):
+                    return RedirectResponse(url=get_default_landing_path(user), status_code=303)
+                kwargs['current_user'] = user
+                return await view_func(*args, **kwargs)
+        else:
+            @wraps(view_func)
+            def wrapper(*args, **kwargs):
+                request = _resolve_request(args, kwargs)
+                user, redirect = _authorized_user_or_redirect(request)
+                if redirect:
+                    return redirect
+                if not has_permission(user, field_name):
+                    return RedirectResponse(url=get_default_landing_path(user), status_code=303)
+                kwargs['current_user'] = user
+                return view_func(*args, **kwargs)
 
         return wrapper
 

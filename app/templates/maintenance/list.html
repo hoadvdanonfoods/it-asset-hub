@@ -9,11 +9,14 @@
   </div>
   <div class="flex flex-wrap items-center gap-3">
     {% if current_user.can_export_maintenance %}
-    <a href="/maintenance/export?technician={{ technician }}&asset_code={{ asset_code }}" class="flex items-center gap-2 bg-surface-container-highest px-5 py-3 rounded-2xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-all border border-outline-variant/10 shadow-sm active:scale-95">
-      <i data-lucide="download" class="w-4 h-4"></i> Xuất dữ liệu
-    </a>
+    <button onclick="document.getElementById('exportReportModal').classList.remove('hidden')" class="flex items-center gap-2 bg-surface-container-highest px-5 py-3 rounded-2xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-all border border-outline-variant/10 shadow-sm active:scale-95">
+      <i data-lucide="file-down" class="w-4 h-4 text-emerald-600"></i> Xuất & Xem báo cáo
+    </button>
     {% endif %}
     {% if current_user.can_create_maintenance %}
+    <button onclick="openBatchMaintenanceModal()" class="flex items-center gap-2 bg-primary/10 text-primary px-5 py-3 rounded-2xl font-bold text-sm hover:bg-primary/20 transition-all border border-primary/20 shadow-sm active:scale-95">
+      <i data-lucide="layers" class="w-4 h-4"></i> Bảo trì hàng loạt
+    </button>
     <a href="/maintenance/new" class="flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-2xl font-bold text-sm hover:bg-amber-700 transition-all shadow-lg shadow-amber-500/20 hover:-translate-y-0.5 active:scale-95">
       <i data-lucide="plus" class="w-4 h-4"></i> Ghi nhận bảo trì
     </a>
@@ -175,4 +178,346 @@
   </div>
   {% endif %}
 </div>
+</div>
+
+<!-- ========== Batch Maintenance Modal (NEW) ========== -->
+<div id="batchMaintenanceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-md">
+    <div class="bg-surface-container-lowest w-full max-w-5xl h-[85vh] rounded-3xl shadow-2xl border border-outline-variant/20 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between p-6 border-b border-outline-variant/10">
+            <div>
+                <h3 class="text-xl font-bold flex items-center gap-3">
+                    <div class="p-2 bg-primary/10 rounded-lg text-primary"><i data-lucide="layers" class="w-5 h-5"></i></div>
+                    Lập kế hoạch bảo trì hàng loạt
+                </h3>
+                <p class="text-xs text-on-surface/40 mt-1 ml-13 font-medium">Chọn thiết bị và áp dụng phiếu bảo trì chung cho tất cả</p>
+            </div>
+            <button onclick="closeBatchMaintenanceModal()" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 flex overflow-hidden">
+            <!-- Left: Asset Selector -->
+            <div class="w-1/2 border-r border-outline-variant/10 flex flex-col bg-surface-container-low/20">
+                <div class="p-4 bg-surface-container-lowest border-b border-outline-variant/10 space-y-3">
+                    <div class="relative group">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-primary transition-colors"></i>
+                        <input type="text" id="assetSearchInput" onkeyup="filterBatchAssets()" placeholder="Tìm theo mã hoặc tên thiết bị..." 
+                            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 pl-9 pr-4 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <select id="departmentFilter" onchange="filterBatchAssets()" 
+                            class="flex-1 bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-4 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none">
+                            <option value="">Tất cả bộ phận</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="batchAssetList" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar">
+                    <!-- Assets loaded via JS -->
+                    <div class="flex items-center justify-center py-20 animate-pulse text-on-surface/30">
+                        <i data-lucide="loader-2" class="w-6 h-6 animate-spin mr-2"></i> Đang tải thiết bị...
+                    </div>
+                </div>
+                <div class="p-3 bg-surface-container-lowest border-t border-outline-variant/10 flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-on-surface/40 uppercase tracking-widest ml-1"><span id="selectedCount">0</span> đã chọn</span>
+                    <button onclick="toggleAllBatchAssets()" class="text-[10px] font-bold text-primary hover:underline uppercase tracking-widest mr-1">Chọn tất cả</button>
+                </div>
+            </div>
+
+            <!-- Right: Maintenance Info Form -->
+            <div class="w-1/2 p-8 overflow-y-auto bg-surface-container-lowest custom-scrollbar">
+                <form id="batchMaintenanceForm" class="space-y-6">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-1">
+                            <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Ngày bảo trì *</label>
+                            <input type="date" name="maintenance_date" required value="{{ today }}"
+                                class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-primary transition-all">
+                        </div>
+                        <div class="col-span-1">
+                            <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Kỹ thuật viên</label>
+                            <input type="text" name="technician" placeholder="Người thực hiện..."
+                                class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-primary transition-all">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Nội dung bảo trì *</label>
+                        <textarea name="description" rows="4" required placeholder="Mô tả công việc thực hiện cho tất cả thiết bị đã chọn..."
+                            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-primary transition-all resize-none"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Kết quả / Ghi chú</label>
+                        <textarea name="result" rows="2" placeholder="Tình trạng sau bảo trì..."
+                            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-4 text-sm focus:outline-none focus:border-primary transition-all resize-none"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Chi phí (VND/TB)</label>
+                            <input type="number" name="cost" placeholder="0"
+                                class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-primary transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Hẹn lần tới</label>
+                            <input type="date" name="next_maintenance_date"
+                                class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:border-primary transition-all">
+                        </div>
+                    </div>
+
+                    <div id="batchError" class="hidden p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-xs font-bold animate-in fade-in"></div>
+
+                    <div class="pt-4">
+                        <button type="submit" id="saveBatchBtn" class="w-full bg-primary text-white py-4 rounded-2xl font-bold text-sm shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i> Lưu {{ items|length }} phiếu bảo trì
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Export Report Modal (NEW) ========== -->
+<div id="exportReportModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-md">
+    <div class="bg-surface-container-lowest w-full max-w-xl rounded-3xl shadow-2xl border border-outline-variant/20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-8">
+            <div class="flex items-center justify-between mb-8">
+                <h3 class="text-xl font-bold flex items-center gap-3">
+                    <div class="p-2 bg-emerald-500/10 rounded-lg text-emerald-600"><i data-lucide="file-up" class="w-5 h-5"></i></div>
+                    Xuất báo cáo bảo trì
+                </h3>
+                <button onclick="document.getElementById('exportReportModal').classList.add('hidden')" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
+                </button>
+            </div>
+
+            <form action="/maintenance/export" method="get" class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Từ ngày</label>
+                        <input type="date" name="start_date" id="report_start" required value="{{ first_day_of_month }}" 
+                            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Đến ngày</label>
+                        <input type="date" name="end_date" id="report_end" required value="{{ today }}"
+                            class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20">
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3 pt-4">
+                    <button type="button" onclick="handlePreviewMaintenanceReport()" class="w-full bg-primary/10 text-primary py-4 rounded-2xl font-black text-sm border border-primary/20 hover:bg-primary/20 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="eye" class="w-4 h-4"></i> XEM TRƯỚC BÁO CÁO
+                    </button>
+                    <button type="submit" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2">
+                        <i data-lucide="download" class="w-4 h-4"></i> TẢI FILE EXCEL (.xlsx)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========== Report Preview Modal (NEW) ========== -->
+<div id="previewReportModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-md">
+    <div class="bg-surface-container-lowest w-full max-w-[95vw] max-h-[90vh] rounded-3xl shadow-2xl border border-outline-variant/20 flex flex-col overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-outline-variant/10">
+            <h3 class="text-xl font-bold flex items-center gap-3">
+                <div class="p-2 bg-primary/10 rounded-lg text-primary"><i data-lucide="eye" class="w-5 h-5"></i></div>
+                Xem trước báo cáo Bảo trì
+            </h3>
+            <button onclick="document.getElementById('previewReportModal').classList.add('hidden')" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
+            </button>
+        </div>
+        
+        <div id="previewReportContent" class="flex-1 overflow-y-auto p-6 bg-surface-container-low/20 custom-scrollbar">
+            <!-- Data injected here -->
+        </div>
+
+        <div class="p-4 bg-surface-container-lowest border-t border-outline-variant/10 flex justify-end">
+            <button onclick="document.getElementById('previewReportModal').classList.add('hidden')" class="px-8 py-2.5 rounded-xl font-bold text-sm bg-primary text-white hover:bg-primary-container transition-all">Đóng</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let batchAssets = []; // Full list from DB
+    let selectedAssetIds = new Set();
+
+    async function openBatchMaintenanceModal() {
+        document.getElementById('batchMaintenanceModal').classList.remove('hidden');
+        if (batchAssets.length === 0) {
+            await loadBatchAssets();
+        }
+    }
+
+    function closeBatchMaintenanceModal() {
+        document.getElementById('batchMaintenanceModal').classList.add('hidden');
+    }
+
+    async function loadBatchAssets() {
+        const container = document.getElementById('batchAssetList');
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-20 animate-pulse text-on-surface/30">
+                <i data-lucide="loader-2" class="w-6 h-6 animate-spin mr-2"></i> Đang tải thiết bị...
+            </div>
+        `;
+        lucide.createIcons();
+
+        try {
+            // Correct API: Fetch all active assets
+            const res = await fetch('/assets/api/list?status=active');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            batchAssets = data.items || [];
+            
+            // Populate department filter
+            const depts = [...new Set(batchAssets.map(a => a.department))].sort();
+            const deptSelect = document.getElementById('departmentFilter');
+            deptSelect.innerHTML = '<option value="">Tất cả bộ phận</option>' + 
+                depts.map(d => `<option value="${d}">${d}</option>`).join('');
+            
+            renderBatchAssets();
+        } catch (e) {
+            console.error("Load assets failed:", e);
+            container.innerHTML = `
+                <div class="py-12 text-center">
+                    <div class="text-rose-500 font-bold text-xs mb-2">Lỗi tải danh sách thiết bị</div>
+                    <div class="text-[10px] text-on-surface/40 mb-4">${e.message}</div>
+                    <button onclick="loadBatchAssets()" class="px-4 py-2 bg-surface-container-high rounded-lg text-[10px] font-bold hover:bg-surface-container-highest transition-all">Thử lại</button>
+                </div>
+            `;
+        }
+    }
+
+    function renderBatchAssets(filtered = null) {
+        const items = filtered || batchAssets;
+        const container = document.getElementById('batchAssetList');
+        if (items.length === 0) {
+            container.innerHTML = '<div class="py-12 text-center text-on-surface/30 text-xs font-bold">Không tìm thấy thiết bị nào</div>';
+            return;
+        }
+
+        container.innerHTML = items.map(asset => `
+            <label class="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-container-high transition-colors cursor-pointer group border border-transparent hover:border-outline-variant/10">
+                <input type="checkbox" value="${asset.id}" ${selectedAssetIds.has(asset.id) ? 'checked' : ''} 
+                    onchange="toggleAssetSelection(${asset.id})"
+                    class="w-5 h-5 rounded-lg border-outline-variant/30 text-primary focus:ring-primary/20 transition-all">
+                <div class="flex-1">
+                    <div class="text-[11px] font-black text-on-surface">${asset.asset_code}</div>
+                    <div class="text-[10px] text-on-surface/50 font-medium truncate w-48">${asset.asset_name}</div>
+                    <div class="text-[9px] text-primary/60 font-bold uppercase tracking-tighter">${asset.department}</div>
+                </div>
+                <div class="text-[10px] font-bold text-on-surface/20 bg-surface-container-high px-2 py-0.5 rounded-md group-hover:text-primary/40">${asset.asset_type}</div>
+            </label>
+        `).join('');
+        lucide.createIcons();
+    }
+
+    function filterBatchAssets() {
+        const q = document.getElementById('assetSearchInput').value.toLowerCase();
+        const dept = document.getElementById('departmentFilter').value;
+        const filtered = batchAssets.filter(a => {
+            const matchesSearch = a.asset_code.toLowerCase().includes(q) || a.asset_name.toLowerCase().includes(q);
+            const matchesDept = !dept || a.department === dept;
+            return matchesSearch && matchesDept;
+        });
+        renderBatchAssets(filtered);
+    }
+
+    function toggleAssetSelection(id) {
+        if (selectedAssetIds.has(id)) selectedAssetIds.delete(id);
+        else selectedAssetIds.add(id);
+        updateBatchUI();
+    }
+
+    function toggleAllBatchAssets() {
+        const checkboxes = document.querySelectorAll('#batchAssetList input[type="checkbox"]');
+        const allChecked = Array.from(checkboxes).every(c => c.checked);
+        checkboxes.forEach(c => {
+            c.checked = !allChecked;
+            const id = parseInt(c.value);
+            if (!allChecked) selectedAssetIds.add(id);
+            else selectedAssetIds.delete(id);
+        });
+        updateBatchUI();
+    }
+
+    function updateBatchUI() {
+        document.getElementById('selectedCount').textContent = selectedAssetIds.size;
+        document.getElementById('saveBatchBtn').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Lưu ${selectedAssetIds.size} phiếu bảo trì`;
+        lucide.createIcons();
+    }
+
+    document.getElementById('batchMaintenanceForm').onsubmit = async (e) => {
+        e.preventDefault();
+        if (selectedAssetIds.size === 0) {
+            alert("Vui lòng chọn ít nhất một thiết bị");
+            return;
+        }
+
+        const btn = document.getElementById('saveBatchBtn');
+        const err = document.getElementById('batchError');
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Đang xử lý...';
+        
+        const fd = new FormData(e.target);
+        const body = Object.fromEntries(fd.entries());
+        body.asset_ids = Array.from(selectedAssetIds);
+
+        try {
+            const res = await fetch('/maintenance/api/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await res.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                err.textContent = result.error || "Lỗi lưu dữ liệu";
+                err.classList.remove('hidden');
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> Lưu ${selectedAssetIds.size} phiếu bảo trì`;
+            }
+        } catch (error) {
+            err.textContent = "Lỗi kết nối server";
+            err.classList.remove('hidden');
+            btn.disabled = false;
+        }
+    };
+
+    async function handlePreviewMaintenanceReport() {
+        const previewModal = document.getElementById('previewReportModal');
+        const contentArea = document.getElementById('previewReportContent');
+        const start = document.getElementById('report_start').value;
+        const end = document.getElementById('report_end').value;
+
+        if (!start || !end) {
+            alert('Vui lòng chọn ngày');
+            return;
+        }
+
+        previewModal.classList.remove('hidden');
+        contentArea.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-32 gap-4">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary/10 border-t-primary"></div>
+                <p class="text-on-surface/50 font-medium animate-pulse">Đang tổng hợp dữ liệu bảo trì...</p>
+            </div>
+        `;
+
+        try {
+            const params = new URLSearchParams({ start_date: start, end_date: end });
+            const res = await fetch(`/maintenance/report/preview?${params.toString()}`);
+            const html = await res.text();
+            contentArea.innerHTML = html;
+        } catch (e) {
+            contentArea.innerHTML = `<div class="p-8 text-rose-500 font-bold">Lỗi: ${e.message}</div>`;
+        }
+    }
+</script>
 {% endblock %}

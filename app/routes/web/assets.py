@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass
+from typing import Any
 from datetime import datetime
 import base64
 import io
@@ -12,7 +13,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_module_access, require_permission
-from app.db.models import Asset, AssetAssignment, AssetEvent
+from app.db.models import Asset, AssetAssignment, AssetEvent, User
 from app.db.session import get_db
 
 router = APIRouter(prefix='/assets', tags=['assets'])
@@ -302,6 +303,37 @@ def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, act
         updated += 1
     db.commit()
     return {'created': created, 'updated': updated, 'skipped': skipped, 'total_rows': len(rows)}
+
+
+@router.get('/api/list')
+@require_module_access('assets')
+def asset_api_list(request: Request, db: Session = Depends(get_db), current_user: Any = None, status: str | None = Query(None)):
+    try:
+        stmt = select(Asset)
+        
+        # Exclude Cameras from general asset list if they are managed elsewhere
+        stmt = stmt.where(Asset.asset_type != 'Camera')
+        
+        if status:
+            raw_status = status.strip().lower()
+            stmt = stmt.where(Asset.status == raw_status)
+        else:
+            stmt = stmt.where(Asset.status == 'active')
+        
+        assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
+        return {
+            "items": [
+                {
+                    "id": a.id, 
+                    "asset_code": a.asset_code, 
+                    "asset_name": a.asset_name, 
+                    "asset_type": a.asset_type,
+                    "department": a.department or "Chưa phân loại"
+                } for a in assets
+            ]
+        }
+    except Exception as e:
+        return {"items": [], "error": str(e)}
 
 
 @router.get('/', response_class=HTMLResponse)

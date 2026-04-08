@@ -51,7 +51,7 @@
               <option value="">-- Chọn thiết bị --</option>
               {% for asset in assets %}
               <option value="{{ asset.id }}" {% if item and item.asset_id == asset.id %}selected{% endif %}>
-                {{ asset.asset_code }} - {{ asset.asset_name }}
+                {{ asset.asset_code }}{% if asset.asset_name and asset.asset_name != asset.asset_code %} - {{ asset.asset_name }}{% endif %}
               </option>
               {% endfor %}
             </select>

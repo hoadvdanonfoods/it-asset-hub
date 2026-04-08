@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 import io
 
 from zoneinfo import ZoneInfo
@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import require_module_access, require_permission
-from app.db.models import Asset, Maintenance
+from app.db.models import Asset, Maintenance, AssetEvent
 from app.db.session import get_db
 
 router = APIRouter(prefix='/maintenance', tags=['maintenance'])
@@ -42,13 +42,32 @@ def _filtered_maintenance(db: Session, technician: str | None = None, asset_code
 def maintenance_list(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     items = _filtered_maintenance(db, technician=technician, asset_code=asset_code)
     techs = sorted({i.technician for i in db.scalars(select(Maintenance)).all() if i.technician})
-    return templates.TemplateResponse('maintenance/list.html', {'request': request, 'items': items, 'technician': technician or '', 'asset_code': asset_code or '', 'techs': techs, 'current_user': current_user})
+    
+    # Add first_day_of_month and today for the filter/reporting modal
+    today_dt = datetime.now()
+    first_day = today_dt.replace(day=1).strftime('%Y-%m-%d')
+    
+    return templates.TemplateResponse('maintenance/list.html', {
+        'request': request, 
+        'items': items, 
+        'technician': technician or '', 
+        'asset_code': asset_code or '', 
+        'techs': techs, 
+        'current_user': current_user,
+        'today': today_dt.strftime('%Y-%m-%d'),
+        'first_day_of_month': first_day
+    })
 
 
 @router.get('/export')
 @require_permission('can_export_maintenance')
-def maintenance_export(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    items = _filtered_maintenance(db, technician=technician, asset_code=asset_code)
+def maintenance_export(request: Request, start_date: str = Query(None), end_date: str = Query(None), technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    if start_date and end_date:
+        ctx = _get_maintenance_report_context(db, start_date, end_date, technician)
+        items = ctx["items"]
+    else:
+        items = _filtered_maintenance(db, technician=technician, asset_code=asset_code)
+        
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Maintenance'
@@ -72,15 +91,34 @@ def maintenance_export(request: Request, technician: str | None = Query(default=
 @require_permission('can_create_maintenance')
 def maintenance_new(request: Request, db: Session = Depends(get_db), current_user=None):
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    return templates.TemplateResponse('maintenance/form.html', {'request': request, 'assets': assets, 'item': None, 'current_user': current_user})
+    return templates.TemplateResponse('maintenance/form.html', {'request': request, 'assets': assets, 'item': None, 'current_user': current_user, 'today': datetime.now().strftime('%Y-%m-%d')})
 
 
 @router.post('/new')
 @require_permission('can_create_maintenance')
 def maintenance_create(request: Request, asset_id: int = Form(...), maintenance_date: str = Form(...), description: str = Form(...), technician: str = Form(default=''), result: str = Form(default=''), cost: str = Form(default=''), next_maintenance_date: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     parsed_cost = float(cost) if str(cost).strip() else None
-    item = Maintenance(asset_id=asset_id, maintenance_date=datetime.strptime(maintenance_date, '%Y-%m-%d').date(), description=description.strip(), technician=technician.strip() or None, result=result.strip() or None, cost=parsed_cost, next_maintenance_date=(datetime.strptime(next_maintenance_date, '%Y-%m-%d').date() if next_maintenance_date else None))
+    item = Maintenance(
+        asset_id=asset_id, 
+        maintenance_date=datetime.strptime(maintenance_date, '%Y-%m-%d').date(), 
+        description=description.strip(), 
+        technician=technician.strip() or None, 
+        result=result.strip() or None, 
+        cost=parsed_cost, 
+        next_maintenance_date=(datetime.strptime(next_maintenance_date, '%Y-%m-%d').date() if next_maintenance_date else None)
+    )
     db.add(item)
+    
+    # Log event
+    event = AssetEvent(
+        asset_id=asset_id,
+        event_type="maintenance_log",
+        title=f"Bảo trì: {technician.strip() or 'N/A'}",
+        description=f"Chi tiết: {description.strip()}",
+        actor=current_user.username if current_user else "system"
+    )
+    db.add(event)
+    
     db.commit()
     return RedirectResponse(url='/maintenance/', status_code=303)
 
@@ -120,3 +158,102 @@ def maintenance_update(request: Request, maintenance_id: int, asset_id: int = Fo
     item.next_maintenance_date = datetime.strptime(next_maintenance_date, '%Y-%m-%d').date() if next_maintenance_date else None
     db.commit()
     return RedirectResponse(url=f'/maintenance/{maintenance_id}', status_code=303)
+
+# ---------------------------------------------------------------------------
+# BATCH & REPORTING ENHANCEMENTS
+# ---------------------------------------------------------------------------
+
+def _get_maintenance_report_context(db: Session, start_date: str, end_date: str, technician: str = None, asset_type: str = None):
+    """Internal helper to fetch maintenance data for reports."""
+    start_dt = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d").date()
+    
+    stmt = select(Maintenance).join(Asset).where(
+        Maintenance.maintenance_date >= start_dt,
+        Maintenance.maintenance_date <= end_dt
+    )
+    
+    if technician:
+        stmt = stmt.where(Maintenance.technician == technician)
+    if asset_type:
+        stmt = stmt.where(Asset.asset_type == asset_type)
+        
+    items = db.scalars(stmt.order_by(Maintenance.maintenance_date.desc())).all()
+    
+    return {
+        "items": items,
+        "start_date": start_date,
+        "end_date": end_date,
+        "total_cost": sum(float(i.cost or 0) for i in items)
+    }
+
+@router.get("/report/preview")
+@require_permission("can_export_maintenance")
+def maintenance_report_preview(
+    request: Request,
+    start_date: str,
+    end_date: str,
+    technician: str = Query(None),
+    asset_type: str = Query(None),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    try:
+        ctx = _get_maintenance_report_context(db, start_date, end_date, technician, asset_type)
+        return templates.TemplateResponse("maintenance/report_preview_table.html", {
+            "request": request,
+            **ctx
+        })
+    except Exception as e:
+        return HTMLResponse(content=f"<div class='p-8 text-rose-500 font-bold'>Lỗi: {str(e)}</div>")
+
+@router.post("/api/batch")
+@require_permission("can_create_maintenance")
+async def maintenance_batch_create(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    try:
+        data = await request.json()
+        asset_ids = data.get("asset_ids", [])
+        m_date = datetime.strptime(data.get("maintenance_date"), "%Y-%m-%d").date()
+        desc = data.get("description", "").strip()
+        tech = data.get("technician", "").strip() or None
+        res_text = data.get("result", "").strip() or None
+        cost_val = float(data.get("cost", 0)) if data.get("cost") else None
+        next_date = None
+        if data.get("next_maintenance_date"):
+            next_date = datetime.strptime(data.get("next_maintenance_date"), "%Y-%m-%d").date()
+
+        if not asset_ids:
+            return {"success": False, "error": "Chưa chọn thiết bị nào"}
+
+        for aid in asset_ids:
+            # 1. Create Maintenance record
+            m_record = Maintenance(
+                asset_id=aid,
+                maintenance_date=m_date,
+                description=desc,
+                technician=tech,
+                result=res_text,
+                cost=cost_val,
+                next_maintenance_date=next_date
+            )
+            db.add(m_record)
+            
+            # 2. Add to Asset History (Event)
+            event = AssetEvent(
+                asset_id=aid,
+                event_type="maintenance_log",
+                title=f"Bảo trì định kỳ: {tech or 'N/A'}",
+                description=f"Nội dung: {desc}\nKết quả: {res_text or 'Hoàn tất'}",
+                actor=current_user.username if current_user else "system"
+            )
+            db.add(event)
+
+        db.commit()
+        return {"success": True, "count": len(asset_ids)}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}

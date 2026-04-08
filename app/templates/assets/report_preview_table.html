@@ -1,0 +1,54 @@
+<div class="space-y-12">
+    {% for nvr_name, nvr_cameras in nvr_to_cams.items() %}
+    <div class="report-section">
+        <h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2 px-1">
+            <i data-lucide="server" class="w-4 h-4"></i>
+            {{ nvr_name }} <span class="text-on-surface/40 font-normal">({{ nvr_cameras|length }} camera)</span>
+        </h4>
+        
+        <div class="overflow-x-auto rounded-2xl border border-outline-variant/10 shadow-sm bg-surface-container-lowest custom-scrollbar">
+            <table class="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                    <tr class="bg-surface-container-low/50">
+                        <th class="p-3 border-b border-r border-outline-variant/10 text-[11px] font-bold text-on-surface/60 uppercase tracking-widest sticky left-0 bg-surface-container-low z-10 w-40">Ngày \ Camera</th>
+                        {% for cam in nvr_cameras %}
+                        <th class="p-3 border-b border-r border-outline-variant/10 min-w-[120px] align-top">
+                            <div class="text-[11px] font-bold text-on-surface mb-0.5 line-clamp-2">{{ cam.asset_name }}</div>
+                            <div class="text-[9px] text-on-surface/40 font-mono">{{ cam.ip_address }}</div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d_str in all_dates %}
+                    <tr class="hover:bg-primary/5 transition-colors">
+                        <td class="p-3 border-b border-r border-outline-variant/10 text-xs font-bold text-on-surface/80 sticky left-0 bg-white/80 backdrop-blur-md z-10">{{ d_str }}</td>
+                        {% for cam in nvr_cameras %}
+                        {% set data = report_data[d_str].get(cam.id, {"status": "", "note": ""}) %}
+                        <td class="p-3 border-b border-r border-outline-variant/10 text-center">
+                            {% if data.status == "✓" %}
+                            <div class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 font-bold text-sm" title="{{ data.note }}">✓</div>
+                            {% elif data.status == "F" %}
+                            <div class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-700 font-bold text-sm" title="{{ data.note }}">F</div>
+                            {% elif data.status %}
+                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-surface-container-highest text-on-surface/70" title="{{ data.note }}">{{ data.status }}</span>
+                            {% else %}
+                                <span class="text-on-surface/10">-</span>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+    // Re-initialize icons in the preview content
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>

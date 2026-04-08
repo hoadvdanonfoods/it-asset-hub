@@ -209,13 +209,40 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end gap-3">
+                <div class="flex justify-end gap-3 mt-8">
                     <button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
+                    <button type="button" onclick="handlePreviewReport()" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-surface-container-highest text-primary border border-primary/20 hover:bg-primary/5 transition-all flex items-center gap-2">
+                        <i data-lucide="eye" class="w-4 h-4"></i> Xem trước
+                    </button>
                     <button type="submit" class="px-6 py-2.5 rounded-xl font-bold text-sm bg-primary text-white hover:bg-primary-container transition-all flex items-center gap-2 shadow-lg shadow-primary/20">
                         <i data-lucide="download" class="w-4 h-4"></i> Tải Báo Cáo (.xlsx)
                     </button>
                 </div>
             </form>
+        </div>
+    <!-- ========== Report Preview Modal (NEW) ========== -->
+    <div id="previewReportModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-on-surface/50 backdrop-blur-md">
+        <div class="bg-surface-container-lowest w-full max-w-[95vw] max-h-[90vh] rounded-3xl shadow-2xl border border-outline-variant/20 flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between p-6 border-b border-outline-variant/10">
+                <h3 class="text-xl font-bold flex items-center gap-3">
+                    <div class="p-2 bg-primary/10 rounded-lg text-primary"><i data-lucide="eye" class="w-5 h-5"></i></div>
+                    Xem trước báo cáo Checklist
+                </h3>
+                <button onclick="document.getElementById('previewReportModal').classList.add('hidden')" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors">
+                    <i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i>
+                </button>
+            </div>
+            
+            <div id="previewReportContent" class="flex-1 overflow-y-auto p-6 bg-surface-container-low/20 custom-scrollbar">
+                <!-- Data injected here -->
+                <div class="flex items-center justify-center py-20">
+                    <div class="animate-spin rounded-full h-10 w-10 border-4 border-primary/20 border-t-primary"></div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-surface-container-lowest border-t border-outline-variant/10 flex justify-end">
+                <button onclick="document.getElementById('previewReportModal').classList.add('hidden')" class="px-8 py-2.5 rounded-xl font-bold text-sm bg-primary text-white hover:bg-primary-container transition-all">Đóng</button>
+            </div>
         </div>
     </div>
 
@@ -570,6 +597,58 @@
             else alert(data.error || 'Lỗi khi xóa');
         } catch (e) {
             alert('Lỗi kết nối server');
+        }
+    }
+
+    // Report Preview Logic
+    async function handlePreviewReport() {
+        const modal = document.getElementById('reportModal');
+        const previewModal = document.getElementById('previewReportModal');
+        const contentArea = document.getElementById('previewReportContent');
+        
+        const startDate = modal.querySelector('input[name="start_date"]').value;
+        const endDate = modal.querySelector('input[name="end_date"]').value;
+        
+        if (!startDate || !endDate) {
+            alert('Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc');
+            return;
+        }
+
+        const selectedNvrs = Array.from(modal.querySelectorAll('input[name="nvr_ip"]:checked')).map(cb => cb.value);
+        if (selectedNvrs.length === 0) {
+            alert('Vui lòng chọn ít nhất một đầu ghi');
+            return;
+        }
+
+        // Show preview modal with loader
+        previewModal.classList.remove('hidden');
+        contentArea.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-32 gap-4">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-primary/10 border-t-primary"></div>
+                <p class="text-on-surface/50 font-medium animate-pulse">Đang tải dữ liệu báo cáo...</p>
+            </div>
+        `;
+
+        try {
+            // Build query params
+            const params = new URLSearchParams();
+            params.append('start_date', startDate);
+            params.append('end_date', endDate);
+            selectedNvrs.forEach(ip => params.append('nvr_ip', ip));
+
+            const response = await fetch(`/checklist/report/preview?${params.toString()}`);
+            if (!response.ok) throw new Error('Không thể tải dữ liệu xem trước');
+            
+            const html = await response.text();
+            contentArea.innerHTML = html;
+        } catch (error) {
+            contentArea.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 text-rose-500 gap-2">
+                    <i data-lucide="alert-circle" class="w-12 h-12"></i>
+                    <p class="font-bold">Lỗi: ${error.message}</p>
+                </div>
+            `;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
         }
     }
 </script>

@@ -561,6 +561,68 @@ def checklist_export_cameras(request: Request, db: Session = Depends(get_db), cu
 # CHECKLIST REPORT EXPORT
 # ---------------------------------------------------------------------------
 
+def _get_report_data_context(db: Session, start_date: str, end_date: str, nvr_ip: list[str] = None):
+    """Internal helper to fetch all data needed for a report."""
+    # 1. Parse dates and generate full range
+    start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    
+    all_dates = []
+    curr = start_dt
+    while curr <= end_dt:
+        all_dates.append(curr.strftime("%Y-%m-%d"))
+        curr += datetime.timedelta(days=1)
+    
+    # 2. Get cameras and group by NVR
+    query = select(Asset).where(Asset.asset_type == "Camera")
+    if nvr_ip:
+        query = query.where(Asset.location.in_(nvr_ip))
+    
+    cameras = db.scalars(query.order_by(Asset.location, Asset.asset_name)).all()
+    if not cameras:
+        return None
+        
+    cam_ids = [c.id for c in cameras]
+    nvr_to_cams = defaultdict(list)
+    for cam in cameras:
+        nvr_key = cam.location or "Chưa phân loại"
+        nvr_to_cams[nvr_key].append(cam)
+        
+    # 3. Fetch events in range
+    events = db.execute(
+        select(AssetEvent)
+        .where(AssetEvent.asset_id.in_(cam_ids))
+        .where(AssetEvent.event_type == "daily_checklist")
+        .where(AssetEvent.created_at >= start_dt)
+        .where(AssetEvent.created_at <= end_dt)
+        .order_by(AssetEvent.created_at.asc())
+    ).scalars().all()
+    
+    # Chronological data pivot: Date -> { CamID -> {"status": status, "note": note} }
+    report_data = defaultdict(dict)
+    for ev in events:
+        date_str = ev.created_at.strftime("%Y-%m-%d")
+        st_text = ev.title.lower()
+        if "ok" in st_text or "tốt" in st_text:
+            status = "✓"
+        elif "err" in st_text or "lỗi" in st_text:
+            status = "F"
+        else:
+            status = ev.title.split(": ")[-1] if ": " in ev.title else ev.title
+        
+        report_data[date_str][ev.asset_id] = {
+            "status": status,
+            "note": ev.description or ""
+        }
+    
+    return {
+        "all_dates": all_dates,
+        "nvr_to_cams": nvr_to_cams,
+        "report_data": report_data,
+        "start_date": start_date,
+        "end_date": end_date
+    }
+
 @router.get("/export-report")
 @require_permission("can_export_assets")
 def checklist_export_report(
@@ -572,58 +634,13 @@ def checklist_export_report(
     current_user=None
 ):
     try:
-        # 1. Parse dates and generate full range
-        start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-        
-        all_dates = []
-        curr = start_dt
-        while curr <= end_dt:
-            all_dates.append(curr.strftime("%Y-%m-%d"))
-            curr += datetime.timedelta(days=1)
-        
-        # 2. Get cameras and group by NVR
-        query = select(Asset).where(Asset.asset_type == "Camera")
-        if nvr_ip:
-            query = query.where(Asset.location.in_(nvr_ip))
-        
-        cameras = db.scalars(query.order_by(Asset.location, Asset.asset_name)).all()
-        if not cameras:
+        ctx = _get_report_data_context(db, start_date, end_date, nvr_ip)
+        if not ctx:
             return RedirectResponse(url="/checklist/?error=No+cameras+found+for+selected+NVRs", status_code=303)
             
-        cam_ids = [c.id for c in cameras]
-        nvr_to_cams = defaultdict(list)
-        for cam in cameras:
-            nvr_key = cam.location or "Chưa phân loại"
-            nvr_to_cams[nvr_key].append(cam)
-            
-        # 3. Fetch events in range
-        events = db.execute(
-            select(AssetEvent)
-            .where(AssetEvent.asset_id.in_(cam_ids))
-            .where(AssetEvent.event_type == "daily_checklist")
-            .where(AssetEvent.created_at >= start_dt)
-            .where(AssetEvent.created_at <= end_dt)
-            .order_by(AssetEvent.created_at.asc())
-        ).scalars().all()
-        
-        # Chronological data pivot: Date -> { CamID -> {"status": status, "note": note} }
-        report_data = defaultdict(dict)
-        for ev in events:
-            date_str = ev.created_at.strftime("%Y-%m-%d")
-            # Logic: If title contains OK/Tốt -> '✓', if Error/Lỗi -> 'F'
-            st_text = ev.title.lower()
-            if "ok" in st_text or "tốt" in st_text:
-                status = "✓"
-            elif "err" in st_text or "lỗi" in st_text:
-                status = "F"
-            else:
-                status = ev.title.split(": ")[-1] if ": " in ev.title else ev.title
-            
-            report_data[date_str][ev.asset_id] = {
-                "status": status,
-                "note": ev.description or ""
-            }
+        all_dates = ctx["all_dates"]
+        nvr_to_cams = ctx["nvr_to_cams"]
+        report_data = ctx["report_data"]
             
         # 4. Build Excel with multiple sheets
         output = io.BytesIO()
@@ -735,3 +752,25 @@ def checklist_export_report(
     except Exception as e:
         print(f"Report Export Error: {e}")
         return RedirectResponse(url=f"/checklist/?error=Report+Export+Failed: {str(e)}", status_code=303)
+
+@router.get("/report/preview")
+@require_permission("can_export_assets")
+def checklist_report_preview(
+    request: Request,
+    start_date: str, 
+    end_date: str, 
+    nvr_ip: list[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    try:
+        ctx = _get_report_data_context(db, start_date, end_date, nvr_ip)
+        if not ctx:
+            return HTMLResponse(content="<div class='p-8 text-center text-on-surface/50 font-medium'>Không tìm thấy dữ liệu Camera cho các đầu ghi đã chọn.</div>")
+            
+        return templates.TemplateResponse("assets/report_preview_table.html", {
+            "request": request,
+            **ctx
+        })
+    except Exception as e:
+        return HTMLResponse(content=f"<div class='p-8 text-rose-500 font-bold'>Lỗi: {str(e)}</div>")

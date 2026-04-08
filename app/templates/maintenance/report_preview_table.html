@@ -1,0 +1,89 @@
+<div class="space-y-6">
+    <!-- Summary Header -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-primary/5 border border-primary/10 rounded-2xl p-4 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                <i data-lucide="file-text" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-on-surface/40 uppercase tracking-widest">Tổng số phiếu</p>
+                <p class="text-xl font-black text-on-surface">{{ items|length }}</p>
+            </div>
+        </div>
+        <div class="bg-emerald-500/5 border border-emerald-500/10 rounded-2xl p-4 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                <i data-lucide="banknote" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-on-surface/40 uppercase tracking-widest">Tổng chi phí</p>
+                <p class="text-xl font-black text-on-surface">{{ "{:,.0f}".format(total_cost) }} ₫</p>
+            </div>
+        </div>
+        <div class="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-4 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                <i data-lucide="calendar" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-[10px] font-bold text-on-surface/40 uppercase tracking-widest">Giai đoạn</p>
+                <p class="text-sm font-bold text-on-surface">{{ start_date }} -> {{ end_date }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="overflow-x-auto rounded-2xl border border-outline-variant/10 shadow-sm bg-surface-container-lowest custom-scrollbar">
+        <table class="w-full text-left border-collapse min-w-[900px]">
+            <thead>
+                <tr class="bg-surface-container-low/50">
+                    <th class="p-4 border-b border-outline-variant/10 text-[11px] font-bold text-on-surface/50 uppercase tracking-widest w-20 text-center">STT</th>
+                    <th class="p-4 border-b border-outline-variant/10 text-[11px] font-bold text-on-surface/50 uppercase tracking-widest w-32">Ngày</th>
+                    <th class="p-4 border-b border-outline-variant/10 text-[11px] font-bold text-on-surface/50 uppercase tracking-widest w-40">Thiết bị</th>
+                    <th class="p-4 border-b border-outline-variant/10 text-[11px] font-bold text-on-surface/50 uppercase tracking-widest">Nội dung bảo trì</th>
+                    <th class="p-4 border-b border-outline-variant/10 text-[11px] font-bold text-on-surface/50 uppercase tracking-widest w-40">Kỹ thuật viên</th>
+                    <th class="p-4 border-b border-outline-variant/10 text-[11px] font-bold text-on-surface/50 uppercase tracking-widest w-32 text-right">Chi phí</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="hover:bg-primary/5 transition-colors border-b border-outline-variant/5">
+                    <td class="p-4 text-center text-xs font-mono text-on-surface/40">{{ loop.index }}</td>
+                    <td class="p-4 text-xs font-bold text-on-surface">{{ item.maintenance_date }}</td>
+                    <td class="p-4">
+                        <div class="text-xs font-black text-primary">{{ item.asset.asset_code }}</div>
+                        <div class="text-[10px] text-on-surface/50 truncate max-w-[150px]">{{ item.asset.asset_name }}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="text-xs text-on-surface line-clamp-2" title="{{ item.description }}">{{ item.description }}</div>
+                        {% if item.result %}
+                        <div class="mt-1 text-[10px] text-emerald-600 font-medium italic">KQ: {{ item.result }}</div>
+                        {% endif %}
+                    </td>
+                    <td class="p-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-[9px] font-black border border-emerald-500/10">
+                                {{ (item.technician[0] if item.technician else 'N')|upper }}
+                            </div>
+                            <span class="text-xs font-medium text-on-surface/70">{{ item.technician or '—' }}</span>
+                        </div>
+                    </td>
+                    <td class="p-4 text-right">
+                        <span class="text-xs font-bold text-on-surface">
+                            {% if item.cost %}
+                            {{ "{:,.0f}".format(item.cost) }} ₫
+                            {% else %}
+                            —
+                            {% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+</script>
