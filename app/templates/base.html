@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Danonfoods IT Asset Hub{% endblock %}</title>
-    <link rel="icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png">
+    <title>{% block title %}{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png?v=3">
+    <link rel="shortcut icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png?v=3">
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -196,8 +197,22 @@
     </main>
     
     <script>
-      lucide.createIcons();
+      // Global Icon Initialization
+      function initIcons() {
+          if (typeof lucide !== 'undefined') {
+              lucide.createIcons();
+              console.log('Icons initialized');
+          } else {
+              console.error('Lucide not found, retrying...');
+              setTimeout(initIcons, 500);
+          }
+      }
+
+      window.addEventListener('load', initIcons);
       
+      // Immediate call as well
+      document.addEventListener('DOMContentLoaded', initIcons);
+
       const themeToggle = document.getElementById('theme-toggle');
       const themeIcon = document.getElementById('theme-icon');
       const htmlEl = document.documentElement;

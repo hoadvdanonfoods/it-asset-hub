@@ -68,4 +68,12 @@ def dashboard(request: Request, db: Session = Depends(get_db), current_user=None
         if age_days >= ALERT_INCIDENT_DAYS:
             stale_incidents.append({'incident': item, 'age_days': age_days})
 
-    return templates.TemplateResponse('dashboard.html', {'request': request, 'stats': {'total_assets': total_assets, 'open_incidents': open_incidents, 'total_maintenances': total_maintenances, 'active_assets': active_assets}, 'asset_types': type_rows, 'departments': dept_rows[:8], 'incident_statuses': status_rows, 'alerts': {'warranty_expiring': warranty_expiring[:10], 'overdue_maintenance': overdue_maintenance[:10], 'stale_incidents': stale_incidents[:10], 'missing_assignment': missing_assignment[:10], 'missing_core_info': missing_core_info[:10]}, 'current_user': current_user})
+    return templates.TemplateResponse('dashboard.html', {
+        'request': request, 
+        'stats': {'total_assets': total_assets, 'open_incidents': open_incidents, 'total_maintenances': total_maintenances, 'active_assets': active_assets}, 
+        'asset_types': type_rows, 
+        'departments': dept_rows[:8], 
+        'incident_statuses': status_rows, 
+        'alerts': {'warranty_expiring': warranty_expiring[:10], 'overdue_maintenance': overdue_maintenance[:10], 'stale_incidents': stale_incidents[:10], 'missing_assignment': missing_assignment[:10], 'missing_core_info': missing_core_info[:10]}, 
+        'current_user': current_user
+    })

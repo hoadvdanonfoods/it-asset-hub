@@ -104,18 +104,19 @@ app.state.app_version = APP_VERSION
 static_dir = Path('app/static')
 app.mount('/static', StaticFiles(directory=static_dir), name='static')
 
-app.include_router(auth_router)
-app.include_router(dashboard_router)
-app.include_router(assets_router)
-app.include_router(maintenance_router)
-app.include_router(incidents_router)
-app.include_router(qr_router)
-app.include_router(users_router)
-app.include_router(system_tools_router)
-app.include_router(resources_router)
-app.include_router(documents_router)
-app.include_router(discovery_router)
 app.include_router(checklist_router)
+
+# Centralized Template Context Injection
+import sys
+for router in [
+    auth_router, dashboard_router, assets_router, maintenance_router,
+    incidents_router, qr_router, users_router, system_tools_router,
+    resources_router, documents_router, discovery_router, checklist_router
+]:
+    module = sys.modules.get(router.__module__)
+    if module and hasattr(module, 'templates'):
+        module.templates.env.globals['APP_NAME'] = APP_NAME
+        module.templates.env.globals['APP_VERSION'] = APP_VERSION
 
 
 @app.get('/health')
