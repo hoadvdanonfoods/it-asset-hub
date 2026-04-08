@@ -131,6 +131,9 @@
         <a href="/assets" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/assets') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm">Tài sản (Assets)</span>
         </a>
+        <a href="/checklist" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/checklist') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+            <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-sm">Camera Checklist</span>
+        </a>
         <a href="/resources" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm">Vật tư (Resources)</span>
         </a>
@@ -175,6 +178,9 @@
         </a>
         <a href="/assets" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/assets') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Assets</span>
+        </a>
+        <a href="/checklist" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/checklist') else 'text-on-surface/40 hover:text-primary' }}">
+          <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Camera</span>
         </a>
         <a href="/maintenance" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/maintenance') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Maint</span>

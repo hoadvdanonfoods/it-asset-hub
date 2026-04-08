@@ -29,6 +29,7 @@ from app.routes.web.system_tools import router as system_tools_router
 from app.routes.web.resources import router as resources_router
 from app.routes.web.documents import router as documents_router
 from app.routes.web.discovery import router as discovery_router
+from app.routes.web.checklist import router as checklist_router
 from app.security import hash_password
 import app.db.models  # noqa: F401
 
@@ -114,6 +115,7 @@ app.include_router(system_tools_router)
 app.include_router(resources_router)
 app.include_router(documents_router)
 app.include_router(discovery_router)
+app.include_router(checklist_router)
 
 
 @app.get('/health')
