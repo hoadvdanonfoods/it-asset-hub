@@ -1,0 +1,59 @@
+<div id="bulkEditModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-outline-variant/10">
+      <form action="/assets/bulk-update/" method="POST" id="bulkEditForm">
+        <input type="hidden" name="asset_ids" id="bulkAssetIds">
+        
+        <div class="bg-primary/5 px-6 py-4 border-b border-outline-variant/10">
+          <h3 class="text-lg font-bold text-primary headline">Chỉnh sửa hàng loạt</h3>
+          <p class="text-xs text-on-surface/60">Cập nhật thông tin cho <span id="selectedCountDisplay" class="font-bold text-indigo-600">0</span> thiết bị đã chọn</p>
+        </div>
+        
+        <div class="px-6 py-6 space-y-4">
+          <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+            <p class="text-[11px] text-amber-700 leading-relaxed font-medium">
+              <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+              Chỉ những trường bạn nhập nội dung mới được cập nhật. Những trường để trống sẽ giữ nguyên giá trị cũ.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Bộ phận (Department)</label>
+            <input type="text" name="department" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Người sử dụng (Assignee)</label>
+            <input type="text" name="assigned_user" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Vị trí (Location)</label>
+            <input type="text" name="location" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+          </div>
+          
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Trạng thái (Status)</label>
+            <select name="status" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+              <option value="">-- Không thay đổi --</option>
+              <option value="active">Active</option>
+              <option value="in_repair">In Repair</option>
+              <option value="inactive">Inactive</option>
+              <option value="retired">Retired</option>
+              <option value="lost">Lost</option>
+              <option value="disposed">Disposed</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg shadow-primary/20 cursor-pointer">Cập nhật tất cả</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

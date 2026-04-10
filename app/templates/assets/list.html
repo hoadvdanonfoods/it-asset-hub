@@ -71,6 +71,9 @@
     <table class="w-full text-left text-sm text-on-surface">
       <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
         <tr>
+          <th class="px-6 py-5 w-12 text-center">
+            <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary cursor-pointer transition-all">
+          </th>
           <th class="px-6 py-5 w-16 text-center">STT</th>
           <th class="px-6 py-5 w-40">Mã thiết bị</th>
           <th class="px-6 py-5 min-w-[180px]">Tên thiết bị</th>
@@ -83,7 +86,10 @@
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for asset in assets %}
-        <tr class="hover:bg-indigo-500/5 transition-all duration-200 group">
+        <tr class="hover:bg-indigo-500/5 transition-all duration-200 group asset-row">
+          <td class="px-6 py-5 text-center">
+            <input type="checkbox" name="asset_checkbox" value="{{ asset.id }}" class="asset-checkbox w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary cursor-pointer transition-all">
+          </td>
           <td class="px-6 py-5 text-center">
             <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 transition-colors">
               {{ loop.index }}
@@ -154,4 +160,91 @@
   </div>
   {% endif %}
 </div>
+
+<!-- Bulk Action Bar -->
+<div id="bulkActionBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 transform translate-y-32 opacity-0 flex items-center gap-6 bg-on-surface px-8 py-4 rounded-2xl shadow-2xl border border-white/10 z-50 transition-all duration-500 pointer-events-none">
+  <div class="flex flex-col">
+    <span class="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">Đã chọn</span>
+    <span class="text-white text-xl font-extrabold headline leading-none"><span id="selectedCountBar">0</span> <span class="text-xs font-medium opacity-60 ml-1">mục</span></span>
+  </div>
+  <div class="h-8 w-px bg-white/10"></div>
+  <div class="flex items-center gap-3">
+    <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa hàng loạt
+    </button>
+    <button type="button" id="cancelSelection" class="text-white/60 hover:text-white px-4 py-2 text-sm font-bold transition-colors cursor-pointer">Hủy chọn</button>
+  </div>
+</div>
+
+{% include 'assets/_bulk_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('selectAll');
+  const assetCheckboxes = document.querySelectorAll('.asset-checkbox');
+  const bulkActionBar = document.getElementById('bulkActionBar');
+  const selectedCountDisplay = document.getElementById('selectedCountDisplay');
+  const selectedCountBar = document.getElementById('selectedCountBar');
+  const cancelSelection = document.getElementById('cancelSelection');
+  const openBulkEdit = document.getElementById('openBulkEdit');
+  
+  const bulkEditModal = document.getElementById('bulkEditModal');
+  const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
+  const closeBulkModal = document.getElementById('closeBulkModal');
+  const bulkAssetIdsInput = document.getElementById('bulkAssetIds');
+
+  function updateBulkBar() {
+    const selected = document.querySelectorAll('.asset-checkbox:checked');
+    const count = selected.length;
+    
+    if (count > 0) {
+      selectedCountBar.textContent = count;
+      selectedCountDisplay.textContent = count;
+      bulkActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+    } else {
+      bulkActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
+    }
+  }
+
+  selectAll.addEventListener('change', function() {
+    assetCheckboxes.forEach(cb => {
+      cb.checked = selectAll.checked;
+    });
+    updateBulkBar();
+  });
+
+  assetCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      const allChecked = Array.from(assetCheckboxes).every(c => c.checked);
+      selectAll.checked = allChecked;
+      updateBulkBar();
+    });
+  });
+
+  cancelSelection.addEventListener('click', function() {
+    assetCheckboxes.forEach(cb => cb.checked = false);
+    selectAll.checked = false;
+    updateBulkBar();
+  });
+
+  // Modal logic
+  openBulkEdit.addEventListener('click', function() {
+    const selected = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => cb.value);
+    bulkAssetIdsInput.value = selected.join(',');
+    
+    bulkEditModal.classList.remove('hidden');
+    setTimeout(() => initIcons(), 100);
+  });
+
+  function closeModals() {
+    bulkEditModal.classList.add('hidden');
+  }
+
+  closeBulkModal.addEventListener('click', closeModals);
+  bulkModalBackdrop.addEventListener('click', closeModals);
+});
+</script>
 {% endblock %}
