@@ -12,7 +12,7 @@ import openpyxl
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.auth import require_module_access, require_permission
+from app.auth import has_permission, require_module_access, require_permission
 from app.db.models import Asset, AssetAssignment, AssetEvent, User
 from app.db.session import get_db
 
@@ -503,6 +503,8 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
     asset = db.get(Asset, asset_id)
     if not asset:
         return RedirectResponse(url='/assets/', status_code=303)
+    
+    can_edit = has_permission(current_user, 'can_edit_assets')
     alerts = []
     if asset:
         days = _days_to_warranty(asset)
@@ -514,7 +516,13 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
             alerts.append(('secondary', f'Thiết bị đang ở trạng thái {asset.status}.'))
         elif asset.status == 'in_repair':
             alerts.append(('info', 'Thiết bị đang trong quá trình sửa chữa.'))
-    return templates.TemplateResponse('assets/detail.html', {'request': request, 'asset': asset, 'alerts': alerts, 'current_user': current_user})
+    return templates.TemplateResponse('assets/detail.html', {
+        'request': request, 
+        'asset': asset, 
+        'alerts': alerts, 
+        'current_user': current_user,
+        'can_edit': can_edit
+    })
 
 
 @router.post('/{asset_id}/retire')
