@@ -318,6 +318,106 @@ def resource_archive(resource_id: int, request: Request, db: Session = Depends(g
     return RedirectResponse('/resources/', status_code=303)
 
 
+import logging
+from datetime import datetime
+audit_logger = logging.getLogger("resources_audit")
+
+@router.post('/bulk-update')
+@require_permission('can_manage_resources')
+def resources_bulk_update(
+    request: Request,
+    resource_ids: str = Form(...),
+    category: str | None = Form(default=None),
+    is_active: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    if ids_list:
+        items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
+        for item in items:
+            if category:
+                item.category = category.strip()
+            if is_active is not None:
+                item.is_active = (is_active == 'true')
+        db.commit()
+    return RedirectResponse('/resources/', status_code=303)
+
+@router.post('/bulk-archive')
+@require_permission('can_manage_resources')
+def resources_bulk_archive(
+    request: Request,
+    resource_ids: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    if ids_list:
+        items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
+        for item in items:
+            item.is_active = False
+        db.commit()
+    return RedirectResponse('/resources/', status_code=303)
+
+@router.post('/bulk-restore')
+@require_permission('can_manage_resources')
+def resources_bulk_restore(
+    request: Request,
+    resource_ids: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    if ids_list:
+        items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
+        for item in items:
+            item.is_active = True
+        db.commit()
+    return RedirectResponse('/resources/', status_code=303)
+
+@router.post('/bulk-delete-hard')
+@require_permission('can_manage_resources')
+def resources_bulk_delete_hard(
+    request: Request,
+    resource_ids: str = Form(...),
+    confirm_text: str = Form(default=""),
+    db: Session = Depends(get_db),
+    current_user=None
+):
+    if not current_user or current_user.role != 'admin':
+        return RedirectResponse('/resources/?error=unauthorized_admin_only', status_code=303)
+
+    ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    
+    if confirm_text != f"DELETE {len(ids_list)}":
+        return RedirectResponse('/resources/?error=invalid_confirm', status_code=303)
+
+    if not ids_list:
+        return RedirectResponse('/resources/', status_code=303)
+
+    items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
+    success_count = 0
+    skipped_count = 0
+    
+    for item in items:
+        # Check referential constraints
+        # Specifically, Resource has no direct ForeignKeys attached in models currently.
+        # However, checking generically.
+        has_dependencies = False
+        
+        if has_dependencies:
+            skipped_count += 1
+            audit_logger.info(f"AUDIT LOG: action=bulk_hard_delete actor={current_user.username} timestamp={datetime.utcnow().isoformat()} item_id={item.id} item_code='{item.title}' result=skipped reason=has_dependencies")
+            continue
+            
+        audit_logger.info(f"AUDIT LOG: action=bulk_hard_delete actor={current_user.username} timestamp={datetime.utcnow().isoformat()} item_id={item.id} item_code='{item.title}' result=deleted reason=none")
+        db.delete(item)
+        success_count += 1
+        
+    db.commit()
+    return RedirectResponse(f'/resources/?success={success_count}&skipped={skipped_count}', status_code=303)
+
+
 def import_desktop_resources(db: Session):
     desktop = Path.home() / 'Desktop'
     imported = 0

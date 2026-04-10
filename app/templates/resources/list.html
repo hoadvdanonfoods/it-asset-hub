@@ -62,13 +62,61 @@
   </form>
 </div>
 
+<!-- Status Message for success/skipped -->
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const successVal = urlParams.get('success');
+    const skippedVal = urlParams.get('skipped');
+    if (successVal !== null) {
+        let msg = `Cập nhật thành công ${successVal} tài nguyên.`;
+        if (skippedVal && parseInt(skippedVal) > 0) msg += ` (Bỏ qua ${skippedVal} tài nguyên do có ràng buộc).`;
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 px-6 py-4 rounded-2xl mb-6 font-medium shadow-sm flex items-center justify-between animate-in fade-in slide-in-from-top-4';
+        alertDiv.innerHTML = `<span><i data-lucide="check-circle" class="inline w-5 h-5 mr-2"></i>${msg}</span><button onclick="this.parentElement.remove()" class="p-1 hover:bg-emerald-500/20 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>`;
+        document.querySelector('.bg-surface-container-lowest').parentNode.insertBefore(alertDiv, document.querySelector('.bg-surface-container-lowest').nextSibling);
+    }
+</script>
+
+<!-- Bulk Action Bar (Hidden by default) -->
+<div id="bulkActionBar" class="hidden mb-6 bg-surface-container-high rounded-2xl border border-primary/20 shadow-lg p-3 flex flex-wrap items-center justify-between gap-4 animate-in slide-in-from-top-4 fade-in sticky top-4 z-50">
+    <div class="flex items-center gap-3 px-3">
+        <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary/20 text-primary font-bold text-sm" id="bulkSelectedCount">
+            0
+        </div>
+        <span class="text-sm font-bold text-on-surface">tài nguyên đã chọn</span>
+    </div>
+    
+    <div class="flex flex-wrap items-center gap-2">
+        {% if current_user.can_manage_resources %}
+        <button type="button" onclick="handleBulkAction('update')" class="px-4 py-2 rounded-xl text-xs font-bold text-surface-container-lowest bg-on-surface hover:bg-on-surface/90 transition-all flex items-center gap-2 shadow-sm">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Cập nhật
+        </button>
+        <button type="button" onclick="handleBulkAction('restore')" class="px-4 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all flex items-center gap-2">
+            <i data-lucide="power" class="w-3.5 h-3.5"></i> Kích hoạt (Khôi phục)
+        </button>
+        <button type="button" onclick="handleBulkAction('archive')" class="px-4 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-all flex items-center gap-2">
+            <i data-lucide="archive" class="w-3.5 h-3.5"></i> Lưu trữ (Tắt)
+        </button>
+        {% if current_user.role == 'admin' %}
+        <div class="w-px h-6 bg-outline-variant/30 mx-1"></div>
+        <button type="button" onclick="handleBulkAction('delete')" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-all flex items-center gap-2 shadow-sm">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Xoá vĩnh viễn
+        </button>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
 <!-- Data Table -->
 <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden mb-8">
   <div class="overflow-x-auto custom-scrollbar">
     <table class="w-full text-left text-sm text-on-surface border-collapse">
       <thead>
         <tr class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
-          <th class="px-6 py-5 w-20 text-center">STT</th>
+          <th class="px-6 py-5 w-12 text-center">
+            <input type="checkbox" id="selectAllCheckbox" class="rounded border-outline-variant/50 text-emerald-600 focus:ring-emerald-500 cursor-pointer w-4 h-4" onchange="toggleSelectAll(this.checked)">
+          </th>
+          <th class="px-2 py-5 w-16 text-center">STT</th>
           <th class="px-6 py-5 min-w-[200px]">Thông tin tài nguyên</th>
           <th class="px-6 py-5 w-40">Phân loại</th>
           <th class="px-6 py-5 min-w-[240px]">Đường dẫn / Liên kết</th>
@@ -78,15 +126,18 @@
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for item in items %}
-        <tr class="hover:bg-emerald-500/[0.03] transition-colors group cursor-default">
+        <tr class="hover:bg-emerald-500/[0.03] transition-colors group cursor-default {% if not item.is_active %}opacity-60 grayscale-[0.2]{% endif %} border-l-4 {% if not item.is_active %}border-rose-400/50{% else %}border-transparent{% endif %}">
           <td class="px-6 py-5 text-center">
+            <input type="checkbox" value="{{ item.id }}" class="item-checkbox rounded border-outline-variant/50 text-emerald-600 focus:ring-emerald-500 cursor-pointer w-4 h-4" onchange="updateBulkActionBar()">
+          </td>
+          <td class="px-2 py-5 text-center">
             <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-surface-container-highest text-[11px] font-extrabold text-on-surface/40 group-hover:bg-emerald-500/10 group-hover:text-emerald-600 transition-colors">
               {{ loop.index + (page - 1) * 10 }}
             </span>
           </td>
           <td class="px-6 py-5">
             <div class="flex flex-col gap-0.5">
-              <div class="font-extrabold text-on-surface leading-tight">{{ item.title }}</div>
+              <div class="font-extrabold text-on-surface leading-tight">{{ item.title }} {% if not item.is_active %}<span class="px-2 py-0.5 ml-2 bg-rose-500/10 text-rose-700 text-[9px] rounded-md font-bold uppercase tracking-wider">Lưu trữ</span>{% endif %}</div>
               {% if item.note %}
               <div class="text-[10px] text-on-surface/40 font-medium italic truncate max-w-[180px]">{{ item.note }}</div>
               {% endif %}
@@ -262,4 +313,52 @@ function copyToClipboard(text, btn) {
   });
 }
 </script>
+</script>
+
+{% include 'resources/_bulk_modal.html' %}
+
+<script>
+function toggleSelectAll(checked) {
+    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = checked);
+    updateBulkActionBar();
+}
+
+function updateBulkActionBar() {
+    const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+    const bulkBar = document.getElementById('bulkActionBar');
+    const bulkCount = document.getElementById('bulkSelectedCount');
+    
+    if (checkedBoxes.length > 0) {
+        bulkCount.textContent = checkedBoxes.length;
+        bulkBar.classList.remove('hidden');
+        bulkBar.classList.add('flex');
+    } else {
+        bulkBar.classList.add('hidden');
+        bulkBar.classList.remove('flex');
+        document.getElementById('selectAllCheckbox').checked = false;
+    }
+}
+
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+}
+
+function handleBulkAction(actionType) {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+    
+    if (actionType === 'update') {
+        openBulkUpdateModal(ids);
+    } else if (actionType === 'archive') {
+        openBulkArchiveModal(ids);
+    } else if (actionType === 'restore') {
+        openBulkRestoreModal(ids);
+    } else if (actionType === 'delete') {
+        if (typeof openBulkDeleteHardModal === 'function') {
+            openBulkDeleteHardModal(ids);
+        }
+    }
+}
+</script>
+
 {% endblock %}

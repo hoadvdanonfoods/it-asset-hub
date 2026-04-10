@@ -1,0 +1,130 @@
+<!-- resources/_bulk_modal.html -->
+
+<!-- Bulk Update Modal -->
+<dialog id="bulkUpdateModal" class="backdrop:bg-surface/80 backdrop:backdrop-blur-sm bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/20 p-0 w-full max-w-lg open:animate-in open:fade-in open:zoom-in-95">
+  <div class="px-8 py-6 border-b border-outline-variant/10">
+    <h3 class="text-xl font-extrabold text-on-surface">Cập nhật hàng loạt (<span id="bulkUpdateCount" class="text-primary">0</span> tài nguyên)</h3>
+  </div>
+  <form id="bulkUpdateForm" method="post" action="/resources/bulk-update" class="p-8">
+    <input type="hidden" name="resource_ids" id="bulkUpdateIds">
+    <div class="space-y-6">
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-widest mb-2">Phân loại</label>
+        <input type="text" name="category" placeholder="Nhập phân loại mới..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 text-on-surface transition-all">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-widest mb-2">Trạng thái Hoạt động</label>
+        <select name="is_active" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 text-on-surface transition-all">
+          <option value="">-- Không đổi --</option>
+          <option value="true">Hoạt động</option>
+          <option value="false">Lưu trữ (Tắt)</option>
+        </select>
+      </div>
+    </div>
+    <div class="mt-8 flex gap-3 justify-end">
+      <button type="button" onclick="document.getElementById('bulkUpdateModal').close()" class="px-6 py-3 rounded-2xl text-sm font-bold bg-surface-container hover:bg-outline-variant/20 transition-all active:scale-95 text-on-surface">Hủy</button>
+      <button type="submit" class="px-6 py-3 rounded-2xl text-sm font-bold bg-primary text-on-primary hover:bg-primary/90 transition-all active:scale-95 shadow-md">Áp dụng thay đổi</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Bulk Archive Modal -->
+<dialog id="bulkArchiveModal" class="backdrop:bg-surface/80 backdrop:backdrop-blur-sm bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/20 p-0 w-full max-w-lg open:animate-in open:fade-in open:zoom-in-95">
+  <div class="px-8 py-6 border-b border-outline-variant/10">
+    <h3 class="text-xl font-extrabold text-on-surface">Lưu trữ tài nguyên</h3>
+  </div>
+  <form id="bulkArchiveForm" method="post" action="/resources/bulk-archive" class="p-8">
+    <input type="hidden" name="resource_ids" id="bulkArchiveIds">
+    <p class="text-on-surface/80 text-sm mb-6">Bạn có chắc chắn muốn chuyển <strong id="bulkArchiveCount" class="text-rose-500 text-lg">0</strong> tài nguyên đang chọn sang trạng thái không hoạt động (lưu trữ) không?</p>
+    <div class="mt-8 flex gap-3 justify-end">
+      <button type="button" onclick="document.getElementById('bulkArchiveModal').close()" class="px-6 py-3 rounded-2xl text-sm font-bold bg-surface-container hover:bg-outline-variant/20 transition-all active:scale-95 text-on-surface">Hủy</button>
+      <button type="submit" class="px-6 py-3 rounded-2xl text-sm font-bold bg-rose-500 text-white hover:bg-rose-600 transition-all active:scale-95 shadow-md">Xác nhận</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Bulk Restore Modal -->
+<dialog id="bulkRestoreModal" class="backdrop:bg-surface/80 backdrop:backdrop-blur-sm bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/20 p-0 w-full max-w-lg open:animate-in open:fade-in open:zoom-in-95">
+  <div class="px-8 py-6 border-b border-outline-variant/10">
+    <h3 class="text-xl font-extrabold text-on-surface">Khôi phục tài nguyên</h3>
+  </div>
+  <form id="bulkRestoreForm" method="post" action="/resources/bulk-restore" class="p-8">
+    <input type="hidden" name="resource_ids" id="bulkRestoreIds">
+    <p class="text-on-surface/80 text-sm mb-6">Bạn sẽ kích hoạt lại <strong id="bulkRestoreCount" class="text-emerald-500 text-lg">0</strong> tài nguyên đã chọn.</p>
+    <div class="mt-8 flex gap-3 justify-end">
+      <button type="button" onclick="document.getElementById('bulkRestoreModal').close()" class="px-6 py-3 rounded-2xl text-sm font-bold bg-surface-container hover:bg-outline-variant/20 transition-all active:scale-95 text-on-surface">Hủy</button>
+      <button type="submit" class="px-6 py-3 rounded-2xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-all active:scale-95 shadow-md">Khôi phục</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Bulk Hard Delete Modal (Admin only) -->
+{% if current_user.role == 'admin' %}
+<dialog id="bulkDeleteHardModal" class="backdrop:bg-surface/80 backdrop:backdrop-blur-sm bg-surface-container-lowest rounded-3xl shadow-2xl border border-rose-500/30 p-0 w-full max-w-lg open:animate-in open:fade-in open:zoom-in-95">
+  <div class="px-8 py-6 border-b border-rose-500/10 bg-rose-500/5">
+    <h3 class="text-xl font-extrabold text-rose-600 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-6 h-6"></i> THẬN TRỌNG: XOÁ VĨNH VIỄN</h3>
+  </div>
+  <form id="bulkDeleteHardForm" method="post" action="/resources/bulk-delete-hard" class="p-8">
+    <input type="hidden" name="resource_ids" id="bulkDeleteHardIds">
+    <div class="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl text-rose-600 text-sm font-medium mb-6">
+      Hành động này <strong class="font-bold">không thể hoàn tác</strong>. Dữ liệu sẽ bị huỷ hoàn toàn khỏi cơ sở dữ liệu nếu không dính ràng buộc hệ thống.
+    </div>
+    <p class="text-on-surface/80 text-sm mb-6">Bạn đang chuẩn bị xoá <strong id="bulkDeleteHardCount" class="text-rose-600 text-lg">0</strong> tài nguyên đã chọn.</p>
+    <div>
+      <label class="block text-xs font-bold text-rose-600/80 uppercase tracking-widest mb-2">Nhập chính xác <span class="bg-rose-100 text-rose-800 px-2 py-0.5 rounded font-mono" id="bulkDeleteHardExpected">DELETE X</span> để xác nhận</label>
+      <input type="text" name="confirm_text" id="bulkDeleteHardConfirm" autocomplete="off" class="w-full bg-surface-container-low border border-rose-500/30 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500/50 text-on-surface transition-all font-mono placeholder:text-rose-500/30" placeholder="">
+    </div>
+    <div class="mt-8 flex gap-3 justify-end">
+      <button type="button" onclick="document.getElementById('bulkDeleteHardModal').close()" class="px-6 py-3 rounded-2xl text-sm font-bold bg-surface-container hover:bg-outline-variant/20 transition-all active:scale-95 text-on-surface">Hủy</button>
+      <button type="submit" id="btnSubmitDeleteHard" class="px-6 py-3 rounded-2xl text-sm font-bold bg-rose-600 text-white hover:bg-rose-700 transition-all active:scale-95 shadow-md opacity-50 cursor-not-allowed" disabled>Xoá vĩnh viễn</button>
+    </div>
+  </form>
+</dialog>
+<script>
+  const deleteConfirmInput = document.getElementById('bulkDeleteHardConfirm');
+  const expectedTextSpan = document.getElementById('bulkDeleteHardExpected');
+  const btnSubmitDeleteHard = document.getElementById('btnSubmitDeleteHard');
+  let currentExpectedHardDelete = "";
+
+  deleteConfirmInput.addEventListener('input', (e) => {
+    if (e.target.value === currentExpectedHardDelete) {
+      btnSubmitDeleteHard.disabled = false;
+      btnSubmitDeleteHard.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+      btnSubmitDeleteHard.disabled = true;
+      btnSubmitDeleteHard.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+  });
+
+  function openBulkDeleteHardModal(ids) {
+    document.getElementById('bulkDeleteHardIds').value = ids.join(',');
+    document.getElementById('bulkDeleteHardCount').textContent = ids.length;
+    currentExpectedHardDelete = `DELETE ${ids.length}`;
+    expectedTextSpan.textContent = currentExpectedHardDelete;
+    deleteConfirmInput.value = '';
+    deleteConfirmInput.placeholder = currentExpectedHardDelete;
+    deleteConfirmInput.dispatchEvent(new Event('input')); // Reset disable state
+    document.getElementById('bulkDeleteHardModal').showModal();
+  }
+</script>
+{% endif %}
+
+<script>
+function openBulkUpdateModal(ids) {
+    document.getElementById('bulkUpdateIds').value = ids.join(',');
+    document.getElementById('bulkUpdateCount').textContent = ids.length;
+    document.getElementById('bulkUpdateModal').showModal();
+}
+
+function openBulkArchiveModal(ids) {
+    document.getElementById('bulkArchiveIds').value = ids.join(',');
+    document.getElementById('bulkArchiveCount').textContent = ids.length;
+    document.getElementById('bulkArchiveModal').showModal();
+}
+
+function openBulkRestoreModal(ids) {
+    document.getElementById('bulkRestoreIds').value = ids.join(',');
+    document.getElementById('bulkRestoreCount').textContent = ids.length;
+    document.getElementById('bulkRestoreModal').showModal();
+}
+</script>
