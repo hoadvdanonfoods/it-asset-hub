@@ -57,3 +57,67 @@
     </div>
   </div>
 </div>
+
+<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkArchiveModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-danger/20">
+      <form action="/assets/bulk-archive/" method="POST" id="bulkArchiveForm">
+        <input type="hidden" name="asset_ids" id="bulkArchiveAssetIds">
+        
+        <div class="bg-danger/5 px-6 py-4 border-b border-danger/10">
+          <h3 class="text-lg font-bold text-danger headline">Xóa (Lưu trữ) hàng loạt</h3>
+          <p class="text-xs text-on-surface/60">Tạm dừng sử dụng <span id="archiveCountDisplay" class="font-bold text-danger">0</span> thiết bị đã chọn</p>
+        </div>
+        
+        <div class="px-6 py-6 space-y-4">
+          <div class="p-3 bg-danger/10 border border-danger/20 rounded-xl mb-4">
+            <p class="text-[11px] text-danger leading-relaxed font-medium">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline mr-1"></i>
+              Hành động này sẽ thay đổi trạng thái của các thiết bị thành "Retired". Các tài sản đang mượn cũng sẽ bị ghi nhận là không thể sử dụng.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ lớn</label>
+            <input type="text" name="confirm_text" placeholder="Nhập chữ ARCHIVE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-danger/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-danger text-on-surface transition-all">
+          </div>
+        </div>
+        
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkArchiveModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-danger text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-red-600 transition-all shadow-lg shadow-danger/20 cursor-pointer">Đồng ý Xóa</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="bulkRestoreModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkRestoreModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-success/20">
+      <form action="/assets/bulk-restore/" method="POST" id="bulkRestoreForm">
+        <input type="hidden" name="asset_ids" id="bulkRestoreAssetIds">
+        
+        <div class="bg-success/5 px-6 py-4 border-b border-success/10">
+          <h3 class="text-lg font-bold text-success headline">Khôi phục hàng loạt</h3>
+          <p class="text-xs text-on-surface/60">Khôi phục <span id="restoreCountDisplay" class="font-bold text-success">0</span> thiết bị đã chọn về trạng thái Active</p>
+        </div>
+        
+        <div class="px-6 py-6 space-y-4">
+          <p class="text-sm text-on-surface font-medium">Bạn có chắc chắn muốn khôi phục và đưa các thiết bị này vào sử dụng không?</p>
+        </div>
+        
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkRestoreModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-success text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-green-600 transition-all shadow-lg shadow-success/20 cursor-pointer">Khôi phục</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -560,6 +560,69 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
     return RedirectResponse(url='/assets/', status_code=303)
 
 
+@router.get('/bulk-archive', include_in_schema=False)
+@router.get('/bulk-archive/')
+@require_permission('can_edit_assets')
+def asset_bulk_archive_get(request: Request, current_user=None):
+    return RedirectResponse(url='/assets/', status_code=303)
+
+
+@router.post('/bulk-archive', include_in_schema=False)
+@router.post('/bulk-archive/')
+@require_permission('can_edit_assets')
+def asset_bulk_archive(request: Request, asset_ids: str = Form(...), confirm_text: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    if confirm_text != 'ARCHIVE':
+        return RedirectResponse(url='/assets/', status_code=303)
+
+    ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
+    if not ids:
+        return RedirectResponse(url='/assets/', status_code=303)
+
+    updated_count = 0
+    for asset_id in ids:
+        asset = db.get(Asset, asset_id)
+        if not asset:
+            continue
+        if asset.status != 'retired':
+            asset.status = 'retired'
+            _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'Cập nhật hàng loạt: Đánh dấu retired cho {asset.asset_code}', current_user.username)
+            updated_count += 1
+
+    db.commit()
+    # In a full app we could set session flashes. Here we just redirect.
+    return RedirectResponse(url='/assets/', status_code=303)
+
+
+@router.get('/bulk-restore', include_in_schema=False)
+@router.get('/bulk-restore/')
+@require_permission('can_edit_assets')
+def asset_bulk_restore_get(request: Request, current_user=None):
+    return RedirectResponse(url='/assets/', status_code=303)
+
+
+@router.post('/bulk-restore', include_in_schema=False)
+@router.post('/bulk-restore/')
+@require_permission('can_edit_assets')
+def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session = Depends(get_db), current_user=None):
+    ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
+    if not ids:
+        return RedirectResponse(url='/assets/', status_code=303)
+
+    updated_count = 0
+    for asset_id in ids:
+        asset = db.get(Asset, asset_id)
+        if not asset:
+            continue
+        if asset.status in ('retired', 'inactive', 'disposed', 'lost', 'in_repair'):
+            asset.status = 'active'
+            _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: Khôi phục active cho {asset.asset_code}', current_user.username)
+            updated_count += 1
+
+    db.commit()
+    return RedirectResponse(url='/assets/', status_code=303)
+
+
+
 @router.get('/{asset_id}', response_class=HTMLResponse)
 @require_module_access('assets')
 def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):

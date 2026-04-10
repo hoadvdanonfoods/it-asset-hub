@@ -170,7 +170,13 @@
   <div class="h-8 w-px bg-white/10"></div>
   <div class="flex items-center gap-3">
     <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
-      <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa hàng loạt
+      <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa
+    </button>
+    <button type="button" id="openBulkArchive" class="flex items-center gap-2 bg-danger text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-red-600 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="trash-2" class="w-4 h-4"></i> Xóa
+    </button>
+    <button type="button" id="openBulkRestore" class="flex items-center gap-2 bg-success text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-green-600 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="refresh-cw" class="w-4 h-4"></i> Khôi phục
     </button>
     <button type="button" id="cancelSelection" class="text-white/60 hover:text-white px-4 py-2 text-sm font-bold transition-colors cursor-pointer">Hủy chọn</button>
   </div>
@@ -195,6 +201,20 @@ document.addEventListener('DOMContentLoaded', function() {
   const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
   const closeBulkModal = document.getElementById('closeBulkModal');
   const bulkAssetIdsInput = document.getElementById('bulkAssetIds');
+
+  const openBulkArchive = document.getElementById('openBulkArchive');
+  const bulkArchiveModal = document.getElementById('bulkArchiveModal');
+  const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
+  const bulkArchiveModalBackdrop = document.getElementById('bulkArchiveModalBackdrop');
+  const bulkArchiveAssetIds = document.getElementById('bulkArchiveAssetIds');
+  const archiveCountDisplay = document.getElementById('archiveCountDisplay');
+
+  const openBulkRestore = document.getElementById('openBulkRestore');
+  const bulkRestoreModal = document.getElementById('bulkRestoreModal');
+  const closeBulkRestoreModal = document.getElementById('closeBulkRestoreModal');
+  const bulkRestoreModalBackdrop = document.getElementById('bulkRestoreModalBackdrop');
+  const bulkRestoreAssetIds = document.getElementById('bulkRestoreAssetIds');
+  const restoreCountDisplay = document.getElementById('restoreCountDisplay');
 
   function updateBulkBar() {
     const selected = document.querySelectorAll('.asset-checkbox:checked');
@@ -231,20 +251,47 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   // Modal logic
+  function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => cb.value);
+  }
+
   openBulkEdit.addEventListener('click', function() {
-    const selected = Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => cb.value);
+    const selected = getSelectedIds();
     bulkAssetIdsInput.value = selected.join(',');
-    
     bulkEditModal.classList.remove('hidden');
+    setTimeout(() => initIcons(), 100);
+  });
+
+  openBulkArchive.addEventListener('click', function() {
+    const selected = getSelectedIds();
+    bulkArchiveAssetIds.value = selected.join(',');
+    archiveCountDisplay.textContent = selected.length;
+    bulkArchiveModal.classList.remove('hidden');
+    setTimeout(() => initIcons(), 100);
+  });
+
+  openBulkRestore.addEventListener('click', function() {
+    const selected = getSelectedIds();
+    bulkRestoreAssetIds.value = selected.join(',');
+    restoreCountDisplay.textContent = selected.length;
+    bulkRestoreModal.classList.remove('hidden');
     setTimeout(() => initIcons(), 100);
   });
 
   function closeModals() {
     bulkEditModal.classList.add('hidden');
+    bulkArchiveModal.classList.add('hidden');
+    bulkRestoreModal.classList.add('hidden');
   }
 
   closeBulkModal.addEventListener('click', closeModals);
   bulkModalBackdrop.addEventListener('click', closeModals);
+  
+  closeBulkArchiveModal.addEventListener('click', closeModals);
+  bulkArchiveModalBackdrop.addEventListener('click', closeModals);
+  
+  closeBulkRestoreModal.addEventListener('click', closeModals);
+  bulkRestoreModalBackdrop.addEventListener('click', closeModals);
 });
 </script>
 {% endblock %}
