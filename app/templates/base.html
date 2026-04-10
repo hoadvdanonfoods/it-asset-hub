@@ -56,7 +56,7 @@
         <div class="p-2 bg-primary/10 rounded-lg text-primary">
           <i data-lucide="laptop" class="w-5 h-5"></i>
         </div>
-        <span class="text-lg font-bold tracking-tight text-on-surface headline">Danonfoods IT Asset Hub</span>
+        <span class="text-lg font-bold tracking-tight text-on-surface headline">{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</span>
       </div>
       
       <div class="flex items-center gap-4">
@@ -130,22 +130,22 @@
         <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p == '/' else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-sm">Dashboard</span>
         </a>
-        <a href="/assets" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/assets') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/assets/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/assets') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm">Tài sản (Assets)</span>
         </a>
-        <a href="/checklist" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/checklist') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/checklist/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/checklist') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-sm">Camera Checklist</span>
         </a>
-        <a href="/resources" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/resources/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm">Vật tư (Resources)</span>
         </a>
-        <a href="/maintenance" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/maintenance') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/maintenance/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/maintenance') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm">Bảo trì (Maintenance)</span>
         </a>
-        <a href="/incidents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/incidents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/incidents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/incidents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm">Sự cố (Incidents)</span>
         </a>
-        <a href="/documents" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/documents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm">Tài liệu (Documents)</span>
         </a>
 
@@ -153,13 +153,13 @@
             <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2">Quản trị Hệ Thống</p>
         </div>
         
-        <a href="/users" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/users') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/users/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/users') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="users" class="w-5 h-5"></i><span class="text-sm">Người dùng (Users)</span>
         </a>
         <a href="/system/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/system') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm">Công cụ hệ thống</span>
         </a>
-        <a href="/discovery" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        <a href="/discovery/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="radar" class="w-5 h-5"></i><span class="text-sm">Quét mạng (Discovery)</span>
         </a>
       </nav>
@@ -178,16 +178,16 @@
         <a href="/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p == '/' else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Home</span>
         </a>
-        <a href="/assets" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/assets') else 'text-on-surface/40 hover:text-primary' }}">
+        <a href="/assets/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/assets') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Assets</span>
         </a>
-        <a href="/checklist" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/checklist') else 'text-on-surface/40 hover:text-primary' }}">
+        <a href="/checklist/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/checklist') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Camera</span>
         </a>
-        <a href="/maintenance" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/maintenance') else 'text-on-surface/40 hover:text-primary' }}">
+        <a href="/maintenance/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/maintenance') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Maint</span>
         </a>
-        <a href="/incidents" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/incidents') else 'text-on-surface/40 hover:text-primary' }}">
+        <a href="/incidents/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/incidents') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Incid</span>
         </a>
     </nav>

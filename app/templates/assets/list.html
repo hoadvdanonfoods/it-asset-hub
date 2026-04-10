@@ -9,7 +9,7 @@
   </div>
   <div class="flex flex-wrap items-center gap-3">
     {% if current_user.can_export_assets %}
-    <a href="/assets/export?q={{ q }}&asset_type={{ asset_type }}&department={{ department }}&status={{ status }}&warranty={{ warranty }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm">
+    <a href="/assets/export?q={{ q }}&asset_type={{ asset_type }}&department={{ department }}&status={{ status }}&warranty={{ warranty }}&filter={{ filter }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm">
       <i data-lucide="download" class="w-4 h-4"></i> Xuất Excel
     </a>
     {% endif %}

@@ -13,18 +13,18 @@
     </div>
     <div class="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
       <div>
-        <h1 class="text-3xl lg:text-5xl font-extrabold tracking-tight mb-4 headline">IT Operations Dashboard</h1>
+        <h1 class="text-3xl lg:text-5xl font-extrabold tracking-tight mb-4 headline">Bảng điều khiển vận hành IT</h1>
         <p class="text-white/80 max-w-xl text-lg leading-relaxed">
-          Centralized control for Danonfoods technology stack. Track lifecycle, mitigate risks, and optimize asset utilization.
+          Trung tâm điều phối hạ tầng công nghệ. Theo dõi vòng đời, giảm thiểu rủi ro và tối ưu hóa sử dụng tài sản.
         </p>
       </div>
       <div class="flex flex-wrap gap-4">
-        <button class="flex items-center gap-2 bg-white text-primary font-bold px-6 py-4 rounded-xl hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer">
-          <i data-lucide="plus" class="w-5 h-5"></i> New Asset
-        </button>
-        <button class="flex items-center gap-2 bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold px-6 py-4 rounded-xl hover:bg-white/20 transition-all cursor-pointer">
-          <i data-lucide="shield-alert" class="w-5 h-5"></i> New Incident
-        </button>
+        <a href="/assets/new" class="flex items-center gap-2 bg-white text-primary font-bold px-6 py-4 rounded-xl hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer">
+          <i data-lucide="plus" class="w-5 h-5"></i> Thêm tài sản
+        </a>
+        <a href="/incidents/new" class="flex items-center gap-2 bg-white/10 backdrop-blur-md text-white border border-white/20 font-bold px-6 py-4 rounded-xl hover:bg-white/20 transition-all cursor-pointer">
+          <i data-lucide="shield-alert" class="w-5 h-5"></i> Báo sự cố
+        </a>
       </div>
     </div>
   </div>
@@ -38,7 +38,7 @@
       </div>
       <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-primary/5 text-primary">System</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Total Assets</h4>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Tổng tài sản</h4>
     <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.total_assets }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
       <div class="h-full rounded-full bg-primary" style="width: 100%"></div>
@@ -52,7 +52,7 @@
       </div>
       <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600">Stable</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Active Assets</h4>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Đang hoạt động</h4>
     <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.active_assets }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
       {% set active_percent = (stats.active_assets / stats.total_assets * 100) if stats.total_assets > 0 else 0 %}
@@ -67,7 +67,7 @@
       </div>
       <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-rose-50 text-rose-600">URGENCY</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Open Incidents</h4>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Sự cố đang mở</h4>
     <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.open_incidents }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
       {% set incident_percent = (stats.open_incidents / stats.total_assets * 100) if stats.total_assets > 0 else 0 %}
@@ -82,7 +82,7 @@
       </div>
       <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-50 text-amber-600">SCHEDULED</span>
     </div>
-    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Maintenances</h4>
+    <h4 class="text-on-surface/50 text-sm font-medium uppercase tracking-tight">Lượt bảo trì</h4>
     <p class="text-3xl font-black text-on-surface mt-1 headline">{{ stats.total_maintenances }}</p>
     <div class="w-full bg-surface-container-low h-1.5 rounded-full mt-4 overflow-hidden">
       <div class="h-full rounded-full bg-amber-500" style="width: 100%"></div>
@@ -94,8 +94,8 @@
   <div class="lg:col-span-2 bg-surface-container-lowest p-8 rounded-3xl shadow-sm border border-outline-variant/10">
     <div class="flex justify-between items-center mb-8">
       <div>
-        <h3 class="text-xl font-bold text-on-surface headline">Asset Distribution</h3>
-        <p class="text-sm text-on-surface/50">Inventory breakdown by category</p>
+        <h3 class="text-xl font-bold text-on-surface headline">Phân loại tài sản</h3>
+        <p class="text-sm text-on-surface/50">Thống kê theo danh mục thiết bị</p>
       </div>
     </div>
     <div class="h-64 relative w-full pt-2">
@@ -104,7 +104,7 @@
   </div>
 
   <div class="bg-surface-container-lowest p-8 rounded-3xl shadow-sm border border-outline-variant/10 flex flex-col">
-    <h3 class="text-xl font-bold text-on-surface mb-6 headline">Top Departments</h3>
+    <h3 class="text-xl font-bold text-on-surface mb-6 headline">Bộ phận hàng đầu</h3>
     <div class="space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-2" style="max-height: 280px;">
       {% if departments %}
         {% for dept, count in departments %}
@@ -113,7 +113,7 @@
             <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{{ loop.index }}</div>
             <div>
               <p class="text-sm font-bold text-on-surface">{{ dept }}</p>
-              <p class="text-[10px] text-on-surface/50">{{ count }} Assets</p>
+              <p class="text-[10px] text-on-surface/50">{{ count }} Thiết bị</p>
             </div>
           </div>
           {% set dept_percent = (count / stats.total_assets * 100) if stats.total_assets > 0 else 0 %}
@@ -128,7 +128,7 @@
       {% endif %}
     </div>
     <a href="/assets" class="w-full mt-6 py-3 rounded-xl bg-surface-container-low text-on-surface/60 text-sm font-bold hover:bg-surface-container-highest transition-colors cursor-pointer text-center">
-      View All Assets
+      Xem tất cả thiết bị
     </a>
   </div>
 </section>
@@ -136,8 +136,8 @@
 <section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
   <div class="space-y-4">
     <div class="flex items-center justify-between mb-2">
-      <h3 class="text-xl font-bold text-on-surface headline">Operation Alerts</h3>
-      <span class="bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-lg">Action Required</span>
+      <h3 class="text-xl font-bold text-on-surface headline">Cảnh báo vận hành</h3>
+      <span class="bg-rose-100 text-rose-600 text-[10px] font-bold px-2 py-1 rounded-lg">Cần xử lý</span>
     </div>
     
     <div class="space-y-3 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 380px;">
@@ -149,10 +149,10 @@
             <i data-lucide="history" class="w-5 h-5"></i>
           </div>
           <div class="flex-1">
-            <p class="text-sm font-bold text-on-surface text-ellipsis overflow-hidden">Warranty Expiring</p>
-            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} expires in {{ item.days }} days.</p>
+            <p class="text-sm font-bold text-on-surface text-ellipsis overflow-hidden">Bảo hành sắp hết hạn</p>
+            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} hết hạn sau {{ item.days }} ngày.</p>
           </div>
-          <a href="/assets/{{ item.asset.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Review</a>
+          <a href="/assets/{{ item.asset.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Chi tiết</a>
         </div>
         {% endfor %}
 
@@ -163,10 +163,10 @@
             <i data-lucide="wrench" class="w-5 h-5"></i>
           </div>
           <div class="flex-1">
-            <p class="text-sm font-bold text-on-surface">Missed Maintenance</p>
-            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} was due on {{ item.next_maintenance_date }}</p>
+            <p class="text-sm font-bold text-on-surface">Quá hạn bảo trì</p>
+            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} cần bảo trì từ {{ item.next_maintenance_date }}</p>
           </div>
-          <a href="/maintenance/{{ item.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Schedule</a>
+          <a href="/maintenance/{{ item.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Lập lịch</a>
         </div>
         {% endfor %}
 
@@ -177,10 +177,10 @@
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
           <div class="flex-1">
-            <p class="text-sm font-bold text-on-surface">Unresolved Incident</p>
-            <p class="text-[10px] text-on-surface/50">Incident #{{ alert.incident.id }} open for {{ alert.age_days }} days.</p>
+            <p class="text-sm font-bold text-on-surface">Sự cố chưa giải quyết</p>
+            <p class="text-[10px] text-on-surface/50">Sự cố #{{ alert.incident.id }} đang mở được {{ alert.age_days }} ngày.</p>
           </div>
-          <a href="/incidents/{{ alert.incident.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Check</a>
+          <a href="/incidents/{{ alert.incident.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Kiểm tra</a>
         </div>
         {% endfor %}
 
@@ -191,10 +191,10 @@
             <i data-lucide="user-x" class="w-5 h-5"></i>
           </div>
           <div class="flex-1">
-            <p class="text-sm font-bold text-on-surface">Asset Not Assigned</p>
-            <p class="text-[10px] text-on-surface/50">{{ asset.asset_code }} (Active) lacks an assigned user.</p>
+            <p class="text-sm font-bold text-on-surface">Chưa gán người sử dụng</p>
+            <p class="text-[10px] text-on-surface/50">{{ asset.asset_code }} (Active) chưa có thông tin người dùng.</p>
           </div>
-          <a href="/assets/{{ asset.id }}/edit" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Assign</a>
+          <a href="/assets/{{ asset.id }}/edit" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Gán trực tiếp</a>
         </div>
         {% endfor %}
 
@@ -203,8 +203,8 @@
             <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-3">
               <i data-lucide="check-check" class="w-6 h-6"></i>
             </div>
-            <p class="text-sm font-bold text-on-surface">All Clear</p>
-            <p class="text-xs text-on-surface/50 mt-1">No critical operations alerts found.</p>
+            <p class="text-sm font-bold text-on-surface">Mọi thứ đều ổn</p>
+            <p class="text-xs text-on-surface/50 mt-1">Không tìm thấy cảnh báo vận hành nghiêm trọng nào.</p>
         </div>
       {% endif %}
     </div>
@@ -215,14 +215,14 @@
         <div class="w-16 h-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4">
           <i data-lucide="trending-up" class="w-8 h-8"></i>
         </div>
-        <h3 class="text-xl font-bold text-on-surface headline">Performance Insights</h3>
+        <h3 class="text-xl font-bold text-on-surface headline">Sức khỏe dữ liệu</h3>
         {% set health = 100 - (alerts.missing_core_info|length / stats.total_assets * 100)|round if stats.total_assets > 0 else 100 %}
         <p class="text-sm text-on-surface/50 max-w-xs mt-2">
-          Your asset records are {{ health }}% complete. Improve your reporting by updating serial numbers.
+          Dữ liệu tài sản của bạn đã hoàn thiện {{ health }}%. Tiếp tục cập nhật các thông tin còn thiếu.
         </p>
         <div class="mt-8 flex gap-3">
            <a href="/assets?filter=missing_info" class="px-6 py-3 bg-on-surface text-white font-bold rounded-xl text-sm hover:bg-primary transition-all cursor-pointer">
-            Run Health Check
+            Kiểm tra ngay
           </a>
         </div>
       </div>
@@ -261,7 +261,7 @@ document.addEventListener("DOMContentLoaded", function() {
         data: {
             labels: chartLabels,
             datasets: [{
-                label: 'Asset Count',
+                label: 'Số lượng thiết bị',
                 data: chartData,
                 backgroundColor: backgroundColors,
                 borderRadius: 8,

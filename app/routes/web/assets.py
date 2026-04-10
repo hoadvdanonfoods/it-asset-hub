@@ -345,7 +345,21 @@ def asset_list(request: Request, q: str | None = Query(default=None), asset_type
     asset_types = db.scalars(select(Asset.asset_type).where(Asset.asset_type != 'Camera').distinct().order_by(Asset.asset_type.asc())).all()
     departments = db.scalars(select(Asset.department).where(Asset.department.is_not(None)).distinct().order_by(Asset.department.asc())).all()
     statuses = [item for item in ASSET_STATUSES if item in {a.status for a in db.scalars(select(Asset)).all()} or item == status or item == 'active']
-    return templates.TemplateResponse('assets/list.html', {'request': request, 'assets': assets, 'q': q or '', 'asset_type': asset_type or '', 'department': department or '', 'status': status or '', 'warranty': warranty or '', 'asset_types': asset_types, 'departments': departments, 'statuses': statuses, 'current_user': current_user, 'days_to_warranty': _days_to_warranty})
+    return templates.TemplateResponse('assets/list.html', {
+        'request': request, 
+        'assets': assets, 
+        'q': q or '', 
+        'asset_type': asset_type or '', 
+        'department': department or '', 
+        'status': status or '', 
+        'warranty': warranty or '', 
+        'filter': filter or '',
+        'asset_types': asset_types, 
+        'departments': departments, 
+        'statuses': statuses, 
+        'current_user': current_user, 
+        'days_to_warranty': _days_to_warranty
+    })
 
 
 @router.get('/export')
