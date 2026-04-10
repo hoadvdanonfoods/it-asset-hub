@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.auth import require_module_access, require_permission
 from app.db.models import Resource
 from app.db.session import get_db
+from app.services.audit import log_audit
 from app.security import encrypt_resource_password, decrypt_resource_password
 
 router = APIRouter(prefix='/resources', tags=['resources'])
@@ -318,9 +319,6 @@ def resource_archive(resource_id: int, request: Request, db: Session = Depends(g
     return RedirectResponse('/resources/', status_code=303)
 
 
-import logging
-from datetime import datetime
-audit_logger = logging.getLogger("resources_audit")
 
 @router.post('/bulk-update')
 @require_permission('can_manage_resources')
@@ -333,15 +331,22 @@ def resources_bulk_update(
     current_user=None
 ):
     ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    updated = 0
     if ids_list:
         items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
         for item in items:
+            changed = False
             if category:
                 item.category = category.strip()
+                changed = True
             if is_active is not None:
                 item.is_active = (is_active == 'true')
+                changed = True
+            if changed:
+                updated += 1
+                log_audit(db, actor=current_user.username if current_user else None, module='resources', action='bulk_update', entity_type='resource', entity_id=item.id, metadata={'category': category, 'is_active': is_active})
         db.commit()
-    return RedirectResponse('/resources/', status_code=303)
+    return RedirectResponse(f'/resources/?success={updated}', status_code=303)
 
 @router.post('/bulk-archive')
 @require_permission('can_manage_resources')
@@ -352,12 +357,15 @@ def resources_bulk_archive(
     current_user=None
 ):
     ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    updated = 0
     if ids_list:
         items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
         for item in items:
             item.is_active = False
+            updated += 1
+            log_audit(db, actor=current_user.username if current_user else None, module='resources', action='bulk_archive', entity_type='resource', entity_id=item.id)
         db.commit()
-    return RedirectResponse('/resources/', status_code=303)
+    return RedirectResponse(f'/resources/?success={updated}', status_code=303)
 
 @router.post('/bulk-restore')
 @require_permission('can_manage_resources')
@@ -368,12 +376,15 @@ def resources_bulk_restore(
     current_user=None
 ):
     ids_list = [int(i.strip()) for i in resource_ids.split(",") if i.strip().isdigit()]
+    updated = 0
     if ids_list:
         items = db.scalars(select(Resource).where(Resource.id.in_(ids_list))).all()
         for item in items:
             item.is_active = True
+            updated += 1
+            log_audit(db, actor=current_user.username if current_user else None, module='resources', action='bulk_restore', entity_type='resource', entity_id=item.id)
         db.commit()
-    return RedirectResponse('/resources/', status_code=303)
+    return RedirectResponse(f'/resources/?success={updated}', status_code=303)
 
 @router.post('/bulk-delete-hard')
 @require_permission('can_manage_resources')
@@ -407,10 +418,10 @@ def resources_bulk_delete_hard(
         
         if has_dependencies:
             skipped_count += 1
-            audit_logger.info(f"AUDIT LOG: action=bulk_hard_delete actor={current_user.username} timestamp={datetime.utcnow().isoformat()} item_id={item.id} item_code='{item.title}' result=skipped reason=has_dependencies")
+            log_audit(db, actor=current_user.username, module='resources', action='bulk_hard_delete', entity_type='resource', entity_id=item.id, result='skipped', reason='has_dependencies')
             continue
-            
-        audit_logger.info(f"AUDIT LOG: action=bulk_hard_delete actor={current_user.username} timestamp={datetime.utcnow().isoformat()} item_id={item.id} item_code='{item.title}' result=deleted reason=none")
+
+        log_audit(db, actor=current_user.username, module='resources', action='bulk_hard_delete', entity_type='resource', entity_id=item.id, result='success')
         db.delete(item)
         success_count += 1
         

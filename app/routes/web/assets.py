@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.auth import has_permission, require_module_access, require_permission
 from app.db.models import Asset, AssetAssignment, AssetEvent, User
 from app.db.session import get_db
+from app.services.audit import log_audit
 
 router = APIRouter(prefix='/assets', tags=['assets'])
 templates = Jinja2Templates(directory='app/templates')
@@ -554,10 +555,19 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
         
         if changed:
             _log_event(db, asset.id, 'asset_updated', 'Cập nhật hàng loạt', 'Cập nhật thông tin qua Bulk Edit', current_user.username)
+            log_audit(
+                db,
+                actor=current_user.username if current_user else None,
+                module='assets',
+                action='bulk_update',
+                entity_type='asset',
+                entity_id=asset.id,
+                metadata={'updates': updates},
+            )
             updated_count += 1
 
     db.commit()
-    return RedirectResponse(url='/assets/', status_code=303)
+    return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
 
 
 @router.get('/bulk-archive', include_in_schema=False)
@@ -586,11 +596,19 @@ def asset_bulk_archive(request: Request, asset_ids: str = Form(...), confirm_tex
         if asset.status != 'retired':
             asset.status = 'retired'
             _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'Cập nhật hàng loạt: Đánh dấu retired cho {asset.asset_code}', current_user.username)
+            log_audit(
+                db,
+                actor=current_user.username if current_user else None,
+                module='assets',
+                action='bulk_archive',
+                entity_type='asset',
+                entity_id=asset.id,
+                metadata={'from_status': 'not_retired', 'to_status': 'retired'},
+            )
             updated_count += 1
 
     db.commit()
-    # In a full app we could set session flashes. Here we just redirect.
-    return RedirectResponse(url='/assets/', status_code=303)
+    return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
 
 
 @router.get('/bulk-restore', include_in_schema=False)
@@ -614,12 +632,22 @@ def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session
         if not asset:
             continue
         if asset.status in ('retired', 'inactive', 'disposed', 'lost', 'in_repair'):
+            previous_status = asset.status
             asset.status = 'active'
             _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: Khôi phục active cho {asset.asset_code}', current_user.username)
+            log_audit(
+                db,
+                actor=current_user.username if current_user else None,
+                module='assets',
+                action='bulk_restore',
+                entity_type='asset',
+                entity_id=asset.id,
+                metadata={'from_status': previous_status, 'to_status': 'active'},
+            )
             updated_count += 1
 
     db.commit()
-    return RedirectResponse(url='/assets/', status_code=303)
+    return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
 
 
 

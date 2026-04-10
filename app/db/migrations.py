@@ -83,6 +83,23 @@ def ensure_schema() -> None:
         )""",
         "CREATE INDEX ix_documents_title ON documents (title)",
         "CREATE INDEX ix_documents_category ON documents (category)",
+        """CREATE TABLE audit_logs (
+            id INTEGER PRIMARY KEY,
+            created_at DATETIME,
+            actor VARCHAR(120),
+            module VARCHAR(40),
+            action VARCHAR(60),
+            entity_type VARCHAR(60),
+            entity_id VARCHAR(120),
+            result VARCHAR(20),
+            reason VARCHAR(255),
+            metadata_json TEXT
+        )""",
+        "CREATE INDEX ix_audit_logs_created_at ON audit_logs (created_at)",
+        "CREATE INDEX ix_audit_logs_actor ON audit_logs (actor)",
+        "CREATE INDEX ix_audit_logs_module ON audit_logs (module)",
+        "CREATE INDEX ix_audit_logs_action ON audit_logs (action)",
+        "CREATE INDEX ix_audit_logs_result ON audit_logs (result)",
     ]
     backfill_statements = [
         "UPDATE users SET is_active = 1 WHERE is_active IS NULL",

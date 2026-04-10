@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Audit Logs - IT Asset Hub{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex items-center justify-between gap-3 flex-wrap">
+  <div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Audit & Compliance</h1>
+    <p class="text-on-surface/60 mt-1">Lịch sử thao tác hệ thống theo user/action/module</p>
+  </div>
+  <a href="/audit/export?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&actor={{ filters.actor }}&action={{ filters.action }}&module={{ filters.module }}&result={{ filters.result }}&keyword={{ filters.keyword }}" class="bg-primary text-white px-4 py-2.5 rounded-xl font-bold text-sm">Export CSV</a>
+</div>
+
+<div class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10 mb-6">
+  <form method="get" class="grid grid-cols-1 md:grid-cols-8 gap-3">
+    <input type="date" name="date_from" value="{{ filters.date_from }}" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm">
+    <input type="date" name="date_to" value="{{ filters.date_to }}" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm">
+    <select name="actor" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm"><option value="">Actor</option>{% for v in actors %}<option value="{{ v }}" {% if filters.actor == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <select name="module" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm"><option value="">Module</option>{% for v in modules %}<option value="{{ v }}" {% if filters.module == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <select name="action" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm"><option value="">Action</option>{% for v in actions %}<option value="{{ v }}" {% if filters.action == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    <select name="result" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm">
+      <option value="">Result</option>
+      <option value="success" {% if filters.result == 'success' %}selected{% endif %}>success</option>
+      <option value="skipped" {% if filters.result == 'skipped' %}selected{% endif %}>skipped</option>
+      <option value="failed" {% if filters.result == 'failed' %}selected{% endif %}>failed</option>
+    </select>
+    <input type="text" name="keyword" value="{{ filters.keyword }}" placeholder="keyword" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm">
+    <button type="submit" class="bg-on-surface text-white rounded-xl py-2 px-4 text-sm font-bold">Lọc</button>
+  </form>
+</div>
+
+<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-surface-container-low/50 text-on-surface/60">
+        <tr>
+          <th class="px-4 py-3 text-left">Time</th>
+          <th class="px-4 py-3 text-left">Actor</th>
+          <th class="px-4 py-3 text-left">Module</th>
+          <th class="px-4 py-3 text-left">Action</th>
+          <th class="px-4 py-3 text-left">Entity</th>
+          <th class="px-4 py-3 text-left">Result</th>
+          <th class="px-4 py-3 text-left">Reason</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/10">
+        {% for item in items %}
+        <tr>
+          <td class="px-4 py-3">{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '' }}</td>
+          <td class="px-4 py-3">{{ item.actor or '-' }}</td>
+          <td class="px-4 py-3">{{ item.module }}</td>
+          <td class="px-4 py-3">{{ item.action }}</td>
+          <td class="px-4 py-3">{{ item.entity_type }} #{{ item.entity_id or '-' }}</td>
+          <td class="px-4 py-3">{{ item.result }}</td>
+          <td class="px-4 py-3">{{ item.reason or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not items %}
+  <div class="p-8 text-on-surface/50">Không có dữ liệu audit.</div>
+  {% endif %}
+</div>
+
+<div class="mt-4 text-sm text-on-surface/60">Trang {{ page }}/{{ total_pages }} · Tổng {{ total }} bản ghi</div>
+{% endblock %}

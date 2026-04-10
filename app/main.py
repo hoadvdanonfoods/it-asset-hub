@@ -20,6 +20,7 @@ from app.db.models import Asset, AssetEvent, User
 from app.db.session import SessionLocal, engine
 from app.routes.web.assets import router as assets_router
 from app.routes.web.auth import router as auth_router
+from app.routes.web.audit import router as audit_router
 from app.routes.web.dashboard import router as dashboard_router
 from app.routes.web.incidents import router as incidents_router
 from app.routes.web.maintenance import router as maintenance_router
@@ -106,6 +107,7 @@ app.mount('/static', StaticFiles(directory=static_dir), name='static')
 
 app.include_router(auth_router)
 app.include_router(dashboard_router)
+app.include_router(audit_router)
 app.include_router(assets_router)
 app.include_router(maintenance_router)
 app.include_router(incidents_router)
@@ -120,7 +122,7 @@ app.include_router(checklist_router)
 # Centralized Template Context Injection
 import sys
 for router_obj in [
-    auth_router, dashboard_router, assets_router, maintenance_router,
+    auth_router, dashboard_router, audit_router, assets_router, maintenance_router,
     incidents_router, qr_router, users_router, system_tools_router,
     resources_router, documents_router, discovery_router, checklist_router
 ]:
