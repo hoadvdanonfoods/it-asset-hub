@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đăng nhập - Danonfoods IT Asset Hub</title>
-  <meta name="description" content="Đăng nhập vào hệ thống quản lý tài sản IT - Danonfoods">
+  <title>Đăng nhập - {{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</title>
+  <meta name="description" content="Đăng nhập vào hệ thống quản lý tài sản IT - {{ APP_NAME if APP_NAME else "Danonfoods" }}">
   <link rel="icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -34,8 +34,8 @@
             <img src="/static/branding/DOF_Logo_128x128.png" alt="Danonfoods" class="w-full h-full object-contain rounded-[14px] bg-white p-1">
           </div>
           <div>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Danonfoods</p>
-            <h1 class="text-xl font-extrabold text-slate-900 leading-tight">IT Asset Hub</h1>
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{{ APP_NAME if APP_NAME else "Danonfoods" }}</p>
+            <h1 class="text-xl font-extrabold text-slate-900 leading-tight">Quản lý Tài sản IT</h1>
             <p class="text-xs text-slate-500">Hệ thống quản lý thiết bị IT</p>
           </div>
         </div>
@@ -77,11 +77,11 @@
 
       <!-- Footer -->
       <div class="bg-slate-50/80 border-t border-slate-100 px-8 py-4 text-center space-y-1">
-        <p class="text-xs font-bold text-slate-700">Danonfoods IT Asset Hub</p>
+        <p class="text-xs font-bold text-slate-700">{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</p>
         <div class="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-[11px] font-bold px-3 py-1 rounded-full">
           <span>Hòa IT · 0838641091</span>
         </div>
-        <p class="text-[11px] text-slate-400">Copyright © 2026 Danonfoods · Version {{ request.app.state.app_version }}</p>
+        <p class="text-[11px] text-slate-400">Copyright © 2026 {{ APP_NAME if APP_NAME else "Danonfoods" }} · Version {{ request.app.state.app_version }}</p>
       </div>
     </div>
   </div>

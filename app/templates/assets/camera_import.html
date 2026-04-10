@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Import Camera - {{ APP_NAME }}{% endblock %}
+{% block title %}Import Camera - {{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}{% endblock %}
 
 {% block content %}
 <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -8,10 +8,10 @@
     <p class="text-on-surface/60 mt-1">Nạp file Excel chuẩn để cập nhật danh sách Camera và NVR vào hệ thống.</p>
   </div>
   <div class="flex gap-3">
-    <a href="/checklist/import/template" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+    <a href="/checklist/import/template/" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
       <i data-lucide="file-down" class="w-4 h-4"></i> Tải file mẫu
     </a>
-    <a href="/checklist" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+    <a href="/checklist/" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
       <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại Checklist
     </a>
   </div>
@@ -43,7 +43,7 @@
                 <i data-lucide="file-up" class="w-5 h-5 text-primary"></i>
                 Chọn file Excel (.xlsx)
             </h3>
-            <form method="post" enctype="multipart/form-data" action="/checklist/import" class="space-y-4">
+            <form method="post" enctype="multipart/form-data" action="/checklist/import/" class="space-y-4">
                 <div class="relative group">
                     <input type="file" name="file" accept=".xlsx" required
                         class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-8 px-6 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white cursor-pointer hover:bg-surface-container-highest/50">
