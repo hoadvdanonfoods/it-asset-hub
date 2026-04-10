@@ -139,7 +139,7 @@ def require_admin(view_func: Callable):
         user, redirect = _authorized_user_or_redirect(request)
         if redirect:
             return redirect
-        if user.role != 'admin':
+        if not has_permission(user, 'can_manage_users'):
             return RedirectResponse(url=get_default_landing_path(user), status_code=303)
         kwargs['current_user'] = user
         return view_func(*args, **kwargs)
@@ -207,5 +207,4 @@ def require_permission(field_name: str):
     return decorator
 
 
-def require_super_admin(view_func: Callable):
-    return require_permission('can_manage_resources')(view_func)
+

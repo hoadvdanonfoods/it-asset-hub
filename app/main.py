@@ -128,6 +128,8 @@ for router_obj in [
     if module and hasattr(module, 'templates'):
         module.templates.env.globals['APP_NAME'] = APP_NAME
         module.templates.env.globals['APP_VERSION'] = APP_VERSION
+        from app.auth import has_permission
+        module.templates.env.globals['has_permission'] = has_permission
 
 
 @app.get('/health')

@@ -22,7 +22,7 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-3">
-      {% if asset and current_user.role == 'admin' %}
+      {% if asset and has_permission(current_user, 'can_edit_assets') %}
       <a href="/assets/{{ asset.id }}/edit" class="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition-all active:scale-95">
         <i data-lucide="edit-3" class="w-4 h-4"></i>
         <span>Sửa thiết bị</span>
@@ -216,6 +216,7 @@
     <!-- Right Column: Summary & QR -->
     <div class="lg:col-span-4 space-y-8">
       <!-- QR Code Card -->
+      {% if asset and has_permission(current_user, 'can_edit_assets') %}
       <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10 text-center relative overflow-hidden">
         <div class="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16"></div>
         <div class="relative">
@@ -244,6 +245,7 @@
           </div>
         </div>
       </div>
+      {% endif %}
 
       <!-- Quick Summary Card -->
       <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">

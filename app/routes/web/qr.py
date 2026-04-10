@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
-from app.auth import require_admin, require_module_access
+from app.auth import require_permission, require_module_access
 from app.db.models import Asset
 from app.db.session import get_db
 
@@ -34,9 +34,10 @@ def build_qr_png(data: str) -> bytes:
 
 
 @router.get('/asset/{asset_id}.png')
-@require_admin
+@require_permission('can_edit_assets')
 def asset_qr_png(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
-    if not current_user or current_user.role != 'admin':
+    from app.auth import has_permission
+    if not has_permission(current_user, 'can_edit_assets'):
         return RedirectResponse(url='/assets/', status_code=303)
     asset = db.get(Asset, asset_id)
     if not asset:
@@ -46,9 +47,10 @@ def asset_qr_png(asset_id: int, request: Request, db: Session = Depends(get_db),
 
 
 @router.get('/asset/{asset_id}', response_class=HTMLResponse)
-@require_admin
+@require_permission('can_edit_assets')
 def asset_qr_page(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
-    if not current_user or current_user.role != 'admin':
+    from app.auth import has_permission
+    if not has_permission(current_user, 'can_edit_assets'):
         return RedirectResponse(url='/assets/', status_code=303)
     asset = db.get(Asset, asset_id)
     qr_url = f'/qr/asset/{asset_id}.png'

@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}{% if user_obj and user_obj.id %}Cập nhật user{% else %}Thêm user{% endif %} - IT Asset Hub{% endblock %}
+{% block title %}{% if user_obj and user_obj.id %}Cập nhật user{% else %}Thêm user{% endif %} - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
 
 {% block content %}
 <div class="mb-8">
@@ -88,9 +88,9 @@
       <label class="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/20 hover:bg-primary/5 cursor-pointer transition-colors group">
         <input type="checkbox" value="true" name="{{ perm }}"
           {% if perm in ['can_view_dashboard','can_view_assets','can_view_maintenance','can_view_incidents'] %}
-            {% if not user_obj or user_obj[perm] %}checked{% endif %}
+            {% if not user_obj or (user_obj|attr(perm)) %}checked{% endif %}
           {% else %}
-            {% if user_obj and user_obj[perm] %}checked{% endif %}
+            {% if user_obj and (user_obj|attr(perm)) %}checked{% endif %}
           {% endif %}
           class="w-4 h-4 rounded accent-primary cursor-pointer">
         <div class="flex items-center gap-2 text-sm font-medium text-on-surface">
@@ -115,7 +115,7 @@
         </div>
         {% for perm, label in [('can_create_assets','Tạo mới'),('can_edit_assets','Sửa / Retire / Restore'),('can_import_assets','Import Excel'),('can_export_assets','Export Excel')] %}
         <label class="flex items-center gap-2 text-sm text-on-surface/80 cursor-pointer hover:text-on-surface">
-          <input type="checkbox" value="true" name="{{ perm }}" {% if user_obj and user_obj[perm] %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
+          <input type="checkbox" value="true" name="{{ perm }}" {% if user_obj and (user_obj|attr(perm)) %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
           {{ label }}
         </label>
         {% endfor %}
@@ -128,7 +128,7 @@
         </div>
         {% for perm, label in [('can_create_maintenance','Tạo mới'),('can_edit_maintenance','Chỉnh sửa'),('can_export_maintenance','Export Excel')] %}
         <label class="flex items-center gap-2 text-sm text-on-surface/80 cursor-pointer hover:text-on-surface">
-          <input type="checkbox" value="true" name="{{ perm }}" {% if user_obj and user_obj[perm] %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
+          <input type="checkbox" value="true" name="{{ perm }}" {% if user_obj and (user_obj|attr(perm)) %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
           {{ label }}
         </label>
         {% endfor %}
@@ -142,8 +142,8 @@
         {% for perm, label in [('can_create_incidents','Tạo ticket'),('can_edit_incidents','Cập nhật / Đổi trạng thái'),('can_export_incidents','Export Excel')] %}
         <label class="flex items-center gap-2 text-sm text-on-surface/80 cursor-pointer hover:text-on-surface">
           <input type="checkbox" value="true" name="{{ perm }}"
-            {% if perm == 'can_create_incidents' %}{% if not user_obj or user_obj[perm] %}checked{% endif %}
-            {% else %}{% if user_obj and user_obj[perm] %}checked{% endif %}{% endif %}
+            {% if perm == 'can_create_incidents' %}{% if not user_obj or (user_obj|attr(perm)) %}checked{% endif %}
+            {% else %}{% if user_obj and (user_obj|attr(perm)) %}checked{% endif %}{% endif %}
             class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
           {{ label }}
         </label>
@@ -157,7 +157,7 @@
         </div>
         {% for perm, label in [('can_manage_users','Quản lý người dùng'),('can_manage_system','Backup / Restore'),('can_manage_resources','Tài nguyên nội bộ'),('can_manage_documents','Tài liệu chia sẻ')] %}
         <label class="flex items-center gap-2 text-sm text-on-surface/80 cursor-pointer hover:text-on-surface">
-          <input type="checkbox" value="true" name="{{ perm }}" {% if user_obj and user_obj[perm] %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
+          <input type="checkbox" value="true" name="{{ perm }}" {% if user_obj and (user_obj|attr(perm)) %}checked{% endif %} class="w-3.5 h-3.5 rounded accent-primary cursor-pointer">
           {{ label }}
         </label>
         {% endfor %}
