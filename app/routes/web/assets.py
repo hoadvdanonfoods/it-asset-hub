@@ -135,7 +135,7 @@ def _normalize_status(value: str | None) -> str:
     return normalized if normalized in ASSET_STATUSES else 'active'
 
 
-def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None = None, department: str | None = None, status: str | None = None, warranty: str | None = None):
+def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None = None, department: str | None = None, status: str | None = None, warranty: str | None = None, filter: str | None = None):
     stmt = select(Asset)
     if q:
         like = f'%{q.strip()}%'
@@ -149,6 +149,8 @@ def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None =
         stmt = stmt.where(Asset.department == department)
     if status:
         stmt = stmt.where(Asset.status == status)
+    if filter == 'missing_info':
+        stmt = stmt.where(or_(Asset.serial_number.is_(None), Asset.serial_number == "", Asset.location.is_(None), Asset.location == ""))
     assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
     if warranty == 'expired':
         assets = [a for a in assets if (_days_to_warranty(a) is not None and _days_to_warranty(a) < 0)]
@@ -338,8 +340,8 @@ def asset_api_list(request: Request, db: Session = Depends(get_db), current_user
 
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('assets')
-def asset_list(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    assets = _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty)
+def asset_list(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), filter: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    assets = _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)
     asset_types = db.scalars(select(Asset.asset_type).where(Asset.asset_type != 'Camera').distinct().order_by(Asset.asset_type.asc())).all()
     departments = db.scalars(select(Asset.department).where(Asset.department.is_not(None)).distinct().order_by(Asset.department.asc())).all()
     statuses = [item for item in ASSET_STATUSES if item in {a.status for a in db.scalars(select(Asset)).all()} or item == status or item == 'active']
@@ -348,8 +350,8 @@ def asset_list(request: Request, q: str | None = Query(default=None), asset_type
 
 @router.get('/export')
 @require_permission('can_export_assets')
-def asset_export(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    assets = _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty)
+def asset_export(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), filter: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    assets = _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Assets'

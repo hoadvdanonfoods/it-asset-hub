@@ -76,7 +76,7 @@ def discovery_save(request: Request, selected_assets: list[str] = Form(default=[
         # Validate not exists again just to be safe
         existing = db.scalar(select(Asset).where((Asset.ip_address == ip) | (Asset.asset_name == hostname)))
         if not existing:
-            now_str = datetime.utcnow().strftime('%Y%M')
+            now_str = datetime.utcnow().strftime('%Y%m')
             asset = Asset(
                 asset_code=f"AUTODISC-{now_str}-{ip.replace('.', '')}",
                 asset_name=hostname,

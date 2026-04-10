@@ -89,9 +89,9 @@ def maintenance_export(request: Request, start_date: str = Query(None), end_date
 
 @router.get('/new', response_class=HTMLResponse)
 @require_permission('can_create_maintenance')
-def maintenance_new(request: Request, db: Session = Depends(get_db), current_user=None):
+def maintenance_new(request: Request, asset_id: int | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    return templates.TemplateResponse('maintenance/form.html', {'request': request, 'assets': assets, 'item': None, 'current_user': current_user, 'today': datetime.now().strftime('%Y-%m-%d')})
+    return templates.TemplateResponse('maintenance/form.html', {'request': request, 'assets': assets, 'item': None, 'current_user': current_user, 'today': datetime.now().strftime('%Y-%m-%d'), 'asset_id': asset_id})
 
 
 @router.post('/new')

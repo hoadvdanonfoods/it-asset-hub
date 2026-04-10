@@ -199,7 +199,7 @@ def incident_export(request: Request, status: str | None = Query(default=None), 
 
 @router.get('/new', response_class=HTMLResponse)
 @require_permission('can_create_incidents')
-def incident_new(request: Request, db: Session = Depends(get_db), current_user=None):
+def incident_new(request: Request, asset_id: int | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
     return templates.TemplateResponse('incidents/form.html', {
         'request': request,
@@ -210,6 +210,7 @@ def incident_new(request: Request, db: Session = Depends(get_db), current_user=N
         'incident_priorities': INCIDENT_PRIORITIES,
         'status_label': status_label,
         'priority_label': priority_label,
+        'asset_id': asset_id
     })
 
 
