@@ -369,9 +369,23 @@ def asset_export(request: Request, q: str | None = Query(default=None), asset_ty
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Assets'
-    ws.append(['ID', 'Mã thiết bị', 'Tên', 'Loại', 'Model', 'Serial', 'IP', 'Bộ phận', 'Người dùng', 'Ngày cấp', 'Ngày thu hồi', 'Vị trí', 'Ngày mua', 'Hết bảo hành', 'Trạng thái', 'Ghi chú'])
+    ws.append(IMPORT_HEADERS)
     for asset in assets:
-        ws.append([asset.id, asset.asset_code, asset.asset_name, asset.asset_type, asset.model or '', asset.serial_number or '', asset.ip_address or '', asset.department or '', asset.assigned_user or '', asset.assigned_at or '', asset.unassigned_at or '', asset.location or '', asset.purchase_date or '', asset.warranty_expiry or '', asset.status, asset.notes or ''])
+        ws.append([
+            asset.asset_code,
+            asset.asset_name,
+            asset.asset_type,
+            asset.model or '',
+            asset.serial_number or '',
+            asset.ip_address or '',
+            asset.department or '',
+            asset.assigned_user or '',
+            asset.location or '',
+            asset.purchase_date or '',
+            asset.warranty_expiry or '',
+            asset.status,
+            asset.notes or ''
+        ])
     stream = io.BytesIO()
     wb.save(stream)
     content = stream.getvalue()
@@ -487,6 +501,8 @@ def asset_create(request: Request, asset_code: str = Form(...), asset_name: str 
 @require_module_access('assets')
 def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
     alerts = []
     if asset:
         days = _days_to_warranty(asset)
