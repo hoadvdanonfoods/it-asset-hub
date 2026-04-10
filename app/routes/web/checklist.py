@@ -346,6 +346,59 @@ async def api_create_camera(request: Request, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/api/camera/bulk")
+async def api_bulk_camera(request: Request, db: Session = Depends(get_db)):
+    """Bulk manage Camera/NVR assets."""
+    current_user = get_current_user(request)
+    if not current_user or not has_permission(current_user, "can_edit_assets"):
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=403)
+
+    data = await request.json()
+    asset_ids = data.get("asset_ids", [])
+    action = data.get("action", "")
+
+    if not isinstance(asset_ids, list) or not asset_ids:
+        return JSONResponse(content={"error": "Không có thiết bị nào được chọn"}, status_code=400)
+
+    assets = db.scalars(select(Asset).where(Asset.id.in_(asset_ids))).all()
+    if not assets:
+        return JSONResponse(content={"error": "Không tìm thấy tài sản hợp lệ"}, status_code=404)
+
+    updated = 0
+    skipped = 0
+
+    if action == "update":
+        updates = data.get("updates", {})
+        for asset in assets:
+            if asset.asset_type not in ["Camera", "NVR"]:
+                skipped += 1
+                continue
+            if "location" in updates and updates["location"] is not None:
+                asset.location = updates["location"].strip() or None
+            if "status" in updates and updates["status"] is not None:
+                asset.status = updates["status"].strip() or "active"
+            updated += 1
+    elif action == "activate":
+        for asset in assets:
+            if asset.asset_type not in ["Camera", "NVR"]:
+                skipped += 1
+                continue
+            asset.status = "active"
+            updated += 1
+    elif action == "deactivate":
+        for asset in assets:
+            if asset.asset_type not in ["Camera", "NVR"]:
+                skipped += 1
+                continue
+            asset.status = "retired"
+            updated += 1
+    else:
+        return JSONResponse(content={"error": "Hành động không hợp lệ", "success": False}, status_code=400)
+
+    db.commit()
+    return {"success": True, "updated": updated, "skipped": skipped}
+
+
 @router.put("/api/camera/{asset_id}")
 async def api_update_camera(asset_id: int, request: Request, db: Session = Depends(get_db)):
     """Update an existing Camera or NVR asset."""

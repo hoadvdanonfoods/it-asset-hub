@@ -438,10 +438,19 @@
         window._deviceItems = {};
         items.forEach(item => { window._deviceItems[item.id] = item; });
 
-        let html = `<div class="text-xs text-on-surface/50 mb-3 px-1">Tổng: <span class="font-bold text-primary">${items.length}</span> thiết bị</div>`;
+        let html = `
+            <div class="flex items-center justify-between mb-3 px-1">
+                <div class="text-xs text-on-surface/50">Tổng: <span class="font-bold text-primary">${items.length}</span> thiết bị</div>
+                <div id="deviceBulkBar" class="hidden flex items-center gap-2">
+                    <span class="text-xs font-bold text-on-surface/60 mr-2"><span id="deviceBulkCount">0</span> đã chọn</span>
+                    <button onclick="handleDevBulkAction('activate')" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors">Ngừng Khoá</button>
+                    <button onclick="handleDevBulkAction('deactivate')" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition-colors">Ngừng HĐ</button>
+                    <button onclick="handleDevBulkUpdateLocation()" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors">Đổi NVR</button>
+                </div>
+            </div>`;
         html += `<table class="w-full text-left border-collapse text-sm">
             <thead><tr class="bg-surface-container-low/50 text-on-surface/50 text-xs uppercase tracking-widest border-b border-outline-variant/20 font-bold">
-                <th class="py-3 px-4">#</th>
+                <th class="py-3 px-4 w-12"><input type="checkbox" id="devSelectAll" class="rounded text-primary border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer" onchange="toggleDevAll(this.checked)"></th>
                 <th class="py-3 px-4">Mã TS</th>
                 <th class="py-3 px-4">Tên</th>
                 <th class="py-3 px-4">IP</th>
@@ -451,10 +460,12 @@
             </tr></thead><tbody class="divide-y divide-outline-variant/10">`;
         items.forEach((item, i) => {
             const escapedName = (item.asset_name || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const isRetired = item.status === 'retired';
+            const nameClass = isRetired ? 'line-through text-on-surface/40' : 'text-on-surface';
             html += `<tr class="hover:bg-primary/5 transition-colors">
-                <td class="py-3 px-4 text-on-surface/40 font-bold">${i + 1}</td>
-                <td class="py-3 px-4 font-mono text-xs">${item.asset_code || ''}</td>
-                <td class="py-3 px-4 font-bold">${escapedName}</td>
+                <td class="py-3 px-4"><input type="checkbox" value="${item.id}" class="dev-cb rounded text-primary border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer" onchange="updateDevBulkBar()"></td>
+                <td class="py-3 px-4 font-mono text-xs text-on-surface/60">${item.asset_code || ''}</td>
+                <td class="py-3 px-4 font-bold ${nameClass}">${escapedName}</td>
                 <td class="py-3 px-4"><span class="font-mono text-xs bg-surface-container-low px-2 py-1 rounded-lg border border-outline-variant/10">${item.ip_address || item.location || '—'}</span></td>
                 <td class="py-3 px-4 text-on-surface/60 text-xs">${item.location || '—'}</td>
                 <td class="py-3 px-4 text-on-surface/60 text-xs">${item.model || '—'}</td>
@@ -598,6 +609,79 @@
             else alert(data.error || 'Lỗi khi xóa');
         } catch (e) {
             alert('Lỗi kết nối server');
+        }
+    }
+
+    // ===== Device Bulk Actions =====
+    function toggleDevAll(checked) {
+        document.querySelectorAll('.dev-cb').forEach(cb => cb.checked = checked);
+        updateDevBulkBar();
+    }
+
+    function updateDevBulkBar() {
+        const checked = document.querySelectorAll('.dev-cb:checked');
+        const bar = document.getElementById('deviceBulkBar');
+        const count = document.getElementById('deviceBulkCount');
+        if (checked.length > 0) {
+            count.textContent = checked.length;
+            bar.classList.remove('hidden');
+        } else {
+            bar.classList.add('hidden');
+            const sa = document.getElementById('devSelectAll');
+            if(sa) sa.checked = false;
+        }
+    }
+
+    async function handleDevBulkAction(actionType) {
+        const checked = Array.from(document.querySelectorAll('.dev-cb:checked')).map(cb => parseInt(cb.value));
+        if (checked.length === 0) return;
+
+        let actionLabel = actionType === 'activate' ? 'Kích hoạt' : 'Ngừng hoạt động';
+        let confirmText = `Bạn có chắc chắn muốn ${actionLabel} ${checked.length} thiết bị đã chọn không?`;
+        
+        if (actionType === 'deactivate') {
+            confirmText = `Nguy hiểm: Thao tác này sẽ cập nhật ${checked.length} thiết bị về trạng thái Ngừng hoạt động. Gõ chữ "ARCHIVE" để xác nhận:`;
+            let test = prompt(confirmText);
+            if (test !== 'ARCHIVE') {
+                alert('Hủy thao tác do xác nhận không đúng.');
+                return;
+            }
+        } else {
+            if (!confirm(confirmText)) return;
+        }
+
+        await submitDevBulk(checked, actionType, {});
+    }
+
+    async function handleDevBulkUpdateLocation() {
+        const checked = Array.from(document.querySelectorAll('.dev-cb:checked')).map(cb => parseInt(cb.value));
+        if (checked.length === 0) return;
+
+        let nvrList = allDevices.nvrs.map(n => n.ip_address).filter(Boolean);
+        let nvrStr = nvrList.join(", ");
+        let newLocation = prompt(`Nhập địa chỉ NVR để gán cho ${checked.length} thiết bị.\nDanh sách NVR IP: ${nvrStr}`);
+        
+        if (newLocation === null) return; // cancelled
+        await submitDevBulk(checked, "update", { location: newLocation });
+    }
+
+    async function submitDevBulk(ids, actionType, updates) {
+        try {
+            const res = await fetch('/checklist/api/camera/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ asset_ids: ids, action: actionType, updates: updates })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`Thành công: Cập nhật ${data.updated} / Bỏ qua ${data.skipped}`);
+                needsReload = true;
+                await loadDevices();
+            } else {
+                alert('Lỗi: ' + (data.error || 'Không xác định'));
+            }
+        } catch (e) {
+            alert('Lỗi kết nối server API: ' + e.message);
         }
     }
 
