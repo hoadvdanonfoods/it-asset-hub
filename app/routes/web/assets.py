@@ -497,6 +497,69 @@ def asset_create(request: Request, asset_code: str = Form(...), asset_name: str 
     return RedirectResponse(url='/assets/', status_code=303)
 
 
+@router.get('/bulk-update', include_in_schema=False)
+@router.get('/bulk-update/')
+@require_permission('can_edit_assets')
+def asset_bulk_update_get(request: Request, current_user=None):
+    """Handle accidental GET requests to bulk-update by redirecting to list."""
+    return RedirectResponse(url='/assets/', status_code=303)
+
+
+@router.post('/bulk-update', include_in_schema=False)
+@router.post('/bulk-update/')
+@require_permission('can_edit_assets')
+def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: str = Form(default=None), status: str = Form(default=None), assigned_user: str = Form(default=None), location: str = Form(default=None), db: Session = Depends(get_db), current_user=None):
+    ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
+    if not ids:
+        return RedirectResponse(url='/assets/', status_code=303)
+
+    updates = {}
+    if department and department.strip():
+        updates['department'] = department.strip()
+    if status and status.strip():
+        updates['status'] = _normalize_status(status)
+    if assigned_user and assigned_user.strip():
+        updates['assigned_user'] = assigned_user.strip()
+    if location and location.strip():
+        updates['location'] = location.strip()
+
+    if not updates:
+        return RedirectResponse(url='/assets/', status_code=303)
+
+    updated_count = 0
+    for asset_id in ids:
+        asset = db.get(Asset, asset_id)
+        if not asset:
+            continue
+        
+        changed = False
+        old_status = asset.status
+        
+        if 'department' in updates and asset.department != updates['department']:
+            asset.department = updates['department']
+            changed = True
+        if 'status' in updates and asset.status != updates['status']:
+            asset.status = updates['status']
+            changed = True
+            _log_event(db, asset.id, 'asset_status_changed', 'Bulk edit: Đổi trạng thái', f'{old_status} -> {asset.status}', current_user.username)
+        if 'location' in updates and asset.location != updates['location']:
+            asset.location = updates['location']
+            changed = True
+        
+        if 'assigned_user' in updates:
+            new_user = updates['assigned_user']
+            if asset.assigned_user != new_user:
+                _apply_assignment_change(db, asset, new_user, current_user.username, 'Cập nhật hàng loạt (Bulk edit)')
+                changed = True
+        
+        if changed:
+            _log_event(db, asset.id, 'asset_updated', 'Cập nhật hàng loạt', 'Cập nhật thông tin qua Bulk Edit', current_user.username)
+            updated_count += 1
+
+    db.commit()
+    return RedirectResponse(url='/assets/', status_code=303)
+
+
 @router.get('/{asset_id}', response_class=HTMLResponse)
 @require_module_access('assets')
 def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
@@ -581,64 +644,3 @@ def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), a
     db.commit()
     return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
 
-
-@router.get('/bulk-update', include_in_schema=False)
-@router.get('/bulk-update/')
-@require_permission('can_edit_assets')
-def asset_bulk_update_get(request: Request, current_user=None):
-    """Handle accidental GET requests to bulk-update by redirecting to list."""
-    return RedirectResponse(url='/assets/', status_code=303)
-
-@router.post('/bulk-update', include_in_schema=False)
-@router.post('/bulk-update/')
-@require_permission('can_edit_assets')
-def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: str = Form(default=None), status: str = Form(default=None), assigned_user: str = Form(default=None), location: str = Form(default=None), db: Session = Depends(get_db), current_user=None):
-    ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
-    if not ids:
-        return RedirectResponse(url='/assets/', status_code=303)
-
-    updates = {}
-    if department and department.strip():
-        updates['department'] = department.strip()
-    if status and status.strip():
-        updates['status'] = _normalize_status(status)
-    if assigned_user and assigned_user.strip():
-        updates['assigned_user'] = assigned_user.strip()
-    if location and location.strip():
-        updates['location'] = location.strip()
-
-    if not updates:
-        return RedirectResponse(url='/assets/', status_code=303)
-
-    updated_count = 0
-    for asset_id in ids:
-        asset = db.get(Asset, asset_id)
-        if not asset:
-            continue
-        
-        changed = False
-        old_status = asset.status
-        
-        if 'department' in updates and asset.department != updates['department']:
-            asset.department = updates['department']
-            changed = True
-        if 'status' in updates and asset.status != updates['status']:
-            asset.status = updates['status']
-            changed = True
-            _log_event(db, asset.id, 'asset_status_changed', 'Bulk edit: Đổi trạng thái', f'{old_status} -> {asset.status}', current_user.username)
-        if 'location' in updates and asset.location != updates['location']:
-            asset.location = updates['location']
-            changed = True
-        
-        if 'assigned_user' in updates:
-            new_user = updates['assigned_user']
-            if asset.assigned_user != new_user:
-                _apply_assignment_change(db, asset, new_user, current_user.username, 'Cập nhật hàng loạt (Bulk edit)')
-                changed = True
-        
-        if changed:
-            _log_event(db, asset.id, 'asset_updated', 'Cập nhật hàng loạt', 'Cập nhật thông tin qua Bulk Edit', current_user.username)
-            updated_count += 1
-
-    db.commit()
-    return RedirectResponse(url='/assets/', status_code=303)
