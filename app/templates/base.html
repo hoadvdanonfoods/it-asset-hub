@@ -167,7 +167,15 @@
         <a href="/discovery/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="radar" class="w-5 h-5"></i><span class="text-sm">Quét mạng (Discovery)</span>
         </a>
-      </nav>
+      
+        <!-- MASTER DATA INJECTED MENU -->
+        <h2 class="text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mt-6 mb-2 px-3">Master Data</h2>
+        <a href="/master-data/departments" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/departments') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="building" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Depts</span></a>
+        <a href="/master-data/employees" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/employees') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="users" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Emps</span></a>
+        <a href="/master-data/asset_types" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/asset_types') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="tag" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Types</span></a>
+        <a href="/master-data/locations" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/locations') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="map-pin" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Locs</span></a>
+    
+</nav>
       
       <div class="p-4 mt-auto">
         <div class="bg-primary rounded-2xl p-6 text-white overflow-hidden relative group cursor-pointer shadow-xl shadow-primary/10">
