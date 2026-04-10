@@ -18,9 +18,12 @@
       <p class="text-on-surface/60 text-sm mt-1">Tạo ngay một bản sao database hiện tại để đảm bảo an toàn dữ liệu.</p>
     </div>
     <form method="post" action="/system/backup" class="mt-auto">
-      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer w-full justify-center">
+      <button type="submit" {% if not is_sqlite %}disabled{% endif %} class="flex items-center gap-2 {% if is_sqlite %}bg-primary hover:bg-primary-container shadow-lg hover:-translate-y-0.5{% else %}bg-outline-variant/20 text-on-surface/40 cursor-not-allowed{% endif %} text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer w-full justify-center">
         <i data-lucide="save" class="w-4 h-4"></i> Backup DB ngay
       </button>
+      {% if not is_sqlite %}
+      <p class="text-[10px] text-amber-600 font-bold mt-2 text-center uppercase tracking-tighter italic">Sử dụng pg_dump hoặc công cụ quản lý DB</p>
+      {% endif %}
     </form>
   </div>
 
@@ -34,7 +37,7 @@
       <p class="text-on-surface/60 text-sm mt-1">Xem các file backup đã tạo và tải về nếu cần phục hồi.</p>
     </div>
     <a href="/system/backups" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20 w-full justify-center mt-auto">
-      <i data-lucide="list" class="w-4 h-4"></i> Mở danh sách backup
+      <i data-lucide="list" class="w-4 h-4"></i> {% if is_sqlite %}Mở danh sách backup{% else %}Thông tin Backup{% endif %}
     </a>
   </div>
 
@@ -47,9 +50,12 @@
       <h2 class="text-lg font-bold text-on-surface">Restore DB</h2>
       <p class="text-on-surface/60 text-sm mt-1">Khôi phục database từ một file backup đã có. Thao tác này sẽ ghi đè dữ liệu hiện tại.</p>
     </div>
-    <a href="/system/restore" class="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-700 transition-all shadow-md hover:-translate-y-0.5 w-full justify-center mt-auto">
-      <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Mở trang restore
+    <a href="/system/restore" class="flex items-center gap-2 {% if is_sqlite %}bg-rose-600 hover:bg-rose-700 shadow-md hover:-translate-y-0.5{% else %}bg-outline-variant/20 text-on-surface/40 cursor-not-allowed{% endif %} text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all w-full justify-center mt-auto">
+      <i data-lucide="rotate-ccw" class="w-4 h-4"></i> {% if is_sqlite %}Mở trang restore{% else %}Thông tin Restore{% endif %}
     </a>
+    {% if not is_sqlite %}
+    <p class="text-[10px] text-amber-600 font-bold mt-2 text-center uppercase tracking-tighter italic whitespace-nowrap">Sử dụng psql hoặc công cụ quản lý DB</p>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

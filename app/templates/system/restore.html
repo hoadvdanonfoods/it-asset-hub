@@ -8,15 +8,17 @@
 </div>
 
 {% if not is_sqlite %}
-<div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4 shadow-sm max-w-2xl">
-  <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-    <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+<div class="mb-6 p-6 bg-amber-50 border border-amber-200 rounded-3xl flex items-start gap-4 shadow-sm max-w-2xl">
+  <div class="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center flex-shrink-0">
+    <i data-lucide="database-zap" class="w-6 h-6 text-amber-600"></i>
   </div>
   <div>
-    <h3 class="font-bold text-amber-900">Tính năng này bị giới hạn</h3>
-    <p class="text-sm text-amber-800/80 leading-relaxed">
-      Hệ thống hiện đang sử dụng <strong>PostgreSQL</strong>. Tính năng Restore database qua giao diện web chỉ hỗ trợ <strong>SQLite</strong>. 
-      Để khôi phục dữ liệu cho PostgreSQL, vui lòng sử dụng lệnh <code>psql</code> hoặc các công cụ quản lý chuyên dụng.
+    <h3 class="font-bold text-amber-900 text-lg">Quản trị PostgreSQL</h3>
+    <p class="text-sm text-amber-800/80 leading-relaxed mt-1">
+      Hệ thống đang chạy trên: <code class="bg-amber-100/50 px-1.5 py-0.5 rounded font-mono text-xs">{{ db_path }}</code>
+    </p>
+    <p class="text-sm text-amber-800/80 leading-relaxed mt-3 italic font-medium">
+      "Vui lòng sử dụng <strong>pg_dump / psql</strong> hoặc các công cụ quản trị Database (như pgAdmin, DBeaver) để thực hiện khôi phục dữ liệu an toàn."
     </p>
   </div>
 </div>
@@ -36,6 +38,7 @@
 
 <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-8 max-w-2xl">
   <form method="post" class="space-y-6">
+    {% if is_sqlite %}
     <div>
       <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Chọn file backup <span class="text-rose-500">*</span></label>
       <select name="backup_name" required class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
@@ -51,12 +54,15 @@
       <input type="text" name="confirm_text" required placeholder="Nhập RESTORE..."
         class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface placeholder:text-on-surface/40 transition-all">
     </div>
+    {% endif %}
 
     <div class="flex gap-3 pt-2">
-      <button type="submit" {% if not is_sqlite %}disabled{% endif %} class="flex items-center gap-2 {% if is_sqlite %}bg-rose-600 hover:bg-rose-700 shadow-md hover:-translate-y-0.5{% else %}bg-outline-variant/20 text-on-surface/40 cursor-not-allowed{% endif %} text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
+      {% if is_sqlite %}
+      <button type="submit" class="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 shadow-md hover:-translate-y-0.5 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
         <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Restore DB
       </button>
-      <a href="/system/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      {% endif %}
+      <a href="/system/" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20 {% if not is_sqlite %}w-full justify-center{% endif %}">
         <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
       </a>
     </div>

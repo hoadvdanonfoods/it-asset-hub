@@ -30,8 +30,8 @@
     <p class="text-on-surface/60 mt-1">Các bản sao database đã được tạo</p>
   </div>
   <div class="flex gap-3">
-    <form method="post" action="/system/backup">
-      <button type="submit" {% if not is_sqlite %}disabled{% endif %} class="flex items-center gap-2 {% if is_sqlite %}bg-primary hover:bg-primary-container shadow-lg hover:-translate-y-0.5{% else %}bg-outline-variant/20 text-on-surface/40 cursor-not-allowed{% endif %} text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
+    <form method="post" action="/system/backup" {% if not is_sqlite %}class="hidden"{% endif %}>
+      <button type="submit" class="flex items-center gap-2 bg-primary hover:bg-primary-container shadow-lg hover:-translate-y-0.5 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
         <i data-lucide="save" class="w-4 h-4"></i> Backup DB ngay
       </button>
     </form>
@@ -81,9 +81,16 @@
     </table>
   </div>
   {% if not backups %}
-  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="archive" class="w-12 h-12 mb-4 opacity-50"></i>
-    <p>Chưa có bản backup nào.</p>
+  <div class="py-16 flex flex-col items-center justify-center text-on-surface/40">
+    <div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-4">
+        <i data-lucide="{% if is_sqlite %}archive{% else %}database-zap{% endif %}" class="w-8 h-8 opacity-50"></i>
+    </div>
+    {% if is_sqlite %}
+    <p class="font-bold">Chưa có bản backup nào.</p>
+    {% else %}
+    <h3 class="text-on-surface font-bold mb-2">Quản trị PostgreSQL</h3>
+    <p class="text-sm text-center max-w-md px-6">Hệ thống đang chạy PostgreSQL. Các bản sao lưu nên được quản lý trực tiếp bằng công cụ của máy chủ hoặc lệnh <code>pg_dump</code>.</p>
+    {% endif %}
   </div>
   {% endif %}
 </div>

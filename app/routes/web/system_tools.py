@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.auth import require_permission
-from app.config import DATA_DIR, DEFAULT_DB_PATH
+from app.config import DATA_DIR, DEFAULT_DB_PATH, DATABASE_URL
 from app.db.session import SessionLocal, engine, get_db, is_sqlite
 
 router = APIRouter(prefix='/system', tags=['system'])
@@ -19,6 +19,25 @@ BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 def _db_path() -> Path:
     return DEFAULT_DB_PATH
+
+
+def _get_db_display() -> str:
+    """Returns a sanitized DB string for UI display."""
+    if is_sqlite:
+        return str(DEFAULT_DB_PATH)
+    
+    # Sanitize Postgres URL: postgresql://user:pass@host:port/dbname -> postgresql://user@host:port/dbname
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(DATABASE_URL)
+        netloc = parsed.hostname
+        if parsed.port:
+            netloc = f"{netloc}:{parsed.port}"
+        if parsed.username:
+            netloc = f"{parsed.username}@{netloc}"
+        return f"{parsed.scheme}://{netloc}{parsed.path}"
+    except Exception:
+        return "PostgreSQL Database"
 
 
 def _list_backups():
@@ -34,17 +53,23 @@ def _list_backups():
 @router.get('/', response_class=HTMLResponse)
 @require_permission('can_manage_system')
 def system_index(request: Request, current_user=None):
-    return templates.TemplateResponse('system/index.html', {'request': request, 'current_user': current_user})
+    return templates.TemplateResponse('system/index.html', {
+        'request': request, 
+        'current_user': current_user,
+        'is_sqlite': is_sqlite,
+        'db_display': _get_db_display()
+    })
 
 
 @router.get('/backups', response_class=HTMLResponse)
 @require_permission('can_manage_system')
 def backup_list(request: Request, current_user=None, error: str | None = Query(default=None)):
+    backups = _list_backups() if is_sqlite else []
     return templates.TemplateResponse('system/backups.html', {
         'request': request, 
         'current_user': current_user, 
-        'backups': _list_backups(), 
-        'db_path': str(_db_path()),
+        'backups': backups, 
+        'db_path': _get_db_display(),
         'is_sqlite': is_sqlite,
         'error': error
     })
@@ -68,6 +93,14 @@ def backup_create(request: Request, current_user=None):
 @router.get('/backups/{backup_name}/download')
 @require_permission('can_manage_system')
 def backup_download(backup_name: str, request: Request, current_user=None):
+    if not is_sqlite:
+         return RedirectResponse(url='/system/backups', status_code=303)
+         
+    # Security: Validate filename against existing backups to prevent path traversal
+    valid_backups = [b['name'] for b in _list_backups()]
+    if backup_name not in valid_backups:
+        return RedirectResponse(url='/system/backups?error=Invalid+backup+file', status_code=303)
+        
     file_path = BACKUP_DIR / backup_name
     if not file_path.exists():
         return RedirectResponse(url='/system/backups', status_code=303)
@@ -81,10 +114,12 @@ def backup_download(backup_name: str, request: Request, current_user=None):
 @router.get('/restore', response_class=HTMLResponse)
 @require_permission('can_manage_system')
 def restore_page(request: Request, current_user=None):
+    backups = _list_backups() if is_sqlite else []
     return templates.TemplateResponse('system/restore.html', {
         'request': request, 
         'current_user': current_user, 
-        'backups': _list_backups(), 
+        'backups': backups, 
+        'db_path': _get_db_display(),
         'error': None,
         'is_sqlite': is_sqlite
     })
