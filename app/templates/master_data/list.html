@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}{{ model_name|title }}{% endblock %}
+{% block content %}
+<div class="px-4 py-8 max-w-7xl mx-auto space-y-6">
+    <div class="flex justify-between items-center bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/30">
+        <h1 class="text-3xl font-semibold text-on-surface tracking-tight">{{ model_name|title }}</h1>
+        <div class="flex gap-2">
+            <button onclick="document.getElementById('importModal').showModal()" class="btn btn-outline">Import</button>
+            <button onclick="document.getElementById('createModal').showModal()" class="btn btn-primary">Create New</button>
+        </div>
+    </div>
+    <div class="overflow-hidden bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30">
+        <table class="w-full text-sm text-left">
+            <thead class="text-xs text-on-surface/60 bg-surface-container p-4">
+                <tr><th>ID</th><th>Data</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="border-b border-outline-variant/20 hover:bg-surface-container/50">
+                    <td class="p-4">{{ item.id }}</td>
+                    <td class="p-4">
+                        {% if item.code %}<b>{{ item.code }}</b> -{% endif %}
+                        {% if item.employee_code %}<b>{{ item.employee_code }}</b> -{% endif %}
+                        {{ item.name or item.full_name }}
+                    </td>
+                    <td class="p-4">
+                        <button onclick="document.getElementById('editModal{{ item.id }}').showModal()" class="text-primary hover:underline">Edit</button>
+                        
+                        <dialog id="editModal{{ item.id }}" class="p-6 rounded-xl shadow-xl w-96 backdrop:bg-black/50">
+                            <h3 class="text-lg font-bold mb-4">Edit</h3>
+                            <form method="POST" action="/master-data/{{ model_name }}/edit/{{ item.id }}" class="flex flex-col gap-4">
+                                {% if item.code %}<input name="code" value="{{ item.code }}" class="input input-bordered" required>{% endif %}
+                                {% if item.employee_code %}<input name="employee_code" value="{{ item.employee_code }}" class="input input-bordered" required>{% endif %}
+                                <input name="{{ 'full_name' if item.employee_code else 'name' }}" value="{{ item.name or item.full_name }}" class="input input-bordered" required>
+                                <div class="flex gap-2 mt-4"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-outline" onclick="this.closest('dialog').close()">Cancel</button></div>
+                            </form>
+                        </dialog>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Create Modal -->
+    <dialog id="createModal" class="p-6 rounded-xl shadow-xl w-96 backdrop:bg-black/50">
+        <h3 class="text-lg font-bold mb-4">Create</h3>
+        <form method="POST" action="/master-data/{{ model_name }}/create" class="flex flex-col gap-4">
+            <input name="{{ 'employee_code' if model_name == 'employees' else 'code' }}" placeholder="Code" class="input input-bordered" required>
+            <input name="{{ 'full_name' if model_name == 'employees' else 'name' }}" placeholder="Name" class="input input-bordered" required>
+            <div class="flex gap-2 mt-4"><button type="submit" class="btn btn-primary">Create</button><button type="button" class="btn btn-outline" onclick="this.closest('dialog').close()">Cancel</button></div>
+        </form>
+    </dialog>
+
+    <!-- Import Modal -->
+    <dialog id="importModal" class="p-6 rounded-xl shadow-xl w-96 backdrop:bg-black/50">
+        <h3 class="text-lg font-bold mb-4">Import Excel</h3>
+        <form method="POST" action="/master-data/{{ model_name }}/import" enctype="multipart/form-data" class="flex flex-col gap-4">
+            <input type="file" name="file" accept=".xlsx" class="file-input file-input-bordered w-full" required>
+            <div class="flex gap-2 mt-4"><button type="submit" class="btn btn-primary">Import</button><button type="button" class="btn btn-outline" onclick="this.closest('dialog').close()">Cancel</button></div>
+        </form>
+    </dialog>
+</div>
+{% endblock %}
