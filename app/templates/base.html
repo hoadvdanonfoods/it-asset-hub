@@ -127,53 +127,119 @@
       
       <nav class="flex-1 px-4 space-y-1 overflow-y-auto pb-4 custom-scrollbar">
         {% set p = request.url.path %}
+        {% set admin_open = p.startswith('/users') or p.startswith('/system') or p.startswith('/audit') or p.startswith('/discovery') %}
+        {% set master_open = p.startswith('/master-data') %}
+        {% set is_admin_nav = current_user and current_user.role == 'admin' %}
+        {% set can_manage_system_nav = current_user and (is_admin_nav or current_user.can_manage_system) %}
+        {% set can_manage_users_nav = current_user and (is_admin_nav or current_user.can_manage_users) %}
+        {% set can_view_dashboard_nav = current_user and (is_admin_nav or current_user.can_view_dashboard) %}
+        {% set can_view_assets_nav = current_user and (is_admin_nav or current_user.can_view_assets) %}
+        {% set can_view_maintenance_nav = current_user and (is_admin_nav or current_user.can_view_maintenance) %}
+        {% set can_view_incidents_nav = current_user and (is_admin_nav or current_user.can_view_incidents) %}
+        {% set can_view_resources_nav = current_user and (is_admin_nav or current_user.can_view_resources) %}
+        {% set can_view_documents_nav = current_user and (is_admin_nav or current_user.can_view_documents) %}
+        {% set show_admin_nav = can_manage_system_nav or can_manage_users_nav %}
+        {% set show_master_nav = can_manage_system_nav %}
+
+        {% if can_view_dashboard_nav %}
         <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p == '/' else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-sm">Dashboard</span>
         </a>
+        {% endif %}
+        {% if can_view_assets_nav %}
         <a href="/assets/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/assets') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm">Tài sản (Assets)</span>
         </a>
+        {% endif %}
+        {% if can_view_maintenance_nav %}
         <a href="/checklist/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/checklist') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-sm">Camera Checklist</span>
         </a>
+        {% endif %}
+        {% if can_view_resources_nav %}
         <a href="/resources/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm">Vật tư (Resources)</span>
         </a>
+        {% endif %}
+        {% if can_view_maintenance_nav %}
         <a href="/maintenance/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/maintenance') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm">Bảo trì (Maintenance)</span>
         </a>
+        {% endif %}
+        {% if can_view_incidents_nav %}
         <a href="/incidents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/incidents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm">Sự cố (Incidents)</span>
         </a>
+        {% endif %}
+        {% if can_view_documents_nav %}
         <a href="/documents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm">Tài liệu (Documents)</span>
         </a>
-
-        <div class="pt-4 pb-2">
-            <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2">Quản trị Hệ Thống</p>
-        </div>
-        
-        <a href="/users/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/users') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="users" class="w-5 h-5"></i><span class="text-sm">Người dùng (Users)</span>
-        </a>
-        <a href="/system/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/system') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm">Công cụ hệ thống</span>
-        </a>
-        {% if current_user and current_user.role == 'admin' %}
-        <a href="/audit/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/audit') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="shield" class="w-5 h-5"></i><span class="text-sm">Audit & Compliance</span>
-        </a>
         {% endif %}
-        <a href="/discovery/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="radar" class="w-5 h-5"></i><span class="text-sm">Quét mạng (Discovery)</span>
-        </a>
-      
-        <!-- MASTER DATA INJECTED MENU -->
-        <h2 class="text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mt-6 mb-2 px-3">Master Data</h2>
-        <a href="/master-data/departments" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/departments') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="building" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Depts</span></a>
-        <a href="/master-data/employees" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/employees') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="users" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Emps</span></a>
-        <a href="/master-data/asset_types" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/asset_types') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="tag" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Types</span></a>
-        <a href="/master-data/locations" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data/locations') else 'text-on-surface/40 hover:text-primary' }}"><i data-lucide="map-pin" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Locs</span></a>
+
+        {% if show_master_nav or show_admin_nav %}
+        <div class="pt-4 pb-2">
+            <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2">Điều hướng nhanh</p>
+        </div>
+        {% endif %}
+
+        {% if show_master_nav %}
+        <div class="rounded-2xl border border-outline-variant/10 overflow-hidden bg-surface-container-lowest/40">
+          <button type="button" data-nav-toggle="master-data-menu" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-all duration-200 {{ 'bg-primary/5 text-primary' if master_open else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+            <div class="flex items-center gap-3">
+              <i data-lucide="database" class="w-5 h-5"></i><span class="text-sm font-semibold">Master Data</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform {{ 'rotate-180' if master_open else '' }}"></i>
+          </button>
+          <div id="master-data-menu" class="px-2 pb-2 space-y-1 {{ '' if master_open else 'hidden' }}">
+            <a href="/master-data/departments" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/departments') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="building" class="w-4 h-4"></i><span class="text-sm">Phòng ban</span>
+            </a>
+            <a href="/master-data/employees" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/employees') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm">Nhân viên</span>
+            </a>
+            <a href="/master-data/asset_types" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/asset_types') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="tag" class="w-4 h-4"></i><span class="text-sm">Loại tài sản</span>
+            </a>
+            <a href="/master-data/locations" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/locations') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="map-pin" class="w-4 h-4"></i><span class="text-sm">Vị trí</span>
+            </a>
+          </div>
+        </div>
+        {% endif %}
+
+        {% if show_admin_nav %}
+        <div class="rounded-2xl border border-outline-variant/10 overflow-hidden bg-surface-container-lowest/40 {{ 'mt-3' if show_master_nav else '' }}">
+          <button type="button" data-nav-toggle="admin-menu" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-all duration-200 {{ 'bg-primary/5 text-primary' if admin_open else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+            <div class="flex items-center gap-3">
+              <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm font-semibold">Administration</span>
+            </div>
+            <i data-lucide="chevron-down" class="w-4 h-4 transition-transform {{ 'rotate-180' if admin_open else '' }}"></i>
+          </button>
+          <div id="admin-menu" class="px-2 pb-2 space-y-1 {{ '' if admin_open else 'hidden' }}">
+            {% if can_manage_users_nav %}
+            <a href="/users/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/users') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm">Người dùng</span>
+            </a>
+            {% endif %}
+            {% if can_manage_system_nav %}
+            <a href="/system/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/system') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="settings-2" class="w-4 h-4"></i><span class="text-sm">Công cụ hệ thống</span>
+            </a>
+            {% endif %}
+            {% if current_user and current_user.role == 'admin' %}
+            <a href="/audit/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/audit') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="shield" class="w-4 h-4"></i><span class="text-sm">Audit & Compliance</span>
+            </a>
+            {% endif %}
+            {% if can_manage_system_nav %}
+            <a href="/discovery/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="radar" class="w-4 h-4"></i><span class="text-sm">Quét mạng</span>
+            </a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
     
 </nav>
       
@@ -202,6 +268,9 @@
         </a>
         <a href="/incidents/" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/incidents') else 'text-on-surface/40 hover:text-primary' }}">
           <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Incid</span>
+        </a>
+        <a href="/master-data/departments" class="flex flex-col items-center justify-center px-3 py-1 rounded-xl transition-colors {{ 'text-primary bg-primary/5' if p.startswith('/master-data') else 'text-on-surface/40 hover:text-primary' }}">
+          <i data-lucide="database" class="w-5 h-5"></i><span class="text-[10px] font-medium mt-1">Data</span>
         </a>
     </nav>
     
@@ -282,6 +351,19 @@
               }, 200);
           }
       }
+
+      document.querySelectorAll('[data-nav-toggle]').forEach((button) => {
+          button.addEventListener('click', () => {
+              const targetId = button.getAttribute('data-nav-toggle');
+              const panel = document.getElementById(targetId);
+              const icon = button.querySelector('[data-lucide="chevron-down"]');
+              if (!panel) return;
+              panel.classList.toggle('hidden');
+              if (icon) {
+                  icon.classList.toggle('rotate-180');
+              }
+          });
+      });
     </script>
     {% block extra_js %}{% endblock %}
 </body>

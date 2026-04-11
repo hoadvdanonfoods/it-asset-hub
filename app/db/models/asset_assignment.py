@@ -11,6 +11,7 @@ class AssetAssignment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id'), index=True)
+    employee_id: Mapped[int | None] = mapped_column(ForeignKey('employees.id'), nullable=True, index=True)
     assigned_user: Mapped[str] = mapped_column(String(120))
     assigned_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
     assigned_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
@@ -19,4 +20,4 @@ class AssetAssignment(Base):
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default='assigned', index=True)
 
-    asset = relationship('Asset', back_populates='assignments')
+    asset = relationship('Asset', back_populates='assignments', foreign_keys=[asset_id])

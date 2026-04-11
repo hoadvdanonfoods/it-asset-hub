@@ -11,6 +11,8 @@ class Maintenance(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id'), index=True)
+    maintenance_type_id: Mapped[int | None] = mapped_column(ForeignKey('maintenance_types.id'), nullable=True, index=True)
+    vendor_id: Mapped[int | None] = mapped_column(ForeignKey('vendors.id'), nullable=True, index=True)
     maintenance_date: Mapped[date] = mapped_column(Date)
     description: Mapped[str] = mapped_column(Text)
     technician: Mapped[str | None] = mapped_column(String(120), nullable=True)

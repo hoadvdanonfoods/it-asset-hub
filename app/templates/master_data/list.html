@@ -1,64 +1,213 @@
 {% extends 'base.html' %}
-{% block title %}{{ model_name|title }}{% endblock %}
+{% block title %}{{ config.label }} - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
 {% block content %}
-<div class="px-4 py-8 max-w-7xl mx-auto space-y-6">
-    <div class="flex justify-between items-center bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant/30">
-        <h1 class="text-3xl font-semibold text-on-surface tracking-tight">{{ model_name|title }}</h1>
-        <div class="flex gap-2">
-            <button onclick="document.getElementById('importModal').showModal()" class="btn btn-outline">Import</button>
-            <button onclick="document.getElementById('createModal').showModal()" class="btn btn-primary">Create New</button>
-        </div>
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-2 text-primary/70 text-xs font-bold uppercase tracking-widest mb-2">
+      <i data-lucide="{{ config.icon }}" class="w-4 h-4"></i>
+      <span>Master Data</span>
     </div>
-    <div class="overflow-hidden bg-surface-container-lowest rounded-2xl shadow-sm border border-outline-variant/30">
-        <table class="w-full text-sm text-left">
-            <thead class="text-xs text-on-surface/60 bg-surface-container p-4">
-                <tr><th>ID</th><th>Data</th><th>Actions</th></tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                <tr class="border-b border-outline-variant/20 hover:bg-surface-container/50">
-                    <td class="p-4">{{ item.id }}</td>
-                    <td class="p-4">
-                        {% if item.code %}<b>{{ item.code }}</b> -{% endif %}
-                        {% if item.employee_code %}<b>{{ item.employee_code }}</b> -{% endif %}
-                        {{ item.name or item.full_name }}
-                    </td>
-                    <td class="p-4">
-                        <button onclick="document.getElementById('editModal{{ item.id }}').showModal()" class="text-primary hover:underline">Edit</button>
-                        
-                        <dialog id="editModal{{ item.id }}" class="p-6 rounded-xl shadow-xl w-96 backdrop:bg-black/50">
-                            <h3 class="text-lg font-bold mb-4">Edit</h3>
-                            <form method="POST" action="/master-data/{{ model_name }}/edit/{{ item.id }}" class="flex flex-col gap-4">
-                                {% if item.code %}<input name="code" value="{{ item.code }}" class="input input-bordered" required>{% endif %}
-                                {% if item.employee_code %}<input name="employee_code" value="{{ item.employee_code }}" class="input input-bordered" required>{% endif %}
-                                <input name="{{ 'full_name' if item.employee_code else 'name' }}" value="{{ item.name or item.full_name }}" class="input input-bordered" required>
-                                <div class="flex gap-2 mt-4"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn btn-outline" onclick="this.closest('dialog').close()">Cancel</button></div>
-                            </form>
-                        </dialog>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Create Modal -->
-    <dialog id="createModal" class="p-6 rounded-xl shadow-xl w-96 backdrop:bg-black/50">
-        <h3 class="text-lg font-bold mb-4">Create</h3>
-        <form method="POST" action="/master-data/{{ model_name }}/create" class="flex flex-col gap-4">
-            <input name="{{ 'employee_code' if model_name == 'employees' else 'code' }}" placeholder="Code" class="input input-bordered" required>
-            <input name="{{ 'full_name' if model_name == 'employees' else 'name' }}" placeholder="Name" class="input input-bordered" required>
-            <div class="flex gap-2 mt-4"><button type="submit" class="btn btn-primary">Create</button><button type="button" class="btn btn-outline" onclick="this.closest('dialog').close()">Cancel</button></div>
-        </form>
-    </dialog>
-
-    <!-- Import Modal -->
-    <dialog id="importModal" class="p-6 rounded-xl shadow-xl w-96 backdrop:bg-black/50">
-        <h3 class="text-lg font-bold mb-4">Import Excel</h3>
-        <form method="POST" action="/master-data/{{ model_name }}/import" enctype="multipart/form-data" class="flex flex-col gap-4">
-            <input type="file" name="file" accept=".xlsx" class="file-input file-input-bordered w-full" required>
-            <div class="flex gap-2 mt-4"><button type="submit" class="btn btn-primary">Import</button><button type="button" class="btn btn-outline" onclick="this.closest('dialog').close()">Cancel</button></div>
-        </form>
-    </dialog>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">{{ config.label }}</h1>
+    <p class="text-on-surface/60 mt-1">{{ config.description }}</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-3">
+    <button onclick="document.getElementById('importModal').showModal()" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+      <i data-lucide="upload" class="w-4 h-4"></i> Import Excel
+    </button>
+    <button onclick="document.getElementById('createModal').showModal()" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5">
+      <i data-lucide="plus" class="w-4 h-4"></i> Thêm {{ config.label | lower }}
+    </button>
+  </div>
 </div>
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+  <div class="px-6 py-4 border-b border-outline-variant/10 bg-surface-container-low/30 flex items-center justify-between gap-4">
+    <div class="text-sm text-on-surface/60 font-medium">
+      Tổng cộng <span class="font-bold text-on-surface">{{ items|length }}</span> bản ghi
+    </div>
+    <div class="text-xs text-on-surface/40 uppercase tracking-widest">{{ model_name }}</div>
+  </div>
+
+  <div class="overflow-x-auto custom-scrollbar">
+    <table class="w-full text-left text-sm text-on-surface">
+      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
+        <tr>
+          <th class="px-6 py-5 w-16 text-center">STT</th>
+          {% for col_key in config.table_columns %}
+          {% set field = (config.columns | selectattr('key', 'equalto', col_key) | list | first) %}
+          <th class="px-6 py-5 min-w-[160px]">{{ field.label if field else col_key }}</th>
+          {% endfor %}
+          <th class="px-6 py-5 w-28 text-right">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for item in items %}
+        <tr class="hover:bg-primary/5 transition-all duration-200 group">
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+              {{ loop.index }}
+            </span>
+          </td>
+          {% for col_key in config.table_columns %}
+          <td class="px-6 py-5">
+            {% set value = item|attr(col_key) %}
+            {% if value is boolean %}
+              {% if value %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Active
+              </span>
+              {% else %}
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10">
+                <i data-lucide="archive" class="w-3 h-3"></i>Inactive
+              </span>
+              {% endif %}
+            {% elif value %}
+              <span class="{% if loop.first %}font-bold text-on-surface{% else %}text-on-surface/70{% endif %}">{{ value }}</span>
+            {% else %}
+              <span class="text-on-surface/20 italic text-xs">-</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td class="px-6 py-5 text-right">
+            <button onclick="document.getElementById('editModal{{ item.id }}').showModal()" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-primary/10 hover:text-primary transition-all text-on-surface/30 border border-outline-variant/10 hover:border-primary/20" title="Sửa">
+              <i data-lucide="pencil" class="w-4 h-4"></i>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if not items %}
+  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
+    <i data-lucide="database" class="w-12 h-12 mb-4 opacity-50"></i>
+    <p>Chưa có dữ liệu cho danh mục này.</p>
+  </div>
+  {% endif %}
+</div>
+
+<dialog id="createModal" class="p-0 rounded-3xl shadow-2xl w-full max-w-3xl backdrop:bg-black/50 bg-transparent">
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 overflow-hidden">
+    <div class="px-6 py-5 border-b border-outline-variant/10 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-on-surface">Thêm {{ config.label | lower }}</h3>
+        <p class="text-sm text-on-surface/50 mt-1">Nhập thông tin danh mục theo chuẩn hệ thống.</p>
+      </div>
+      <button type="button" onclick="this.closest('dialog').close()" class="p-2 rounded-xl hover:bg-surface-container-highest text-on-surface/50">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <form method="POST" action="/master-data/{{ model_name }}/create" class="p-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% for field in config.columns %}
+          {% if field.type == 'textarea' %}
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}</label>
+            <textarea name="{{ field.key }}" rows="3" placeholder="{{ field.placeholder or '' }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/30 transition-all"></textarea>
+          </div>
+          {% elif field.type == 'boolean' %}
+          <div class="md:col-span-2">
+            <label class="flex items-center gap-3 p-4 rounded-2xl border border-outline-variant/20 hover:bg-primary/5 cursor-pointer transition-colors">
+              <input type="checkbox" name="{{ field.key }}" value="true" checked class="w-4 h-4 rounded accent-primary cursor-pointer">
+              <div>
+                <div class="text-sm font-bold text-on-surface">{{ field.label }}</div>
+                <div class="text-xs text-on-surface/40">Bản ghi sẽ xuất hiện trong danh mục đang hoạt động.</div>
+              </div>
+            </label>
+          </div>
+          {% else %}
+          <div>
+            <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}{% if field.required %} <span class="text-rose-500">*</span>{% endif %}</label>
+            <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="{{ field.key }}" {% if field.required %}required{% endif %} placeholder="{{ field.placeholder or '' }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="flex gap-3 justify-end pt-2">
+        <button type="button" onclick="this.closest('dialog').close()" class="px-5 py-2.5 rounded-xl bg-surface-container-highest text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">Hủy</button>
+        <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all">Lưu dữ liệu</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+{% for item in items %}
+<dialog id="editModal{{ item.id }}" class="p-0 rounded-3xl shadow-2xl w-full max-w-3xl backdrop:bg-black/50 bg-transparent">
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 overflow-hidden">
+    <div class="px-6 py-5 border-b border-outline-variant/10 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-on-surface">Cập nhật {{ config.label | lower }}</h3>
+        <p class="text-sm text-on-surface/50 mt-1">ID #{{ item.id }}</p>
+      </div>
+      <button type="button" onclick="this.closest('dialog').close()" class="p-2 rounded-xl hover:bg-surface-container-highest text-on-surface/50">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <form method="POST" action="/master-data/{{ model_name }}/edit/{{ item.id }}" class="p-6 space-y-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {% for field in config.columns %}
+          {% set value = item|attr(field.key) %}
+          {% if field.type == 'textarea' %}
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}</label>
+            <textarea name="{{ field.key }}" rows="3" placeholder="{{ field.placeholder or '' }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/30 transition-all">{{ value or '' }}</textarea>
+          </div>
+          {% elif field.type == 'boolean' %}
+          <div class="md:col-span-2">
+            <label class="flex items-center gap-3 p-4 rounded-2xl border border-outline-variant/20 hover:bg-primary/5 cursor-pointer transition-colors">
+              <input type="checkbox" name="{{ field.key }}" value="true" {% if value %}checked{% endif %} class="w-4 h-4 rounded accent-primary cursor-pointer">
+              <div>
+                <div class="text-sm font-bold text-on-surface">{{ field.label }}</div>
+                <div class="text-xs text-on-surface/40">Bật/tắt trạng thái hiển thị của bản ghi.</div>
+              </div>
+            </label>
+          </div>
+          {% else %}
+          <div>
+            <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}{% if field.required %} <span class="text-rose-500">*</span>{% endif %}</label>
+            <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="{{ field.key }}" value="{{ value if value is not none else '' }}" {% if field.required %}required{% endif %} placeholder="{{ field.placeholder or '' }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/40 transition-all">
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="flex gap-3 justify-end pt-2">
+        <button type="button" onclick="this.closest('dialog').close()" class="px-5 py-2.5 rounded-xl bg-surface-container-highest text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">Hủy</button>
+        <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all">Lưu thay đổi</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+{% endfor %}
+
+<dialog id="importModal" class="p-0 rounded-3xl shadow-2xl w-full max-w-2xl backdrop:bg-black/50 bg-transparent">
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 overflow-hidden">
+    <div class="px-6 py-5 border-b border-outline-variant/10 flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-bold text-on-surface">Import {{ config.label | lower }}</h3>
+        <p class="text-sm text-on-surface/50 mt-1">Upload file Excel với tiêu đề cột trùng tên field hệ thống.</p>
+      </div>
+      <button type="button" onclick="this.closest('dialog').close()" class="p-2 rounded-xl hover:bg-surface-container-highest text-on-surface/50">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    <form method="POST" action="/master-data/{{ model_name }}/import" enctype="multipart/form-data" class="p-6 space-y-5">
+      <div class="rounded-2xl border border-dashed border-outline-variant/30 bg-surface-container-low p-5">
+        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-3">Chọn file Excel (.xlsx)</label>
+        <input type="file" name="file" accept=".xlsx" required class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm text-on-surface">
+      </div>
+      <div class="text-xs text-on-surface/50 leading-6">
+        Các cột hỗ trợ:
+        {% for field in config.columns %}
+          <span class="inline-flex px-2 py-1 rounded-md bg-surface-container-highest border border-outline-variant/10 mr-1 mb-1">{{ field.key }}</span>
+        {% endfor %}
+      </div>
+      <div class="flex gap-3 justify-end pt-2">
+        <button type="button" onclick="this.closest('dialog').close()" class="px-5 py-2.5 rounded-xl bg-surface-container-highest text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">Hủy</button>
+        <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all">Import dữ liệu</button>
+      </div>
+    </form>
+  </div>
+</dialog>
 {% endblock %}

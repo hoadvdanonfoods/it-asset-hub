@@ -3,8 +3,307 @@ from sqlalchemy import text
 from app.db.session import engine
 
 
+MASTER_TABLES = {
+    'asset_categories': """CREATE TABLE IF NOT EXISTS asset_categories (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+    'asset_statuses': """CREATE TABLE IF NOT EXISTS asset_statuses (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+    'vendors': """CREATE TABLE IF NOT EXISTS vendors (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+    'incident_categories': """CREATE TABLE IF NOT EXISTS incident_categories (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+    'priorities': """CREATE TABLE IF NOT EXISTS priorities (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+    'maintenance_types': """CREATE TABLE IF NOT EXISTS maintenance_types (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN DEFAULT 1,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME,
+        updated_at DATETIME
+    )""",
+}
+
+MASTER_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS ix_asset_categories_code ON asset_categories (code)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_statuses_code ON asset_statuses (code)",
+    "CREATE INDEX IF NOT EXISTS ix_vendors_code ON vendors (code)",
+    "CREATE INDEX IF NOT EXISTS ix_incident_categories_code ON incident_categories (code)",
+    "CREATE INDEX IF NOT EXISTS ix_priorities_code ON priorities (code)",
+    "CREATE INDEX IF NOT EXISTS ix_maintenance_types_code ON maintenance_types (code)",
+]
+
+FK_COLUMNS = {
+    'assets': [
+        ('category_id', 'INTEGER'),
+        ('status_id', 'INTEGER'),
+        ('department_id', 'INTEGER'),
+        ('location_id', 'INTEGER'),
+        ('vendor_id', 'INTEGER'),
+        ('current_assignment_id', 'INTEGER'),
+    ],
+    'incidents': [
+        ('category_id', 'INTEGER'),
+        ('priority_id', 'INTEGER'),
+        ('department_id', 'INTEGER'),
+        ('source', 'VARCHAR(30)'),
+    ],
+    'maintenances': [
+        ('maintenance_type_id', 'INTEGER'),
+        ('vendor_id', 'INTEGER'),
+    ],
+    'asset_assignments': [
+        ('employee_id', 'INTEGER'),
+    ],
+}
+
+FK_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS ix_assets_category_id ON assets (category_id)",
+    "CREATE INDEX IF NOT EXISTS ix_assets_status_id ON assets (status_id)",
+    "CREATE INDEX IF NOT EXISTS ix_assets_department_id ON assets (department_id)",
+    "CREATE INDEX IF NOT EXISTS ix_assets_location_id ON assets (location_id)",
+    "CREATE INDEX IF NOT EXISTS ix_assets_vendor_id ON assets (vendor_id)",
+    "CREATE INDEX IF NOT EXISTS ix_assets_current_assignment_id ON assets (current_assignment_id)",
+    "CREATE INDEX IF NOT EXISTS ix_incidents_category_id ON incidents (category_id)",
+    "CREATE INDEX IF NOT EXISTS ix_incidents_priority_id ON incidents (priority_id)",
+    "CREATE INDEX IF NOT EXISTS ix_incidents_department_id ON incidents (department_id)",
+    "CREATE INDEX IF NOT EXISTS ix_maintenances_maintenance_type_id ON maintenances (maintenance_type_id)",
+    "CREATE INDEX IF NOT EXISTS ix_maintenances_vendor_id ON maintenances (vendor_id)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_assignments_employee_id ON asset_assignments (employee_id)",
+]
+
+SEED_ROWS = {
+    'asset_statuses': [
+        ('IN_STOCK', 'In Stock', 'Tài sản đang sẵn sàng cấp phát', 10),
+        ('ASSIGNED', 'Assigned', 'Tài sản đang được cấp cho người dùng', 20),
+        ('BORROWED', 'Borrowed', 'Tài sản đang cho mượn', 30),
+        ('REPAIRING', 'Repairing', 'Tài sản đang sửa chữa', 40),
+        ('RETIRED', 'Retired', 'Tài sản đã ngừng sử dụng', 50),
+        ('DISPOSED', 'Disposed', 'Tài sản đã thanh lý', 60),
+        ('LOST', 'Lost', 'Tài sản thất lạc', 70),
+    ],
+    'priorities': [
+        ('LOW', 'Low', 'Ưu tiên thấp', 10),
+        ('MEDIUM', 'Medium', 'Ưu tiên trung bình', 20),
+        ('HIGH', 'High', 'Ưu tiên cao', 30),
+        ('CRITICAL', 'Critical', 'Ưu tiên khẩn cấp', 40),
+    ],
+    'maintenance_types': [
+        ('PREVENTIVE', 'Preventive', 'Bảo trì phòng ngừa', 10),
+        ('CORRECTIVE', 'Corrective', 'Bảo trì khắc phục', 20),
+    ],
+}
+
+
+def _get_columns(conn, table_name: str) -> set[str]:
+    rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+    return {row[1] for row in rows}
+
+
+def _add_column_if_missing(conn, table_name: str, column_name: str, column_type: str) -> None:
+    columns = _get_columns(conn, table_name)
+    if column_name in columns:
+        return
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}"))
+
+
+def ensure_master_tables(conn) -> None:
+    for sql in MASTER_TABLES.values():
+        conn.execute(text(sql))
+    for sql in MASTER_INDEXES:
+        conn.execute(text(sql))
+
+
+def ensure_fk_columns(conn) -> None:
+    for table_name, columns in FK_COLUMNS.items():
+        for column_name, column_type in columns:
+            _add_column_if_missing(conn, table_name, column_name, column_type)
+    for sql in FK_INDEXES:
+        conn.execute(text(sql))
+
+
+def seed_master_data(conn) -> None:
+    for table_name, rows in SEED_ROWS.items():
+        for code, name, description, sort_order in rows:
+            conn.execute(
+                text(
+                    f"""
+                    INSERT INTO {table_name} (code, name, description, is_active, sort_order, created_at, updated_at)
+                    SELECT :code, :name, :description, 1, :sort_order, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    WHERE NOT EXISTS (
+                        SELECT 1 FROM {table_name} WHERE code = :code
+                    )
+                    """
+                ),
+                {
+                    'code': code,
+                    'name': name,
+                    'description': description,
+                    'sort_order': sort_order,
+                },
+            )
+
+
+LOOKUP_FIELDS = {
+    'employees': ('employee_code', 'full_name'),
+    'departments': ('code', 'name'),
+    'locations': ('code', 'name'),
+    'asset_categories': ('code', 'name'),
+    'asset_statuses': ('code', 'name'),
+    'priorities': ('code', 'name'),
+    'vendors': ('code', 'name'),
+    'incident_categories': ('code', 'name'),
+    'maintenance_types': ('code', 'name'),
+}
+
+
+def _lookup_id(conn, table_name: str, column_name: str, raw_value: str | None):
+    if not raw_value:
+        return None
+    normalized = raw_value.strip()
+    if not normalized:
+        return None
+    field1, field2 = LOOKUP_FIELDS.get(table_name, ('code', 'name'))
+    row = conn.execute(
+        text(
+            f"SELECT id FROM {table_name} WHERE lower({field1}) = lower(:value) OR lower({field2}) = lower(:value) LIMIT 1"
+        ),
+        {'value': normalized},
+    ).fetchone()
+    if row:
+        return row[0]
+    print(f"[backfill] unmatched {table_name}.{column_name}: {normalized}")
+    return None
+
+
+def backfill_master_data(conn) -> None:
+    asset_rows = conn.execute(
+        text(
+            "SELECT id, asset_type, status, department, location FROM assets "
+            "WHERE category_id IS NULL OR status_id IS NULL OR department_id IS NULL OR location_id IS NULL"
+        )
+    ).fetchall()
+    for row in asset_rows:
+        category_id = _lookup_id(conn, 'asset_categories', 'asset_type', row[1])
+        status_id = _lookup_id(conn, 'asset_statuses', 'status', row[2])
+        department_id = _lookup_id(conn, 'departments', 'department', row[3])
+        location_id = _lookup_id(conn, 'locations', 'location', row[4])
+        conn.execute(
+            text(
+                """
+                UPDATE assets
+                SET category_id = COALESCE(category_id, :category_id),
+                    status_id = COALESCE(status_id, :status_id),
+                    department_id = COALESCE(department_id, :department_id),
+                    location_id = COALESCE(location_id, :location_id)
+                WHERE id = :id
+                """
+            ),
+            {
+                'id': row[0],
+                'category_id': category_id,
+                'status_id': status_id,
+                'department_id': department_id,
+                'location_id': location_id,
+            },
+        )
+
+    incident_rows = conn.execute(
+        text("SELECT id, priority, requester_department FROM incidents WHERE priority_id IS NULL OR department_id IS NULL")
+    ).fetchall()
+    for row in incident_rows:
+        priority_id = _lookup_id(conn, 'priorities', 'priority', row[1])
+        department_id = _lookup_id(conn, 'departments', 'requester_department', row[2])
+        conn.execute(
+            text(
+                """
+                UPDATE incidents
+                SET priority_id = COALESCE(priority_id, :priority_id),
+                    department_id = COALESCE(department_id, :department_id)
+                WHERE id = :id
+                """
+            ),
+            {'id': row[0], 'priority_id': priority_id, 'department_id': department_id},
+        )
+
+    assignment_rows = conn.execute(
+        text("SELECT id, assigned_user FROM asset_assignments WHERE employee_id IS NULL")
+    ).fetchall()
+    for row in assignment_rows:
+        employee_id = _lookup_id(conn, 'employees', 'assigned_user', row[1])
+        conn.execute(
+            text("UPDATE asset_assignments SET employee_id = COALESCE(employee_id, :employee_id) WHERE id = :id"),
+            {'id': row[0], 'employee_id': employee_id},
+        )
+
+    current_assignment_rows = conn.execute(
+        text(
+            """
+            SELECT a.id,
+                   (
+                       SELECT aa.id
+                       FROM asset_assignments aa
+                       WHERE aa.asset_id = a.id AND (aa.unassigned_at IS NULL) AND lower(COALESCE(aa.status, 'assigned')) IN ('assigned', 'borrowed')
+                       ORDER BY aa.assigned_at DESC, aa.id DESC
+                       LIMIT 1
+                   ) AS assignment_id
+            FROM assets a
+            WHERE current_assignment_id IS NULL
+            """
+        )
+    ).fetchall()
+    for row in current_assignment_rows:
+        if row[1] is not None:
+            conn.execute(
+                text("UPDATE assets SET current_assignment_id = :assignment_id WHERE id = :id"),
+                {'id': row[0], 'assignment_id': row[1]},
+            )
+
+
 def ensure_schema() -> None:
-    statements = [
+    legacy_statements = [
         "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)",
         "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1",
         "ALTER TABLE users ADD COLUMN can_view_dashboard BOOLEAN DEFAULT 1",
@@ -126,7 +425,7 @@ def ensure_schema() -> None:
         "UPDATE users SET can_view_resources = 1, can_create_assets = 1, can_edit_assets = 1, can_import_assets = 1, can_export_assets = 1, can_create_maintenance = 1, can_edit_maintenance = 1, can_export_maintenance = 1, can_create_incidents = 1, can_edit_incidents = 1, can_export_incidents = 1, can_manage_users = 1, can_manage_system = 1, can_manage_resources = 1, can_view_documents = 1, can_manage_documents = 1 WHERE role = 'admin'",
     ]
     with engine.begin() as conn:
-        for statement in statements:
+        for statement in legacy_statements:
             try:
                 conn.execute(text(statement))
             except Exception:
@@ -136,3 +435,7 @@ def ensure_schema() -> None:
                 conn.execute(text(statement))
             except Exception:
                 pass
+        ensure_master_tables(conn)
+        ensure_fk_columns(conn)
+        seed_master_data(conn)
+        backfill_master_data(conn)

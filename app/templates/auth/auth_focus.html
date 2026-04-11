@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi" class="h-full" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Xác thực tài khoản - {{ APP_NAME if APP_NAME else 'Danonfoods IT Asset Hub' }}{% endblock %}">
+  <link rel="icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png?v=3">
+  <link rel="shortcut icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png?v=3">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['class', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            display: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            primary: 'var(--color-primary, #3525cd)',
+            'primary-container': 'var(--color-primary-container, #4f46e5)',
+            surface: 'var(--color-surface, #f7f9fb)',
+            'surface-container-lowest': 'var(--color-surface-container-lowest, #ffffff)',
+            'surface-container-low': 'var(--color-surface-container-low, #f2f4f6)',
+            'surface-container-highest': 'var(--color-surface-container-highest, #e0e3e5)',
+            'on-surface': 'var(--color-on-surface, #191c1e)',
+            'outline-variant': 'var(--color-outline-variant, #c7c4d8)',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/css/premium.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .headline { font-family: 'Plus Jakarta Sans', sans-serif; letter-spacing: -0.025em; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-surface text-on-surface relative overflow-hidden">
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-0 left-0 w-[32rem] h-[32rem] bg-primary/10 rounded-full blur-3xl -translate-x-1/3 -translate-y-1/3"></div>
+    <div class="absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-sky-400/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
+  </div>
+
+  <main class="relative min-h-screen flex items-center justify-center px-4 py-10">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-8">
+        <div class="mx-auto mb-4 w-16 h-16 rounded-2xl bg-white shadow-lg border border-outline-variant/20 p-2 flex items-center justify-center">
+          <img src="/static/branding/DOF_Logo_128x128.png" alt="Danonfoods" class="w-full h-full object-contain rounded-xl">
+        </div>
+        <p class="text-[11px] font-bold text-on-surface/40 uppercase tracking-[0.25em]">{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</p>
+        <h1 class="mt-2 text-2xl md:text-3xl font-extrabold text-on-surface headline">{% block auth_title %}Xác thực tài khoản{% endblock %}</h1>
+        <p class="mt-2 text-sm text-on-surface/60">{% block auth_subtitle %}Truy cập hệ thống quản lý tài sản IT{% endblock %}</p>
+      </div>
+
+      {% block auth_body %}{% endblock %}
+
+      <div class="mt-6 text-center space-y-1">
+        <p class="text-xs font-semibold text-on-surface/70">{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</p>
+        <p class="text-[11px] text-on-surface/45">Hòa IT · 0838641091</p>
+        <p class="text-[11px] text-on-surface/35">Version {{ request.app.state.app_version }}</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

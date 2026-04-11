@@ -1,89 +1,43 @@
-<!DOCTYPE html>
-<html lang="vi" class="h-full">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Đăng nhập - {{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</title>
-  <meta name="description" content="Đăng nhập vào hệ thống quản lý tài sản IT - {{ APP_NAME if APP_NAME else "Danonfoods" }}">
-  <link rel="icon" type="image/png" href="/static/branding/DOF_Logo_128x128.png">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = { darkMode: 'class' }
-  </script>
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-  </style>
-</head>
-<body class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/40 to-slate-100 relative overflow-hidden">
+{% extends 'auth/auth_focus.html' %}
+{% block title %}Đăng nhập - {{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}{% endblock %}
+{% block meta_description %}Đăng nhập vào hệ thống quản lý tài sản IT - {{ APP_NAME if APP_NAME else "Danonfoods" }}{% endblock %}
+{% block auth_title %}Đăng nhập{% endblock %}
+{% block auth_subtitle %}Truy cập hệ thống quản lý thiết bị IT{% endblock %}
 
-  <!-- Background decoration -->
-  <div class="absolute top-0 left-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-  <div class="absolute bottom-0 right-0 w-80 h-80 bg-indigo-400/10 rounded-full blur-3xl translate-x-1/2 translate-y-1/2"></div>
-
-  <div class="w-full max-w-sm mx-auto px-4 relative z-10">
-
-    <!-- Card -->
-    <div class="bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200/60 shadow-2xl shadow-slate-300/30 overflow-hidden">
-      <div class="p-8 pb-6">
-
-        <!-- Brand -->
-        <div class="flex items-center gap-4 mb-8">
-          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-0.5 shadow-lg shadow-blue-500/30 flex-shrink-0">
-            <img src="/static/branding/DOF_Logo_128x128.png" alt="Danonfoods" class="w-full h-full object-contain rounded-[14px] bg-white p-1">
-          </div>
-          <div>
-            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{{ APP_NAME if APP_NAME else "Danonfoods" }}</p>
-            <h1 class="text-xl font-extrabold text-slate-900 leading-tight">Quản lý Tài sản IT</h1>
-            <p class="text-xs text-slate-500">Hệ thống quản lý thiết bị IT</p>
-          </div>
-        </div>
-
-        <!-- Alerts -->
-        {% if error %}
-        <div class="flex items-start gap-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl px-4 py-3 mb-5 text-sm">
-          <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd"/></svg>
-          <span class="font-medium">{{ error }}</span>
-        </div>
-        {% endif %}
-        {% if warning %}
-        <div class="flex items-start gap-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl px-4 py-3 mb-5 text-sm">
-          <svg class="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
-          <span class="font-medium">{{ warning }}</span>
-        </div>
-        {% endif %}
-
-        <!-- Form -->
-        <form method="post" class="space-y-4">
-          <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Tài khoản</label>
-            <input type="text" name="username" required autofocus placeholder="Nhập tên đăng nhập..."
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-800 placeholder:text-slate-400 transition-all">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Mật khẩu</label>
-            <input type="password" name="password" required placeholder="••••••••"
-              class="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-800 placeholder:text-slate-400 transition-all">
-          </div>
-          <button type="submit"
-            class="w-full mt-2 bg-gradient-to-r from-slate-900 to-blue-700 text-white py-3 rounded-xl font-bold text-sm hover:from-slate-800 hover:to-blue-600 transition-all shadow-lg shadow-blue-900/20 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer">
-            Đăng nhập
-          </button>
-        </form>
-
-        <p class="text-[11px] text-slate-400 mt-4 text-center">Nếu còn dùng tài khoản mặc định, hệ thống sẽ bắt đổi mật khẩu sau khi đăng nhập.</p>
-      </div>
-
-      <!-- Footer -->
-      <div class="bg-slate-50/80 border-t border-slate-100 px-8 py-4 text-center space-y-1">
-        <p class="text-xs font-bold text-slate-700">{{ APP_NAME if APP_NAME else "Danonfoods IT Asset Hub" }}</p>
-        <div class="inline-flex items-center gap-1.5 bg-blue-100 text-blue-700 text-[11px] font-bold px-3 py-1 rounded-full">
-          <span>Hòa IT · 0838641091</span>
-        </div>
-        <p class="text-[11px] text-slate-400">Copyright © 2026 {{ APP_NAME if APP_NAME else "Danonfoods" }} · Version {{ request.app.state.app_version }}</p>
-      </div>
+{% block auth_body %}
+<div class="bg-white/85 backdrop-blur-xl rounded-3xl border border-outline-variant/20 shadow-2xl shadow-slate-300/20 overflow-hidden">
+  <div class="p-8 pb-6">
+    {% if error %}
+    <div class="flex items-start gap-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl px-4 py-3 mb-5 text-sm">
+      <i data-lucide="circle-x" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+      <span class="font-medium">{{ error }}</span>
     </div>
+    {% endif %}
+    {% if warning %}
+    <div class="flex items-start gap-2.5 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl px-4 py-3 mb-5 text-sm">
+      <i data-lucide="triangle-alert" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+      <span class="font-medium">{{ warning }}</span>
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+      <div>
+        <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-1.5">Tài khoản</label>
+        <input type="text" name="username" required autofocus placeholder="Nhập tên đăng nhập..."
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/35 transition-all">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-1.5">Mật khẩu</label>
+        <input type="password" name="password" required placeholder="••••••••"
+          class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/35 transition-all">
+      </div>
+      <button type="submit"
+        class="w-full mt-2 bg-gradient-to-r from-slate-900 to-primary text-white py-3 rounded-xl font-bold text-sm hover:opacity-95 transition-all shadow-lg shadow-primary/20 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer">
+        Đăng nhập
+      </button>
+    </form>
+
+    <p class="text-[11px] text-on-surface/45 mt-4 text-center">Nếu còn dùng tài khoản mặc định, hệ thống sẽ bắt đổi mật khẩu sau khi đăng nhập.</p>
   </div>
-</body>
-</html>
+</div>
+{% endblock %}

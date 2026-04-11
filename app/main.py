@@ -33,6 +33,7 @@ from app.routes.web.documents import router as documents_router
 from app.routes.web.discovery import router as discovery_router
 from app.routes.web.checklist import router as checklist_router
 from app.security import hash_password
+from app.auth import has_permission
 import app.db.models  # noqa: F401
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -130,10 +131,11 @@ for router_obj in [
 ]:
     module = sys.modules.get(router_obj.__module__)
     if module and hasattr(module, 'templates'):
-        module.templates.env.globals['APP_NAME'] = APP_NAME
-        module.templates.env.globals['APP_VERSION'] = APP_VERSION
-        from app.auth import has_permission
-        module.templates.env.globals['has_permission'] = has_permission
+        module.templates.env.globals.update({
+            'APP_NAME': APP_NAME,
+            'APP_VERSION': APP_VERSION,
+            'has_permission': has_permission,
+        })
 
 
 @app.get('/health')
