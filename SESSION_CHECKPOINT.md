@@ -117,10 +117,74 @@ Still pending:
 
 ## Recommended next step
 Do this next:
-1. implement read fallback logic for assets first
-2. implement backward-compatible write logic for asset create/edit
-3. audit unmatched legacy values into a report
-4. then continue incident + maintenance normalization
+1. complete maintenance compatibility layer
+2. audit unmatched legacy values into a report
+3. then continue assignment normalization cleanup and minimal safe UI rollout
+
+## Progress update after checkpoint creation
+
+### Assets normalization progress
+Completed after this checkpoint was first written:
+- added fallback display layer for asset type / department / location / status
+- asset create/edit/import/bulk update now sets FK fields when mapping succeeds
+- preserved all legacy string fields and form payload names
+- assignment creation now also attempts `employee_id` mapping and updates `current_assignment_id`
+- asset detail page now renders resolved fallback values safely
+
+Smoke-tested after change:
+- `/assets/`
+- `/assets/new`
+- `/assets/1`
+
+### Incidents normalization progress
+Completed after this checkpoint was first written:
+- added fallback display layer for incident priority and requester department
+- incident create/edit now sets `priority_id` and `department_id` when mapping succeeds
+- incident form now loads department master-data suggestions
+- incident list now renders priority through fallback-aware display values
+
+Smoke-tested after change:
+- `/incidents/`
+- `/incidents/new`
+
+### Maintenance normalization progress
+Completed after this checkpoint was first written:
+- added fallback display layer for maintenance type
+- maintenance create/edit now sets `maintenance_type_id` when mapping succeeds
+- maintenance form now loads maintenance type options from master data
+- kept legacy behavior and route signatures intact
+
+Smoke-tested after change:
+- `/maintenance/`
+- `/maintenance/new`
+
+### Unmatched audit report
+Generated report file:
+- `docs_phase1_unmatched_report.json`
+
+Current unmatched counts captured:
+- asset types: 3
+- asset departments: 92
+- asset locations: 6
+- asset statuses: 1
+- incident departments: 1
+- incident priorities: 0
+- assignment users: 141
+
+### Master data UI expansion
+Expanded `master_data` web route config to expose Phase 1 master tables:
+- `asset_categories`
+- `asset_statuses`
+- `vendors`
+- `incident_categories`
+- `priorities`
+- `maintenance_types`
+
+Smoke-tested after change:
+- `/master-data/asset_categories`
+- `/master-data/asset_statuses`
+- `/master-data/priorities`
+- `/master-data/maintenance_types`
 
 ## Files changed in this session
 - `app/db/migrations.py`

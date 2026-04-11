@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_permission
 from app.db.models.master_data import AssetType, Department, Employee, Location
+from app.db.models.master_reference import AssetCategory, AssetStatus, Vendor, IncidentCategory, Priority, MaintenanceType
 from app.db.session import get_db
 
 import io
@@ -80,6 +81,102 @@ MODEL_CONFIG = {
             {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'site_group', 'is_active', 'note'],
+    },
+    'asset_categories': {
+        'label': 'Nhóm tài sản',
+        'description': 'Danh mục chuẩn hóa nhóm tài sản cho Phase 1 normalization.',
+        'icon': 'boxes',
+        'accent': 'violet',
+        'model': AssetCategory,
+        'title_field': 'name',
+        'columns': [
+            {'key': 'code', 'label': 'Mã nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: LAPTOP'},
+            {'key': 'name', 'label': 'Tên nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: Laptop'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
+        ],
+        'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+    },
+    'asset_statuses': {
+        'label': 'Trạng thái tài sản',
+        'description': 'Danh mục trạng thái tài sản chuẩn hóa dùng chung.',
+        'icon': 'activity',
+        'accent': 'emerald',
+        'model': AssetStatus,
+        'title_field': 'name',
+        'columns': [
+            {'key': 'code', 'label': 'Mã trạng thái', 'type': 'text', 'required': True, 'placeholder': 'VD: IN_STOCK'},
+            {'key': 'name', 'label': 'Tên trạng thái', 'type': 'text', 'required': True, 'placeholder': 'VD: In Stock'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
+        ],
+        'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+    },
+    'vendors': {
+        'label': 'Nhà cung cấp',
+        'description': 'Danh mục nhà cung cấp và đối tác bảo trì.',
+        'icon': 'truck',
+        'accent': 'amber',
+        'model': Vendor,
+        'title_field': 'name',
+        'columns': [
+            {'key': 'code', 'label': 'Mã NCC', 'type': 'text', 'required': True, 'placeholder': 'VD: DELL'},
+            {'key': 'name', 'label': 'Tên NCC', 'type': 'text', 'required': True, 'placeholder': 'VD: Dell Việt Nam'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
+        ],
+        'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+    },
+    'incident_categories': {
+        'label': 'Nhóm sự cố',
+        'description': 'Danh mục phân loại ticket sự cố.',
+        'icon': 'shield-alert',
+        'accent': 'rose',
+        'model': IncidentCategory,
+        'title_field': 'name',
+        'columns': [
+            {'key': 'code', 'label': 'Mã nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: HARDWARE'},
+            {'key': 'name', 'label': 'Tên nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: Hardware'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
+        ],
+        'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+    },
+    'priorities': {
+        'label': 'Độ ưu tiên',
+        'description': 'Danh mục ưu tiên chuẩn hóa cho ticket sự cố.',
+        'icon': 'flame',
+        'accent': 'orange',
+        'model': Priority,
+        'title_field': 'name',
+        'columns': [
+            {'key': 'code', 'label': 'Mã ưu tiên', 'type': 'text', 'required': True, 'placeholder': 'VD: HIGH'},
+            {'key': 'name', 'label': 'Tên ưu tiên', 'type': 'text', 'required': True, 'placeholder': 'VD: High'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
+        ],
+        'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+    },
+    'maintenance_types': {
+        'label': 'Loại bảo trì',
+        'description': 'Danh mục loại bảo trì chuẩn hóa.',
+        'icon': 'wrench',
+        'accent': 'yellow',
+        'model': MaintenanceType,
+        'title_field': 'name',
+        'columns': [
+            {'key': 'code', 'label': 'Mã loại', 'type': 'text', 'required': True, 'placeholder': 'VD: PREVENTIVE'},
+            {'key': 'name', 'label': 'Tên loại', 'type': 'text', 'required': True, 'placeholder': 'VD: Preventive'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
+        ],
+        'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
     },
 }
 

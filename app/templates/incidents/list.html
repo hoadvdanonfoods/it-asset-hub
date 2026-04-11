@@ -124,17 +124,18 @@
             </div>
           </td>
           <td class="px-6 py-5 text-center">
-            {% if item.priority == 'high' %}
+            {% set priority_value = item.display_priority or item.priority %}
+            {% if priority_value == 'high' %}
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-rose-500/10 text-rose-600 text-[10px] font-black tracking-wide uppercase border border-rose-500/10 shadow-sm animate-pulse-subtle">
-              <i data-lucide="flame" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
+              <i data-lucide="flame" class="w-3 h-3"></i>{{ priority_label(priority_value) }}
             </span>
-            {% elif item.priority == 'medium' %}
+            {% elif priority_value == 'medium' %}
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-500/10 text-amber-600 text-[10px] font-black tracking-wide uppercase border border-amber-500/10 shadow-sm">
-              <i data-lucide="triangle-alert" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
+              <i data-lucide="triangle-alert" class="w-3 h-3"></i>{{ priority_label(priority_value) }}
             </span>
             {% else %}
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-surface-container-highest text-on-surface/40 text-[10px] font-black tracking-wide uppercase border border-outline-variant/20">
-              <i data-lucide="minus-circle" class="w-3 h-3"></i>{{ priority_label(item.priority) }}
+              <i data-lucide="minus-circle" class="w-3 h-3"></i>{{ priority_label(priority_value) }}
             </span>
             {% endif %}
           </td>

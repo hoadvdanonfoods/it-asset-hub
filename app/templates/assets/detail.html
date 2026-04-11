@@ -16,7 +16,7 @@
         </div>
         <p class="text-sm text-on-surface/50 flex items-center gap-2">
           <i data-lucide="map-pin" class="w-4 h-4"></i>
-          {{ asset.location or 'Chưa xác định vị trí' }} • {{ asset.department or 'N/A' }}
+          {{ asset.display_location or asset.location or 'Chưa xác định vị trí' }} • {{ asset.display_department or asset.department or 'N/A' }}
         </p>
       </div>
     </div>
@@ -69,7 +69,7 @@
           <div class="space-y-3">
             <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
               <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Loại</span>
-              <span class="text-sm font-bold text-on-surface">{{ asset.asset_type }}</span>
+              <span class="text-sm font-bold text-on-surface">{{ asset.display_asset_type or asset.asset_type }}</span>
             </div>
             <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
               <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">IP Address</span>
@@ -110,7 +110,7 @@
             <div class="flex justify-between items-center py-2">
               <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Trạng thái</span>
               <span class="px-2 py-0.5 rounded-lg bg-surface-container-highest text-on-surface text-[10px] font-black uppercase tracking-widest">
-                {{ asset.status }}
+                {{ asset.display_status or asset.status }}
               </span>
             </div>
           </div>

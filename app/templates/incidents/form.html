@@ -51,8 +51,13 @@
             <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Bộ phận yêu cầu</label>
             <div class="relative group">
               <i data-lucide="building-2" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
-              <input type="text" name="requester_department" value="{{ item.requester_department if item else '' }}" placeholder="VD: Kế toán, Nhân sự..." 
+              <input list="incident-department-options" type="text" name="requester_department" value="{{ item.display_department if item else '' }}" placeholder="VD: Kế toán, Nhân sự..." 
                 class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface placeholder:text-on-surface/20 transition-all font-bold">
+              <datalist id="incident-department-options">
+                {% for dept in department_options %}
+                <option value="{{ dept.name }}">{{ dept.code }}</option>
+                {% endfor %}
+              </datalist>
             </div>
           </div>
         </div>
@@ -74,7 +79,7 @@
               <i data-lucide="flame" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
               <select name="priority" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer font-bold">
                 {% for priority in incident_priorities %}
-                <option value="{{ priority }}" {% if (item and item.priority == priority) or (not item and priority == 'medium') %}selected{% endif %}>{{ priority_label(priority) }}</option>
+                <option value="{{ priority }}" {% if (item and (item.display_priority or item.priority) == priority) or (not item and priority == 'medium') %}selected{% endif %}>{{ priority_label(priority) }}</option>
                 {% endfor %}
               </select>
               <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>

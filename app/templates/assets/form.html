@@ -15,7 +15,7 @@
     {% if asset %}
     <div class="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-500/10 text-indigo-600 border border-indigo-500/20 shadow-sm">
       <i data-lucide="tag" class="w-4 h-4"></i>
-      <span class="text-xs font-bold uppercase tracking-widest">{{ asset.asset_type }}</span>
+      <span class="text-xs font-bold uppercase tracking-widest">{{ asset.display_asset_type or asset.asset_type }}</span>
     </div>
     {% endif %}
   </div>
@@ -68,9 +68,14 @@
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface/30 group-focus-within:text-indigo-600 transition-colors">
               <i data-lucide="layers" class="w-5 h-5"></i>
             </div>
-            <input type="text" name="asset_type" value="{{ asset.asset_type if asset else '' }}" required
+            <input list="asset-type-options" type="text" name="asset_type" value="{{ asset.display_asset_type if asset else '' }}" required
               class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/10 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none font-bold text-on-surface"
               placeholder="PC, Printer, Laptop...">
+            <datalist id="asset-type-options">
+              {% for item in asset_type_options %}
+              <option value="{{ item.name }}">{{ item.code }}</option>
+              {% endfor %}
+            </datalist>
           </div>
         </div>
 
@@ -82,7 +87,7 @@
             </div>
             <select name="status" 
               class="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/10 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none font-bold text-on-surface appearance-none">
-              {% set current = asset.status if asset else 'active' %}
+              {% set current = asset.display_status if asset else 'active' %}
               {% for item in ['active', 'in_repair', 'inactive', 'retired', 'lost', 'disposed'] %}
               <option value="{{ item }}" {% if current == item %}selected{% endif %}>{{ item | upper }}</option>
               {% endfor %}
@@ -140,9 +145,14 @@
         <div class="space-y-4">
           <div class="space-y-2">
             <label class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest ml-1">Bộ phận</label>
-            <input type="text" name="department" value="{{ asset.department if asset else '' }}"
+            <input list="department-options" type="text" name="department" value="{{ asset.display_department if asset else '' }}"
               class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"
               placeholder="e.g. Kế Toán">
+            <datalist id="department-options">
+              {% for item in department_options %}
+              <option value="{{ item.name }}">{{ item.code }}</option>
+              {% endfor %}
+            </datalist>
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest ml-1">Người sử dụng</label>
@@ -152,9 +162,14 @@
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest ml-1">Vị trí thực tế</label>
-            <input type="text" name="location" value="{{ asset.location if asset else '' }}"
+            <input list="location-options" type="text" name="location" value="{{ asset.display_location if asset else '' }}"
               class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"
               placeholder="e.g. Tầng 3, Phòng Server">
+            <datalist id="location-options">
+              {% for item in location_options %}
+              <option value="{{ item.name }}">{{ item.code }}</option>
+              {% endfor %}
+            </datalist>
           </div>
         </div>
       </div>

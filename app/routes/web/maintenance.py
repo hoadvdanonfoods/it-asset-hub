@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import require_module_access, require_permission
-from app.db.models import Asset, Maintenance, AssetEvent
+from app.db.models import Asset, Maintenance, AssetEvent, MaintenanceType
 from app.db.session import get_db
 
 router = APIRouter(prefix='/maintenance', tags=['maintenance'])
@@ -28,6 +28,35 @@ def priority_label(priority: str | None) -> str:
     return (priority or 'medium').upper()
 
 
+def _display_maintenance_type(item: Maintenance | None) -> str:
+    if not item:
+        return ''
+    ref = getattr(item, 'maintenance_type_ref', None)
+    if ref and getattr(ref, 'name', None):
+        return ref.name
+    return ''
+
+
+def _maintenance_view_model(item: Maintenance):
+    item.display_maintenance_type = _display_maintenance_type(item)
+    return item
+
+
+def _resolve_maintenance_type(db: Session, value: str | None, description: str | None = None):
+    raw = (value or '').strip()
+    if not raw:
+        desc = (description or '').strip().lower()
+        raw = 'preventive' if 'định kỳ' in desc or 'preventive' in desc else 'corrective'
+    row = db.execute(select(MaintenanceType.id, MaintenanceType.code).where((MaintenanceType.code == raw.upper()) | (MaintenanceType.code == raw) | (MaintenanceType.name == value)).limit(1)).first()
+    return raw, (row[0] if row else None)
+
+
+def _maintenance_master_context(db: Session):
+    return {
+        'maintenance_type_options': db.scalars(select(MaintenanceType).where(MaintenanceType.is_active == True).order_by(MaintenanceType.sort_order.asc(), MaintenanceType.name.asc())).all(),
+    }
+
+
 def _filtered_maintenance(db: Session, technician: str | None = None, asset_code: str | None = None):
     stmt = select(Maintenance).join(Asset, isouter=True).order_by(Maintenance.maintenance_date.desc())
     if technician:
@@ -40,7 +69,7 @@ def _filtered_maintenance(db: Session, technician: str | None = None, asset_code
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('maintenance')
 def maintenance_list(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    items = _filtered_maintenance(db, technician=technician, asset_code=asset_code)
+    items = [_maintenance_view_model(item) for item in _filtered_maintenance(db, technician=technician, asset_code=asset_code)]
     techs = sorted({i.technician for i in db.scalars(select(Maintenance)).all() if i.technician})
     
     # Add first_day_of_month and today for the filter/reporting modal
@@ -91,15 +120,19 @@ def maintenance_export(request: Request, start_date: str = Query(None), end_date
 @require_permission('can_create_maintenance')
 def maintenance_new(request: Request, asset_id: int | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    return templates.TemplateResponse('maintenance/form.html', {'request': request, 'assets': assets, 'item': None, 'current_user': current_user, 'today': datetime.now().strftime('%Y-%m-%d'), 'asset_id': asset_id})
+    context = {'request': request, 'assets': assets, 'item': None, 'current_user': current_user, 'today': datetime.now().strftime('%Y-%m-%d'), 'asset_id': asset_id}
+    context.update(_maintenance_master_context(db))
+    return templates.TemplateResponse('maintenance/form.html', context)
 
 
 @router.post('/new')
 @require_permission('can_create_maintenance')
-def maintenance_create(request: Request, asset_id: int = Form(...), maintenance_date: str = Form(...), description: str = Form(...), technician: str = Form(default=''), result: str = Form(default=''), cost: str = Form(default=''), next_maintenance_date: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def maintenance_create(request: Request, asset_id: int = Form(...), maintenance_date: str = Form(...), description: str = Form(...), technician: str = Form(default=''), result: str = Form(default=''), cost: str = Form(default=''), next_maintenance_date: str = Form(default=''), maintenance_type: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     parsed_cost = float(cost) if str(cost).strip() else None
+    _maintenance_type_value, maintenance_type_id = _resolve_maintenance_type(db, maintenance_type, description)
     item = Maintenance(
         asset_id=asset_id, 
+        maintenance_type_id=maintenance_type_id,
         maintenance_date=datetime.strptime(maintenance_date, '%Y-%m-%d').date(), 
         description=description.strip(), 
         technician=technician.strip() or None, 
@@ -127,6 +160,8 @@ def maintenance_create(request: Request, asset_id: int = Form(...), maintenance_
 @require_module_access('maintenance')
 def maintenance_detail(maintenance_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     item = db.get(Maintenance, maintenance_id)
+    if item:
+        _maintenance_view_model(item)
     return templates.TemplateResponse('maintenance/detail.html', {
         'request': request, 
         'item': item, 
@@ -141,14 +176,19 @@ def maintenance_detail(maintenance_id: int, request: Request, db: Session = Depe
 @require_permission('can_edit_maintenance')
 def maintenance_edit(maintenance_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     item = db.get(Maintenance, maintenance_id)
+    if item:
+        _maintenance_view_model(item)
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    return templates.TemplateResponse('maintenance/form.html', {'request': request, 'assets': assets, 'item': item, 'current_user': current_user})
+    context = {'request': request, 'assets': assets, 'item': item, 'current_user': current_user}
+    context.update(_maintenance_master_context(db))
+    return templates.TemplateResponse('maintenance/form.html', context)
 
 
 @router.post('/{maintenance_id}/edit')
 @require_permission('can_edit_maintenance')
-def maintenance_update(request: Request, maintenance_id: int, asset_id: int = Form(...), maintenance_date: str = Form(...), description: str = Form(...), technician: str = Form(default=''), result: str = Form(default=''), cost: str = Form(default=''), next_maintenance_date: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def maintenance_update(request: Request, maintenance_id: int, asset_id: int = Form(...), maintenance_date: str = Form(...), description: str = Form(...), technician: str = Form(default=''), result: str = Form(default=''), cost: str = Form(default=''), next_maintenance_date: str = Form(default=''), maintenance_type: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     item = db.get(Maintenance, maintenance_id)
+    _maintenance_type_value, item.maintenance_type_id = _resolve_maintenance_type(db, maintenance_type, description)
     item.asset_id = asset_id
     item.maintenance_date = datetime.strptime(maintenance_date, '%Y-%m-%d').date()
     item.description = description.strip()

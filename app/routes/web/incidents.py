@@ -10,7 +10,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_module_access, require_permission
-from app.db.models import Asset, Incident, IncidentEvent
+from app.db.models import Asset, Incident, IncidentEvent, Department, Priority
 from app.db.session import get_db
 from app.services.zalo import send_zalo_notification
 
@@ -127,6 +127,50 @@ def _base_incident_stmt_for_user(current_user):
     return stmt
 
 
+def _display_incident_priority(item: Incident | None) -> str:
+    if not item:
+        return 'medium'
+    ref = getattr(item, 'priority_ref', None)
+    if ref and getattr(ref, 'code', None):
+        return ref.code.lower()
+    return (item.priority or 'medium').lower()
+
+
+def _display_incident_department(item: Incident | None) -> str:
+    if not item:
+        return ''
+    ref = getattr(item, 'department_ref', None)
+    if ref and getattr(ref, 'name', None):
+        return ref.name
+    return item.requester_department or ''
+
+
+def _incident_view_model(item: Incident):
+    item.display_priority = _display_incident_priority(item)
+    item.display_department = _display_incident_department(item)
+    return item
+
+
+def _resolve_incident_priority(db: Session, value: str | None):
+    normalized = _normalize_priority(value)
+    row = db.execute(select(Priority.id, Priority.code).where(or_(Priority.code == normalized.upper(), Priority.code == normalized, Priority.name == value)).limit(1)).first()
+    return normalized, (row[0] if row else None)
+
+
+def _resolve_department_id(db: Session, value: str | None):
+    raw = (value or '').strip()
+    if not raw:
+        return None
+    return db.scalar(select(Department.id).where(or_(Department.name == raw, Department.code == raw)).limit(1))
+
+
+def _incident_master_context(db: Session):
+    return {
+        'department_options': db.scalars(select(Department).where(Department.is_active == True).order_by(Department.name.asc())).all(),
+        'priority_options': db.scalars(select(Priority).where(Priority.is_active == True).order_by(Priority.sort_order.asc(), Priority.name.asc())).all(),
+    }
+
+
 def _filtered_incidents(db: Session, current_user, status: str | None = None, priority: str | None = None):
     stmt = _base_incident_stmt_for_user(current_user)
     if status:
@@ -156,7 +200,7 @@ def _apply_status_effects(item: Incident, new_status: str):
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('incidents')
 def incident_list(request: Request, status: str | None = Query(default=None), priority: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    items = _filtered_incidents(db, current_user, status=status, priority=priority)
+    items = [_incident_view_model(item) for item in _filtered_incidents(db, current_user, status=status, priority=priority)]
     return templates.TemplateResponse('incidents/list.html', {
         'request': request,
         'items': items,
@@ -201,7 +245,7 @@ def incident_export(request: Request, status: str | None = Query(default=None), 
 @require_permission('can_create_incidents')
 def incident_new(request: Request, asset_id: int | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    return templates.TemplateResponse('incidents/form.html', {
+    context = {
         'request': request,
         'assets': assets,
         'item': None,
@@ -211,16 +255,18 @@ def incident_new(request: Request, asset_id: int | None = Query(default=None), d
         'status_label': status_label,
         'priority_label': priority_label,
         'asset_id': asset_id
-    })
+    }
+    context.update(_incident_master_context(db))
+    return templates.TemplateResponse('incidents/form.html', context)
 
 
 @router.post('/new')
 @require_permission('can_create_incidents')
 def incident_create(request: Request, background_tasks: BackgroundTasks, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), status: str = Form(default='open'), db: Session = Depends(get_db), current_user=None):
-    normalized_priority = _normalize_priority(priority)
+    normalized_priority, priority_id = _resolve_incident_priority(db, priority)
     normalized_status = _normalize_status(status if current_user and getattr(current_user, 'can_edit_incidents', False) else 'open')
     effective_reported_by = reported_by.strip() or (current_user.full_name or current_user.username if current_user else None)
-    item = Incident(asset_id=asset_id, reported_by=effective_reported_by, requester_department=requester_department.strip() or None, issue_description=issue_description.strip(), priority=normalized_priority, status=normalized_status, reported_at=datetime.utcnow())
+    item = Incident(asset_id=asset_id, reported_by=effective_reported_by, requester_department=requester_department.strip() or None, department_id=_resolve_department_id(db, requester_department), issue_description=issue_description.strip(), priority=normalized_priority, priority_id=priority_id, status=normalized_status, reported_at=datetime.utcnow())
     _apply_status_effects(item, normalized_status)
     db.add(item)
     db.flush()
@@ -244,6 +290,8 @@ def incident_create(request: Request, background_tasks: BackgroundTasks, asset_i
 @require_module_access('incidents')
 def incident_detail(incident_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     item = db.get(Incident, incident_id)
+    if item:
+        _incident_view_model(item)
     if not _can_access_incident(item, current_user):
         return RedirectResponse(url='/incidents/', status_code=303)
     return templates.TemplateResponse('incidents/detail.html', {
@@ -272,8 +320,10 @@ def incident_request_form(incident_id: int, request: Request, db: Session = Depe
 @require_permission('can_edit_incidents')
 def incident_edit(incident_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     item = db.get(Incident, incident_id)
+    if item:
+        _incident_view_model(item)
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    return templates.TemplateResponse('incidents/form.html', {
+    context = {
         'request': request,
         'assets': assets,
         'item': item,
@@ -283,7 +333,9 @@ def incident_edit(incident_id: int, request: Request, db: Session = Depends(get_
         'incident_priorities': INCIDENT_PRIORITIES,
         'status_label': status_label,
         'priority_label': priority_label,
-    })
+    }
+    context.update(_incident_master_context(db))
+    return templates.TemplateResponse('incidents/form.html', context)
 
 
 @router.post('/{incident_id}/edit')
@@ -297,8 +349,9 @@ def incident_update(request: Request, incident_id: int, background_tasks: Backgr
     item.asset_id = asset_id
     item.reported_by = reported_by.strip() or None
     item.requester_department = requester_department.strip() or None
+    item.department_id = _resolve_department_id(db, requester_department)
     item.issue_description = issue_description.strip()
-    item.priority = _normalize_priority(priority)
+    item.priority, item.priority_id = _resolve_incident_priority(db, priority)
     item.status = _normalize_status(status)
     item.resolution = resolution.strip() or None
 

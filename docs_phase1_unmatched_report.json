@@ -1,0 +1,888 @@
+{
+  "asset_types_unmatched": [
+    [
+      "NVR"
+    ],
+    [
+      "PC"
+    ],
+    [
+      "Printer"
+    ]
+  ],
+  "asset_departments_unmatched": [
+    [
+      "Automation Room"
+    ],
+    [
+      "BV-01"
+    ],
+    [
+      "BV-04"
+    ],
+    [
+      "BV-05"
+    ],
+    [
+      "BV-06 cookies"
+    ],
+    [
+      "BV3"
+    ],
+    [
+      "BV4"
+    ],
+    [
+      "Canada Room"
+    ],
+    [
+      "Chiên"
+    ],
+    [
+      "Cookies"
+    ],
+    [
+      "Design"
+    ],
+    [
+      "EP01-Bảo trì"
+    ],
+    [
+      "EP01-HR"
+    ],
+    [
+      "EP01-Mixing"
+    ],
+    [
+      "EP01-Packing"
+    ],
+    [
+      "EP01-QC"
+    ],
+    [
+      "EP01-Trợ Lý"
+    ],
+    [
+      "EP01-Y Tế"
+    ],
+    [
+      "EPF01-Thư Ký"
+    ],
+    [
+      "F&B"
+    ],
+    [
+      "Free Room"
+    ],
+    [
+      "HR"
+    ],
+    [
+      "HR-EPF"
+    ],
+    [
+      "IT"
+    ],
+    [
+      "Kho FG"
+    ],
+    [
+      "Khu Chiên"
+    ],
+    [
+      "Khu Chẻ"
+    ],
+    [
+      "Khu Satake"
+    ],
+    [
+      "Khu Sấy Vỏ lụa"
+    ],
+    [
+      "Khu WIP"
+    ],
+    [
+      "Kế Toán"
+    ],
+    [
+      "LAB"
+    ],
+    [
+      "Lầu Canteen"
+    ],
+    [
+      "Lễ Tân"
+    ],
+    [
+      "Meeting Room"
+    ],
+    [
+      "New York Room"
+    ],
+    [
+      "Office"
+    ],
+    [
+      "P.Bao Trì"
+    ],
+    [
+      "P.Bảo Trì"
+    ],
+    [
+      "P.ISO"
+    ],
+    [
+      "P.Kính"
+    ],
+    [
+      "P.LAB"
+    ],
+    [
+      "P.Lon Giấy"
+    ],
+    [
+      "P.QC"
+    ],
+    [
+      "P.QC-01"
+    ],
+    [
+      "P.SX"
+    ],
+    [
+      "P.Sales Ex"
+    ],
+    [
+      "P.Sản Xuất"
+    ],
+    [
+      "P.Thổi hủ"
+    ],
+    [
+      "P.Tổng Hợp"
+    ],
+    [
+      "P.WH"
+    ],
+    [
+      "P.Đóng Gói"
+    ],
+    [
+      "P.Đóng Gói 02"
+    ],
+    [
+      "P.Đóng gói 1"
+    ],
+    [
+      "P1-Lon Giấy"
+    ],
+    [
+      "P2 .Đóng Gói/ Candy"
+    ],
+    [
+      "P2 Candy Room"
+    ],
+    [
+      "P2 Office Wh01"
+    ],
+    [
+      "P2 Office Wh02"
+    ],
+    [
+      "P2 P.SX"
+    ],
+    [
+      "P2 R&D"
+    ],
+    [
+      "P2 Server"
+    ],
+    [
+      "P2 Sorting"
+    ],
+    [
+      "P2 Sấy"
+    ],
+    [
+      "P2 WHSSI"
+    ],
+    [
+      "P2 Y Tế"
+    ],
+    [
+      "P2 Đóng Gói/ Chiên"
+    ],
+    [
+      "P2-P.Đóng gói hạt dẻ"
+    ],
+    [
+      "P2.Sorting"
+    ],
+    [
+      "PR"
+    ],
+    [
+      "PR Assistant"
+    ],
+    [
+      "Planning Room"
+    ],
+    [
+      "QA office"
+    ],
+    [
+      "Sales"
+    ],
+    [
+      "Salon"
+    ],
+    [
+      "Show Room"
+    ],
+    [
+      "Showroom"
+    ],
+    [
+      "Sấy 1-2"
+    ],
+    [
+      "Sấy 3-4"
+    ],
+    [
+      "Thu Mua"
+    ],
+    [
+      "Thổi Hủ"
+    ],
+    [
+      "Tranning Room"
+    ],
+    [
+      "Vô Hủ"
+    ],
+    [
+      "Vô Hủ 1"
+    ],
+    [
+      "Vô Hủ 2"
+    ],
+    [
+      "WH"
+    ],
+    [
+      "WH-SSI"
+    ],
+    [
+      "XNK"
+    ],
+    [
+      "Y Tế"
+    ],
+    [
+      "kế toán"
+    ],
+    [
+      "Ép nhựa"
+    ],
+    [
+      "Đóng goi 1"
+    ]
+  ],
+  "asset_locations_unmatched": [
+    [
+      "ADF"
+    ],
+    [
+      "CCTV PC"
+    ],
+    [
+      "DOF"
+    ],
+    [
+      "MP3"
+    ],
+    [
+      "None"
+    ],
+    [
+      "mp3"
+    ]
+  ],
+  "asset_status_unmatched": [
+    [
+      "active"
+    ]
+  ],
+  "incident_departments_unmatched": [
+    [
+      "IT"
+    ]
+  ],
+  "incident_priorities_unmatched": [],
+  "assignment_users_unmatched": [
+    [
+      "Tổ Trưởng",
+      20
+    ],
+    [
+      "QC",
+      12
+    ],
+    [
+      "Tổ trưởng",
+      8
+    ],
+    [
+      "Linh",
+      4
+    ],
+    [
+      "WH-PL",
+      4
+    ],
+    [
+      "All user",
+      3
+    ],
+    [
+      "C2",
+      3
+    ],
+    [
+      "HR",
+      3
+    ],
+    [
+      "Minh",
+      3
+    ],
+    [
+      "Trí",
+      3
+    ],
+    [
+      "Trúc",
+      3
+    ],
+    [
+      "Vy",
+      3
+    ],
+    [
+      "all user",
+      3
+    ],
+    [
+      "An",
+      2
+    ],
+    [
+      "Chi",
+      2
+    ],
+    [
+      "Free",
+      2
+    ],
+    [
+      "HP PC",
+      2
+    ],
+    [
+      "Hậu",
+      2
+    ],
+    [
+      "Hằng",
+      2
+    ],
+    [
+      "None",
+      2
+    ],
+    [
+      "Oanh",
+      2
+    ],
+    [
+      "Quyên",
+      2
+    ],
+    [
+      "Thảo",
+      2
+    ],
+    [
+      "Trang",
+      2
+    ],
+    [
+      "Tú",
+      2
+    ],
+    [
+      "Yến",
+      2
+    ],
+    [
+      "( HP Laptop )",
+      1
+    ],
+    [
+      "An Ninh NM",
+      1
+    ],
+    [
+      "AnhNhat",
+      1
+    ],
+    [
+      "BV",
+      1
+    ],
+    [
+      "BV-04",
+      1
+    ],
+    [
+      "Bình SX",
+      1
+    ],
+    [
+      "Bảo trì",
+      1
+    ],
+    [
+      "Chí IT",
+      1
+    ],
+    [
+      "Cúc",
+      1
+    ],
+    [
+      "Danh",
+      1
+    ],
+    [
+      "Director",
+      1
+    ],
+    [
+      "Diệu",
+      1
+    ],
+    [
+      "Driver",
+      1
+    ],
+    [
+      "Duyên",
+      1
+    ],
+    [
+      "Dương",
+      1
+    ],
+    [
+      "Dện",
+      1
+    ],
+    [
+      "Dịu",
+      1
+    ],
+    [
+      "Fiona-Phương",
+      1
+    ],
+    [
+      "Giả",
+      1
+    ],
+    [
+      "HSE",
+      1
+    ],
+    [
+      "Hai QA",
+      1
+    ],
+    [
+      "Hanah-Bích",
+      1
+    ],
+    [
+      "Hiếu",
+      1
+    ],
+    [
+      "Hiền Miss",
+      1
+    ],
+    [
+      "Hoàng Hiếu",
+      1
+    ],
+    [
+      "Huyền",
+      1
+    ],
+    [
+      "Huỳnh Hiếu",
+      1
+    ],
+    [
+      "Hà",
+      1
+    ],
+    [
+      "Hà - Data 01",
+      1
+    ],
+    [
+      "Hân",
+      1
+    ],
+    [
+      "Hên",
+      1
+    ],
+    [
+      "Hòa",
+      1
+    ],
+    [
+      "Hòa IT",
+      1
+    ],
+    [
+      "Hơn",
+      1
+    ],
+    [
+      "Hạnh",
+      1
+    ],
+    [
+      "Hảo",
+      1
+    ],
+    [
+      "Hồng",
+      1
+    ],
+    [
+      "ISO",
+      1
+    ],
+    [
+      "ISO EPF",
+      1
+    ],
+    [
+      "Kim Phượng",
+      1
+    ],
+    [
+      "Lam SX",
+      1
+    ],
+    [
+      "Lan",
+      1
+    ],
+    [
+      "Liên",
+      1
+    ],
+    [
+      "Liễu - Data 02",
+      1
+    ],
+    [
+      "Luân",
+      1
+    ],
+    [
+      "Ly - Planning",
+      1
+    ],
+    [
+      "Lượng",
+      1
+    ],
+    [
+      "Lễ Tân",
+      1
+    ],
+    [
+      "Minh Anh",
+      1
+    ],
+    [
+      "Minh Diễm",
+      1
+    ],
+    [
+      "Mio-Hạnh",
+      1
+    ],
+    [
+      "Mr. Hiền",
+      1
+    ],
+    [
+      "Nguyện",
+      1
+    ],
+    [
+      "Ngân",
+      1
+    ],
+    [
+      "Ngân KT",
+      1
+    ],
+    [
+      "Ngọc",
+      1
+    ],
+    [
+      "Ngọc Ánh",
+      1
+    ],
+    [
+      "Nhung",
+      1
+    ],
+    [
+      "Nụ",
+      1
+    ],
+    [
+      "Phú IT",
+      1
+    ],
+    [
+      "Phương",
+      1
+    ],
+    [
+      "Phương QC",
+      1
+    ],
+    [
+      "Phượng",
+      1
+    ],
+    [
+      "QC-01",
+      1
+    ],
+    [
+      "Quang",
+      1
+    ],
+    [
+      "Quỳnh",
+      1
+    ],
+    [
+      "Quỳnh - HR",
+      1
+    ],
+    [
+      "SGS",
+      1
+    ],
+    [
+      "Salon",
+      1
+    ],
+    [
+      "Son",
+      1
+    ],
+    [
+      "Sơn",
+      1
+    ],
+    [
+      "TP SX",
+      1
+    ],
+    [
+      "TRang",
+      1
+    ],
+    [
+      "Thu Hồng",
+      1
+    ],
+    [
+      "Thuy",
+      1
+    ],
+    [
+      "Thái",
+      1
+    ],
+    [
+      "Thái IT",
+      1
+    ],
+    [
+      "Thùy Linh",
+      1
+    ],
+    [
+      "Thư HR",
+      1
+    ],
+    [
+      "Thương",
+      1
+    ],
+    [
+      "Thường",
+      1
+    ],
+    [
+      "Thảo Nguyên",
+      1
+    ],
+    [
+      "Thảo new",
+      1
+    ],
+    [
+      "Thắm new",
+      1
+    ],
+    [
+      "Thắng",
+      1
+    ],
+    [
+      "Thủy",
+      1
+    ],
+    [
+      "Tiffany",
+      1
+    ],
+    [
+      "Tiên",
+      1
+    ],
+    [
+      "Trai",
+      1
+    ],
+    [
+      "Trinh",
+      1
+    ],
+    [
+      "Triều",
+      1
+    ],
+    [
+      "Trâm",
+      1
+    ],
+    [
+      "Trọng",
+      1
+    ],
+    [
+      "Tuyền",
+      1
+    ],
+    [
+      "Tân",
+      1
+    ],
+    [
+      "Tùng",
+      1
+    ],
+    [
+      "Tịnh",
+      1
+    ],
+    [
+      "Vân",
+      1
+    ],
+    [
+      "Vân - B.Tri",
+      1
+    ],
+    [
+      "WH-03",
+      1
+    ],
+    [
+      "WH-04",
+      1
+    ],
+    [
+      "WH-FG",
+      1
+    ],
+    [
+      "WH-RM",
+      1
+    ],
+    [
+      "Wh-FG",
+      1
+    ],
+    [
+      "Xoa",
+      1
+    ],
+    [
+      "Xuân",
+      1
+    ],
+    [
+      "Y Te",
+      1
+    ],
+    [
+      "Y Tế",
+      1
+    ],
+    [
+      "Y tế NM1",
+      1
+    ],
+    [
+      "wh-05",
+      1
+    ],
+    [
+      "wh-08",
+      1
+    ],
+    [
+      "Ái Linh",
+      1
+    ],
+    [
+      "Ý",
+      1
+    ],
+    [
+      "Đông Vy",
+      1
+    ],
+    [
+      "Định",
+      1
+    ]
+  ]
+}

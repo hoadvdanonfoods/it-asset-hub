@@ -13,7 +13,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import has_permission, require_module_access, require_permission
-from app.db.models import Asset, AssetAssignment, AssetEvent, User
+from app.db.models import Asset, AssetAssignment, AssetEvent, User, Department, Employee, AssetType, Location, AssetStatus
 from app.db.session import get_db
 from app.services.audit import log_audit
 
@@ -74,8 +74,94 @@ class AssetImportDTO:
         )
 
 
-def _render_form(request: Request, asset: Asset | None = None, error: str | None = None, current_user=None):
-    return templates.TemplateResponse('assets/form.html', {'request': request, 'asset': asset, 'error': error, 'current_user': current_user})
+def _display_asset_type(asset: Asset | None) -> str:
+    if not asset:
+        return ''
+    return getattr(getattr(asset, 'category', None), 'name', None) or asset.asset_type or ''
+
+
+def _display_department(asset: Asset | None) -> str:
+    if not asset:
+        return ''
+    return getattr(getattr(asset, 'department_ref', None), 'name', None) or asset.department or ''
+
+
+def _display_location(asset: Asset | None) -> str:
+    if not asset:
+        return ''
+    return getattr(getattr(asset, 'location_ref', None), 'name', None) or asset.location or ''
+
+
+def _display_status(asset: Asset | None) -> str:
+    if not asset:
+        return 'active'
+    return getattr(getattr(asset, 'status_ref', None), 'code', None) or asset.status or 'active'
+
+
+def _master_data_context(db: Session):
+    asset_type_rows = db.scalars(select(AssetType).where(AssetType.is_active == True).order_by(AssetType.name.asc())).all()
+    department_rows = db.scalars(select(Department).where(Department.is_active == True).order_by(Department.name.asc())).all()
+    location_rows = db.scalars(select(Location).where(Location.is_active == True).order_by(Location.name.asc())).all()
+    status_rows = db.scalars(select(AssetStatus).where(AssetStatus.is_active == True).order_by(AssetStatus.sort_order.asc(), AssetStatus.name.asc())).all()
+    return {
+        'asset_type_options': asset_type_rows,
+        'department_options': department_rows,
+        'location_options': location_rows,
+        'status_options': status_rows,
+    }
+
+
+def _resolve_department_id(db: Session, value: str | None):
+    raw = (value or '').strip()
+    if not raw:
+        return None
+    return db.scalar(select(Department.id).where(or_(Department.name == raw, Department.code == raw)).limit(1))
+
+
+def _resolve_asset_type_value(db: Session, value: str | None):
+    raw = (value or '').strip()
+    if not raw:
+        return '', None
+    row = db.execute(select(AssetType.id, AssetType.name).where(or_(AssetType.name == raw, AssetType.code == raw)).limit(1)).first()
+    if row:
+        return row[1], row[0]
+    return raw, None
+
+
+def _resolve_location_id(db: Session, value: str | None):
+    raw = (value or '').strip()
+    if not raw:
+        return None
+    return db.scalar(select(Location.id).where(or_(Location.name == raw, Location.code == raw)).limit(1))
+
+
+def _resolve_status_value(db: Session, value: str | None):
+    normalized = _normalize_status(value)
+    row = db.execute(select(AssetStatus.id, AssetStatus.code).where(or_(AssetStatus.code == normalized, AssetStatus.code == normalized.upper(), AssetStatus.name == value)).limit(1)).first()
+    return normalized, (row[0] if row else None)
+
+
+def _resolve_employee_id(db: Session, value: str | None):
+    raw = (value or '').strip()
+    if not raw:
+        return None
+    return db.scalar(select(Employee.id).where(or_(Employee.full_name == raw, Employee.employee_code == raw)).limit(1))
+
+
+def _asset_view_model(asset: Asset):
+    asset.display_asset_type = _display_asset_type(asset)
+    asset.display_department = _display_department(asset)
+    asset.display_location = _display_location(asset)
+    asset.display_status = _display_status(asset)
+    return asset
+
+
+def _render_form(request: Request, db: Session, asset: Asset | None = None, error: str | None = None, current_user=None):
+    if asset:
+        _asset_view_model(asset)
+    context = {'request': request, 'asset': asset, 'error': error, 'current_user': current_user}
+    context.update(_master_data_context(db))
+    return templates.TemplateResponse('assets/form.html', context)
 
 
 def _render_import_page(request: Request, *, error: str | None = None, summary: dict | None = None, preview: dict | None = None, current_user=None):
@@ -250,18 +336,22 @@ def _apply_assignment_change(db: Session, asset: Asset, new_user: str | None, ac
         asset.unassigned_at = now_str
         _log_event(db, asset.id, 'returned', 'Thu hồi asset', f'Thu hồi từ {previous_user} ({source})', actor)
     if new_user:
-        db.add(
-            AssetAssignment(
-                asset_id=asset.id,
-                assigned_user=new_user,
-                assigned_by=actor,
-                assigned_at=now_dt,
-                note=source,
-            )
+        assignment = AssetAssignment(
+            asset_id=asset.id,
+            employee_id=_resolve_employee_id(db, new_user),
+            assigned_user=new_user,
+            assigned_by=actor,
+            assigned_at=now_dt,
+            note=source,
         )
+        db.add(assignment)
+        db.flush()
+        asset.current_assignment_id = assignment.id
         asset.assigned_at = now_str
         asset.unassigned_at = None
         _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {new_user} ({source})', actor)
+    if not new_user:
+        asset.current_assignment_id = None
     asset.assigned_user = new_user
 
 
@@ -277,27 +367,34 @@ def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, act
         asset = db.scalar(select(Asset).where(Asset.asset_code == dto.asset_code))
         if not asset:
             now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if dto.assigned_user else None
-            asset = Asset(**asdict(dto), assigned_at=now_str)
+            asset_type_value, category_id = _resolve_asset_type_value(db, dto.asset_type)
+            status_value, status_id = _resolve_status_value(db, dto.status)
+            asset = Asset(**asdict(dto), asset_type=asset_type_value, category_id=category_id, department_id=_resolve_department_id(db, dto.department), location_id=_resolve_location_id(db, dto.location), status=status_value, status_id=status_id, assigned_at=now_str)
             db.add(asset)
             db.flush()
             _log_event(db, asset.id, 'asset_imported', 'Import asset mới', f'Import từ Excel: {asset.asset_code}', actor)
             if dto.assigned_user:
-                db.add(AssetAssignment(asset_id=asset.id, assigned_user=dto.assigned_user, assigned_by=actor, note='Import từ Excel'))
+                assignment = AssetAssignment(asset_id=asset.id, employee_id=_resolve_employee_id(db, dto.assigned_user), assigned_user=dto.assigned_user, assigned_by=actor, note='Import từ Excel')
+                db.add(assignment)
+                db.flush()
+                asset.current_assignment_id = assignment.id
                 _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {dto.assigned_user} (import Excel)', actor)
             created += 1
             continue
 
         previous_user = asset.assigned_user
         asset.asset_name = dto.asset_name
-        asset.asset_type = dto.asset_type
+        asset.asset_type, asset.category_id = _resolve_asset_type_value(db, dto.asset_type)
         asset.model = dto.model
         asset.serial_number = dto.serial_number
         asset.ip_address = dto.ip_address
         asset.department = dto.department
+        asset.department_id = _resolve_department_id(db, dto.department)
         asset.location = dto.location
+        asset.location_id = _resolve_location_id(db, dto.location)
         asset.purchase_date = dto.purchase_date
         asset.warranty_expiry = dto.warranty_expiry
-        asset.status = dto.status
+        asset.status, asset.status_id = _resolve_status_value(db, dto.status)
         asset.notes = dto.notes
         _apply_assignment_change(db, asset, dto.assigned_user, actor, 'Import từ Excel')
         if previous_user == dto.assigned_user:
@@ -342,10 +439,10 @@ def asset_api_list(request: Request, db: Session = Depends(get_db), current_user
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('assets')
 def asset_list(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), filter: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    assets = _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)
-    asset_types = db.scalars(select(Asset.asset_type).where(Asset.asset_type != 'Camera').distinct().order_by(Asset.asset_type.asc())).all()
-    departments = db.scalars(select(Asset.department).where(Asset.department.is_not(None)).distinct().order_by(Asset.department.asc())).all()
-    statuses = [item for item in ASSET_STATUSES if item in {a.status for a in db.scalars(select(Asset)).all()} or item == status or item == 'active']
+    assets = [_asset_view_model(asset) for asset in _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)]
+    asset_types = sorted({asset.display_asset_type or asset.asset_type for asset in assets if (asset.display_asset_type or asset.asset_type) and (asset.display_asset_type or asset.asset_type) != 'Camera'})
+    departments = sorted({asset.display_department or asset.department for asset in assets if asset.display_department or asset.department})
+    statuses = [item for item in ASSET_STATUSES if item in {a.display_status or a.status for a in assets} or item == status or item == 'active']
     return templates.TemplateResponse('assets/list.html', {
         'request': request, 
         'assets': assets, 
@@ -475,8 +572,8 @@ def asset_import_submit(request: Request, import_file: UploadFile = File(...), d
 
 @router.get('/new', response_class=HTMLResponse)
 @require_permission('can_create_assets')
-def asset_new(request: Request, current_user=None):
-    return _render_form(request, current_user=current_user)
+def asset_new(request: Request, db: Session = Depends(get_db), current_user=None):
+    return _render_form(request, db, current_user=current_user)
 
 
 @router.post('/new')
@@ -484,15 +581,19 @@ def asset_new(request: Request, current_user=None):
 def asset_create(request: Request, asset_code: str = Form(...), asset_name: str = Form(...), asset_type: str = Form(...), ip_address: str = Form(default=''), model: str = Form(default=''), serial_number: str = Form(default=''), department: str = Form(default=''), assigned_user: str = Form(default=''), location: str = Form(default=''), purchase_date: str = Form(default=''), warranty_expiry: str = Form(default=''), status: str = Form(default='active'), notes: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     existing = db.scalar(select(Asset).where(Asset.asset_code == asset_code.strip()))
     if existing:
-        return _render_form(request, error='Mã thiết bị đã tồn tại.', current_user=current_user)
-    normalized_status = _normalize_status(status)
+        return _render_form(request, db, error='Mã thiết bị đã tồn tại.', current_user=current_user)
+    asset_type_value, category_id = _resolve_asset_type_value(db, asset_type)
+    normalized_status, status_id = _resolve_status_value(db, status)
     now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if assigned_user.strip() else None
-    asset = Asset(asset_code=asset_code.strip(), asset_name=asset_name.strip(), asset_type=asset_type.strip(), ip_address=ip_address.strip() or None, model=model.strip() or None, serial_number=serial_number.strip() or None, department=department.strip() or None, assigned_user=assigned_user.strip() or None, assigned_at=now_str, location=location.strip() or None, purchase_date=purchase_date.strip() or None, warranty_expiry=warranty_expiry.strip() or None, status=normalized_status, notes=notes.strip() or None)
+    asset = Asset(asset_code=asset_code.strip(), asset_name=asset_name.strip(), asset_type=asset_type_value, category_id=category_id, ip_address=ip_address.strip() or None, model=model.strip() or None, serial_number=serial_number.strip() or None, department=department.strip() or None, department_id=_resolve_department_id(db, department), assigned_user=assigned_user.strip() or None, assigned_at=now_str, location=location.strip() or None, location_id=_resolve_location_id(db, location), purchase_date=purchase_date.strip() or None, warranty_expiry=warranty_expiry.strip() or None, status=normalized_status, status_id=status_id, notes=notes.strip() or None)
     db.add(asset)
     db.flush()
     _log_event(db, asset.id, 'asset_created', 'Tạo asset', f'Tạo thiết bị {asset.asset_code}', current_user.username)
     if asset.assigned_user:
-        db.add(AssetAssignment(asset_id=asset.id, assigned_user=asset.assigned_user, assigned_by=current_user.username, note='Khởi tạo với người dùng đã gán'))
+        assignment = AssetAssignment(asset_id=asset.id, employee_id=_resolve_employee_id(db, asset.assigned_user), assigned_user=asset.assigned_user, assigned_by=current_user.username, note='Khởi tạo với người dùng đã gán')
+        db.add(assignment)
+        db.flush()
+        asset.current_assignment_id = assignment.id
         _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {asset.assigned_user}', current_user.username)
     db.commit()
     return RedirectResponse(url='/assets/', status_code=303)
@@ -517,12 +618,14 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
     updates = {}
     if department and department.strip():
         updates['department'] = department.strip()
+        updates['department_id'] = _resolve_department_id(db, department)
     if status and status.strip():
-        updates['status'] = _normalize_status(status)
+        updates['status'], updates['status_id'] = _resolve_status_value(db, status)
     if assigned_user and assigned_user.strip():
         updates['assigned_user'] = assigned_user.strip()
     if location and location.strip():
         updates['location'] = location.strip()
+        updates['location_id'] = _resolve_location_id(db, location)
 
     if not updates:
         return RedirectResponse(url='/assets/', status_code=303)
@@ -538,13 +641,16 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
         
         if 'department' in updates and asset.department != updates['department']:
             asset.department = updates['department']
+            asset.department_id = updates.get('department_id')
             changed = True
         if 'status' in updates and asset.status != updates['status']:
             asset.status = updates['status']
+            asset.status_id = updates.get('status_id')
             changed = True
             _log_event(db, asset.id, 'asset_status_changed', 'Bulk edit: Đổi trạng thái', f'{old_status} -> {asset.status}', current_user.username)
         if 'location' in updates and asset.location != updates['location']:
             asset.location = updates['location']
+            asset.location_id = updates.get('location_id')
             changed = True
         
         if 'assigned_user' in updates:
@@ -670,6 +776,8 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
             alerts.append(('secondary', f'Thiết bị đang ở trạng thái {asset.status}.'))
         elif asset.status == 'in_repair':
             alerts.append(('info', 'Thiết bị đang trong quá trình sửa chữa.'))
+    if asset:
+        _asset_view_model(asset)
     return templates.TemplateResponse('assets/detail.html', {
         'request': request, 
         'asset': asset, 
@@ -707,7 +815,7 @@ def asset_restore(asset_id: int, request: Request, db: Session = Depends(get_db)
 @require_permission('can_edit_assets')
 def asset_edit(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
     asset = db.get(Asset, asset_id)
-    return _render_form(request, asset=asset, current_user=current_user)
+    return _render_form(request, db, asset=asset, current_user=current_user)
 
 
 @router.post('/{asset_id}/edit')
@@ -718,15 +826,17 @@ def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), a
     old_status = asset.status
     asset.asset_code = asset_code.strip()
     asset.asset_name = asset_name.strip()
-    asset.asset_type = asset_type.strip()
+    asset.asset_type, asset.category_id = _resolve_asset_type_value(db, asset_type)
     asset.ip_address = ip_address.strip() or None
     asset.model = model.strip() or None
     asset.serial_number = serial_number.strip() or None
     asset.department = department.strip() or None
+    asset.department_id = _resolve_department_id(db, department)
     asset.location = location.strip() or None
+    asset.location_id = _resolve_location_id(db, location)
     asset.purchase_date = purchase_date.strip() or None
     asset.warranty_expiry = warranty_expiry.strip() or None
-    asset.status = _normalize_status(status)
+    asset.status, asset.status_id = _resolve_status_value(db, status)
     asset.notes = notes.strip() or None
     _apply_assignment_change(db, asset, new_user, current_user.username, 'Cập nhật thông tin asset')
     if old_status != asset.status:

@@ -73,6 +73,19 @@
               class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-on-surface placeholder:text-on-surface/40 transition-all">
           </div>
         </div>
+
+        <div>
+          <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">Loại bảo trì</label>
+          <div class="relative">
+            <select name="maintenance_type" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-on-surface appearance-none transition-all cursor-pointer">
+              <option value="">Tự suy luận theo nội dung</option>
+              {% for mt in maintenance_type_options %}
+              <option value="{{ mt.code.lower() }}" {% if item and item.display_maintenance_type and item.display_maintenance_type == mt.name %}selected{% endif %}>{{ mt.name }}</option>
+              {% endfor %}
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40 pointer-events-none"></i>
+          </div>
+        </div>
       </div>
     </div>
 

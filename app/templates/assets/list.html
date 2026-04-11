@@ -102,8 +102,8 @@
             </a>
           </td>
           <td class="px-6 py-5 font-medium">{{ asset.asset_name }}</td>
-          <td class="px-6 py-5 text-on-surface/70">{{ asset.asset_type }}</td>
-          <td class="px-6 py-5 text-on-surface/60">{{ asset.department or '-' }}</td>
+          <td class="px-6 py-5 text-on-surface/70">{{ asset.display_asset_type or asset.asset_type }}</td>
+          <td class="px-6 py-5 text-on-surface/60">{{ asset.display_department or asset.department or '-' }}</td>
           <td class="px-6 py-5">
             {% if asset.assigned_user %}
             <div class="flex items-center gap-2.5">
@@ -115,14 +115,15 @@
             {% endif %}
           </td>
           <td class="px-6 py-5 text-center">
-            {% if asset.status == 'active' %}
+            {% set asset_status = asset.display_status or asset.status %}
+            {% if asset_status == 'active' %}
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10"><i data-lucide="check-circle-2" class="w-3 h-3"></i>Active</span>
-            {% elif asset.status == 'maintenance' %}
+            {% elif asset_status == 'maintenance' %}
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10"><i data-lucide="wrench" class="w-3 h-3"></i>Maintenance</span>
-            {% elif asset.status in ['retired', 'disposed'] %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="archive" class="w-3 h-3"></i>{{ asset.status }}</span>
+            {% elif asset_status in ['retired', 'disposed'] %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="archive" class="w-3 h-3"></i>{{ asset_status }}</span>
             {% else %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-outline-variant/10 text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20">{{ asset.status }}</span>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-outline-variant/10 text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20">{{ asset_status }}</span>
             {% endif %}
           </td>
           <td class="px-6 py-5 text-right">
