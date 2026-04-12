@@ -62,7 +62,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div class="space-y-2">
             <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Người báo sự cố</label>
             <div class="relative group">
@@ -70,6 +70,19 @@
               <input type="text" name="reported_by" value="{{ item.reported_by if item else (current_user.full_name or current_user.username) }}" 
                 {% if not current_user.can_edit_incidents %}readonly{% endif %}
                 class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-4 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface placeholder:text-on-surface/20 transition-all font-bold {% if not current_user.can_edit_incidents %}opacity-60 cursor-not-allowed{% endif %}">
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-[10px] font-black uppercase tracking-widest text-on-surface/40 ml-1">Nguồn phát sinh</label>
+            <div class="relative group">
+              <i data-lucide="radar" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-500 transition-colors"></i>
+              <select name="source" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3.5 pl-12 pr-10 text-sm focus:outline-none focus:ring-4 focus:ring-rose-500/10 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer font-bold">
+                {% for source in incident_sources %}
+                <option value="{{ source }}" {% if (item and (item.source or 'user_report') == source) or (not item and source == 'user_report') %}selected{% endif %}>{{ source_label(source) }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
             </div>
           </div>
 

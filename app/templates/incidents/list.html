@@ -9,7 +9,7 @@
   </div>
   <div class="flex flex-wrap items-center gap-3">
     {% if current_user.can_export_incidents %}
-    <a href="/incidents/export?status={{ status }}&priority={{ priority }}" class="flex items-center gap-2 bg-surface-container-highest px-5 py-3 rounded-2xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-all border border-outline-variant/10 shadow-sm active:scale-95">
+    <a href="/incidents/export?status={{ status }}&priority={{ priority }}&source={{ source }}" class="flex items-center gap-2 bg-surface-container-highest px-5 py-3 rounded-2xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-all border border-outline-variant/10 shadow-sm active:scale-95">
       <i data-lucide="download" class="w-4 h-4"></i> Xuất dữ liệu
     </a>
     {% endif %}
@@ -49,7 +49,7 @@
       </div>
 
       <!-- Priority Filter -->
-      <div class="md:col-span-2 lg:col-span-3">
+      <div class="md:col-span-2 lg:col-span-2">
         <div class="relative group">
           <i data-lucide="flame" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-600 transition-colors"></i>
           <select name="priority" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer">
@@ -62,8 +62,22 @@
         </div>
       </div>
 
+      <!-- Source Filter -->
+      <div class="md:col-span-2 lg:col-span-2">
+        <div class="relative group">
+          <i data-lucide="radar" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 group-focus-within:text-rose-600 transition-colors"></i>
+          <select name="source" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-2xl py-3 pl-12 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500/40 text-on-surface appearance-none transition-all cursor-pointer">
+            <option value="">Nguồn phát sinh</option>
+            {% for item in incident_sources %}
+            <option value="{{ item }}" {% if source == item %}selected{% endif %}>{{ source_label(item) }}</option>
+            {% endfor %}
+          </select>
+          <i data-lucide="chevron-down" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/30 pointer-events-none transition-colors"></i>
+        </div>
+      </div>
+
       <!-- Action Buttons -->
-      <div class="md:col-span-2 lg:col-span-2 flex gap-2">
+      <div class="md:col-span-2 lg:col-span-1 flex gap-2">
         <button type="submit" class="flex-1 bg-on-surface text-surface-container-lowest font-bold text-sm py-3 rounded-2xl hover:bg-on-surface/90 transition-all shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-2">
           <i data-lucide="filter" class="w-4 h-4"></i> Lọc
         </button>
@@ -84,6 +98,7 @@
           <th class="px-6 py-5 w-20 text-center">STT</th>
           <th class="px-6 py-5 min-w-[140px]">Ticket ID</th>
           <th class="px-6 py-5 min-w-[220px]">Thiết bị / Người báo</th>
+          <th class="px-6 py-5 w-32 text-center">Nguồn</th>
           <th class="px-6 py-5 w-32 text-center">Độ ưu tiên</th>
           <th class="px-6 py-5 w-36 text-center">Trạng thái</th>
           <th class="px-6 py-5 w-48">Thời điểm báo</th>
@@ -122,6 +137,11 @@
               </div>
               {% endif %}
             </div>
+          </td>
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-surface-container-highest text-on-surface/50 text-[10px] font-black tracking-wide uppercase border border-outline-variant/20 shadow-sm">
+              <i data-lucide="radar" class="w-3 h-3"></i>{{ source_label(item.source) }}
+            </span>
           </td>
           <td class="px-6 py-5 text-center">
             {% set priority_value = item.display_priority or item.priority %}

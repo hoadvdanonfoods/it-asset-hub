@@ -70,7 +70,7 @@
         </div>
         {% endif %}
 
-        <div class="grid grid-cols-2 gap-8">
+        <div class="grid grid-cols-3 gap-8">
           <div>
             <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Người yêu cầu</div>
             <div class="text-sm font-bold text-on-surface">{{ item.reported_by or 'N/A' }}</div>
@@ -78,6 +78,10 @@
           <div>
             <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Bộ phận</div>
             <div class="text-sm font-bold text-on-surface">{{ item.requester_department or 'N/A' }}</div>
+          </div>
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30 mb-1">Nguồn</div>
+            <div class="text-sm font-bold text-on-surface">{{ source_label(item.source) }}</div>
           </div>
         </div>
 
