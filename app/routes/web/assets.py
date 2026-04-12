@@ -565,6 +565,7 @@ def asset_list(request: Request, q: str | None = Query(default=None), asset_type
         'asset_types': asset_types, 
         'departments': departments, 
         'statuses': statuses, 
+        'status_labels': STATUS_LABELS,
         'current_user': current_user, 
         'days_to_warranty': _days_to_warranty
     })
