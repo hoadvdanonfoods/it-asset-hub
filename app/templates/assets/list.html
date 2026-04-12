@@ -54,7 +54,7 @@
       <div>
         <select name="status" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
           <option value="">Trạng thái</option>
-          {% for item in statuses %}<option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+          {% for item in statuses %}<option value="{{ item }}" {% if status == item %}selected{% endif %}>{{ status_labels.get(item, item) if status_labels else item }}</option>{% endfor %}
         </select>
       </div>
 
@@ -206,6 +206,16 @@ document.addEventListener('DOMContentLoaded', function() {
   const cancelSelection = document.getElementById('cancelSelection');
   const openBulkEdit = document.getElementById('openBulkEdit');
   
+  const statusLabels = {
+    in_stock: 'In Stock',
+    assigned: 'Assigned',
+    borrowed: 'Borrowed',
+    repairing: 'Repairing',
+    retired: 'Retired',
+    disposed: 'Disposed',
+    lost: 'Lost'
+  };
+
   const bulkEditModal = document.getElementById('bulkEditModal');
   const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
   const closeBulkModal = document.getElementById('closeBulkModal');
@@ -248,10 +258,10 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     if (meta.uniqueStatuses.length === 1) {
-      selectionStatusSummary.textContent = `${meta.total} thiết bị, cùng trạng thái ${meta.uniqueStatuses[0]}`;
+      selectionStatusSummary.textContent = `${meta.total} thiết bị, cùng trạng thái ${statusLabels[meta.uniqueStatuses[0]] || meta.uniqueStatuses[0]}`;
       return;
     }
-    selectionStatusSummary.textContent = meta.uniqueStatuses.map(status => `${status} (${meta.counts[status]})`).join(', ');
+    selectionStatusSummary.textContent = meta.uniqueStatuses.map(status => `${statusLabels[status] || status} (${meta.counts[status]})`).join(', ');
   }
 
   function setButtonEnabled(button, enabled) {
