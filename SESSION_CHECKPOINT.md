@@ -230,9 +230,44 @@ Smoke-tested after change:
   - `in_stock`: 40
 
 Known remaining gaps for Phase 2:
-- asset detail page does not yet render status history timeline
-- assignment actions are still implicit through edit/import, not dedicated flows yet
-- current transition rules are backend-only and not yet reflected in action button availability
+- action visibility is improved on asset detail, but not yet fully constrained everywhere in list/form UI
+- transfer/borrow flows currently use simple inline forms, not polished modal UX yet
+- dedicated borrow metadata and richer assignment snapshot fields are not yet stored in `asset_assignments`
+
+### Phase 2 assignment workflow progress
+Completed in this session:
+- added dedicated asset assignment routes:
+  - `POST /assets/{id}/assign`
+  - `POST /assets/{id}/return`
+  - `POST /assets/{id}/transfer`
+  - `POST /assets/{id}/borrow`
+  - `POST /assets/{id}/borrow-return`
+- refactored assignment handling into dedicated helpers for:
+  - finding active assignment
+  - closing active assignment
+  - creating new assignment
+- wired these actions to update:
+  - `asset_assignments`
+  - `assets.current_assignment_id`
+  - `assets.assigned_user`
+  - lifecycle status transitions
+  - asset event log
+  - audit log
+- asset detail page now shows:
+  - quick assignment action forms
+  - status history panel
+  - active assignment context
+- asset form status options updated to Phase 2 lifecycle values
+- asset list status badge logic updated for new lifecycle states
+
+Smoke-tested after change:
+- imported app successfully after route/template changes
+- assignment helper flow tested on a real asset in a rollback script:
+  - assign
+  - transfer
+  - return
+  - restore original state via rollback
+- transition logic remained valid during assignment flow test
 
 ## Notes
 - `verify_final.py` is untracked and should be reviewed before commit or removed if temporary.

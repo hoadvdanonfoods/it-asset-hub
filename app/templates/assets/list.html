@@ -116,10 +116,10 @@
           </td>
           <td class="px-6 py-5 text-center">
             {% set asset_status = asset.display_status or asset.status %}
-            {% if asset_status == 'active' %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10"><i data-lucide="check-circle-2" class="w-3 h-3"></i>Active</span>
-            {% elif asset_status == 'maintenance' %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10"><i data-lucide="wrench" class="w-3 h-3"></i>Maintenance</span>
+            {% if asset_status in ['assigned', 'in_stock'] %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10"><i data-lucide="check-circle-2" class="w-3 h-3"></i>{{ asset_status }}</span>
+            {% elif asset_status in ['repairing', 'borrowed'] %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10"><i data-lucide="wrench" class="w-3 h-3"></i>{{ asset_status }}</span>
             {% elif asset_status in ['retired', 'disposed'] %}
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="archive" class="w-3 h-3"></i>{{ asset_status }}</span>
             {% else %}
@@ -139,8 +139,8 @@
                 </button>
               </form>
               {% endif %}
-              {% if asset.status in ['retired', 'disposed', 'lost', 'inactive'] %}
-              <form method="post" action="/assets/{{ asset.id }}/restore" onsubmit="return confirm('Khôi phục thiết bị này về active?');" class="inline">
+              {% if asset.status in ['retired', 'disposed', 'lost'] %}
+              <form method="post" action="/assets/{{ asset.id }}/restore" onsubmit="return confirm('Khôi phục thiết bị này về in_stock?');" class="inline">
                 <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all text-on-surface/30 cursor-pointer border border-outline-variant/10 hover:border-emerald-500/20" title="Khôi phục">
                   <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                 </button>

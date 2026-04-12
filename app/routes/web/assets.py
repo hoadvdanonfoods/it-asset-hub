@@ -378,42 +378,65 @@ def _build_import_preview(rows: list[tuple[int, AssetImportDTO]], db: Session, f
     }
 
 
-def _apply_assignment_change(db: Session, asset: Asset, new_user: str | None, actor: str | None, source: str):
-    previous_user = asset.assigned_user
+def _get_active_assignment(db: Session, asset: Asset):
+    return db.scalar(
+        select(AssetAssignment)
+        .where(AssetAssignment.asset_id == asset.id, AssetAssignment.status.in_(['assigned', 'borrowed']))
+        .order_by(AssetAssignment.assigned_at.desc())
+    )
+
+
+def _close_active_assignment(db: Session, asset: Asset, actor: str | None, source: str, close_status: str = 'returned'):
     now_dt = datetime.utcnow()
     now_str = now_dt.strftime('%Y-%m-%d %H:%M')
+    current_assignment = _get_active_assignment(db, asset)
+    previous_user = asset.assigned_user
+    if current_assignment:
+        current_assignment.status = close_status
+        current_assignment.unassigned_at = now_dt
+        current_assignment.returned_by = actor
+    if previous_user:
+        title = 'Thu hồi asset' if close_status == 'returned' else 'Kết thúc mượn asset'
+        event_type = 'returned' if close_status == 'returned' else 'borrow_returned'
+        _log_event(db, asset.id, event_type, title, f'Thu hồi từ {previous_user} ({source})', actor)
+    asset.current_assignment_id = None
+    asset.assigned_user = None
+    asset.unassigned_at = now_str
+    return previous_user
+
+
+def _create_assignment(db: Session, asset: Asset, new_user: str, actor: str | None, source: str, assignment_status: str = 'assigned'):
+    now_dt = datetime.utcnow()
+    now_str = now_dt.strftime('%Y-%m-%d %H:%M')
+    assignment = AssetAssignment(
+        asset_id=asset.id,
+        employee_id=_resolve_employee_id(db, new_user),
+        assigned_user=new_user,
+        assigned_by=actor,
+        assigned_at=now_dt,
+        note=source,
+        status=assignment_status,
+    )
+    db.add(assignment)
+    db.flush()
+    asset.current_assignment_id = assignment.id
+    asset.assigned_user = new_user
+    asset.assigned_at = now_str
+    asset.unassigned_at = None
+    title = 'Cấp phát asset' if assignment_status == 'assigned' else 'Cho mượn asset'
+    event_type = 'assigned' if assignment_status == 'assigned' else 'borrowed'
+    _log_event(db, asset.id, event_type, title, f'Gán cho {new_user} ({source})', actor)
+    return assignment
+
+
+def _apply_assignment_change(db: Session, asset: Asset, new_user: str | None, actor: str | None, source: str):
+    previous_user = asset.assigned_user
     if previous_user == new_user:
         return
     if previous_user:
-        current_assignment = db.scalar(
-            select(AssetAssignment)
-            .where(AssetAssignment.asset_id == asset.id, AssetAssignment.status == 'assigned')
-            .order_by(AssetAssignment.assigned_at.desc())
-        )
-        if current_assignment:
-            current_assignment.status = 'returned'
-            current_assignment.unassigned_at = now_dt
-            current_assignment.returned_by = actor
-        asset.unassigned_at = now_str
-        _log_event(db, asset.id, 'returned', 'Thu hồi asset', f'Thu hồi từ {previous_user} ({source})', actor)
+        _close_active_assignment(db, asset, actor, source, close_status='returned')
     if new_user:
-        assignment = AssetAssignment(
-            asset_id=asset.id,
-            employee_id=_resolve_employee_id(db, new_user),
-            assigned_user=new_user,
-            assigned_by=actor,
-            assigned_at=now_dt,
-            note=source,
-        )
-        db.add(assignment)
-        db.flush()
-        asset.current_assignment_id = assignment.id
-        asset.assigned_at = now_str
-        asset.unassigned_at = None
-        _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {new_user} ({source})', actor)
-    if not new_user:
-        asset.current_assignment_id = None
-    asset.assigned_user = new_user
+        _create_assignment(db, asset, new_user, actor, source, assignment_status='assigned')
 
 
 def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, actor: str):
@@ -842,6 +865,7 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
     
     can_edit = has_permission(current_user, 'can_edit_assets')
     alerts = []
+    active_assignment = _get_active_assignment(db, asset)
     if asset:
         days = _days_to_warranty(asset)
         if days is not None and days < 0:
@@ -860,8 +884,116 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
         'asset': asset, 
         'alerts': alerts, 
         'current_user': current_user,
-        'can_edit': can_edit
+        'can_edit': can_edit,
+        'active_assignment': active_assignment,
+        'status_history': list(asset.status_history or []),
     })
+
+
+@router.post('/{asset_id}/assign')
+@require_permission('can_edit_assets')
+def asset_assign(asset_id: int, request: Request, assigned_user: str = Form(...), department: str = Form(default=''), note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
+    new_user = assigned_user.strip()
+    if not new_user:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    if asset.assigned_user and asset.assigned_user != new_user:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    if department.strip():
+        asset.department = department.strip()
+        asset.department_id = _resolve_department_id(db, department)
+    _create_assignment(db, asset, new_user, current_user.username, note.strip() or 'Cấp phát asset')
+    previous_status, current_status = _set_asset_status(db, asset, 'assigned', current_user.username, note.strip() or 'Cấp phát asset')
+    if previous_status != current_status:
+        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
+    log_audit(db, actor=current_user.username if current_user else None, module='assets', action='assign', entity_type='asset', entity_id=asset.id, metadata={'assigned_user': new_user})
+    db.commit()
+    return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+
+
+@router.post('/{asset_id}/return')
+@require_permission('can_edit_assets')
+def asset_return(asset_id: int, request: Request, note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
+    if not asset.assigned_user:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    previous_user = _close_active_assignment(db, asset, current_user.username, note.strip() or 'Thu hồi asset', close_status='returned')
+    previous_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, note.strip() or 'Thu hồi asset')
+    if previous_status != current_status:
+        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
+    log_audit(db, actor=current_user.username if current_user else None, module='assets', action='return', entity_type='asset', entity_id=asset.id, metadata={'returned_user': previous_user})
+    db.commit()
+    return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+
+
+@router.post('/{asset_id}/transfer')
+@require_permission('can_edit_assets')
+def asset_transfer(asset_id: int, request: Request, assigned_user: str = Form(...), department: str = Form(default=''), note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
+    new_user = assigned_user.strip()
+    if not new_user or new_user == (asset.assigned_user or '').strip():
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    previous_user = asset.assigned_user
+    if department.strip():
+        asset.department = department.strip()
+        asset.department_id = _resolve_department_id(db, department)
+    if previous_user:
+        _close_active_assignment(db, asset, current_user.username, note.strip() or 'Chuyển giao asset', close_status='returned')
+    _create_assignment(db, asset, new_user, current_user.username, note.strip() or 'Chuyển giao asset', assignment_status='assigned')
+    previous_status, current_status = _set_asset_status(db, asset, 'assigned', current_user.username, note.strip() or 'Chuyển giao asset')
+    if previous_status != current_status:
+        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
+    _log_event(db, asset.id, 'asset_transferred', 'Chuyển giao asset', f'{previous_user or "Chưa có người dùng"} -> {new_user}', current_user.username)
+    log_audit(db, actor=current_user.username if current_user else None, module='assets', action='transfer', entity_type='asset', entity_id=asset.id, metadata={'from_user': previous_user, 'to_user': new_user})
+    db.commit()
+    return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+
+
+@router.post('/{asset_id}/borrow')
+@require_permission('can_edit_assets')
+def asset_borrow(asset_id: int, request: Request, assigned_user: str = Form(...), department: str = Form(default=''), note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
+    new_user = assigned_user.strip()
+    if not new_user:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    if asset.assigned_user:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    if department.strip():
+        asset.department = department.strip()
+        asset.department_id = _resolve_department_id(db, department)
+    _create_assignment(db, asset, new_user, current_user.username, note.strip() or 'Cho mượn asset', assignment_status='borrowed')
+    previous_status, current_status = _set_asset_status(db, asset, 'borrowed', current_user.username, note.strip() or 'Cho mượn asset')
+    if previous_status != current_status:
+        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
+    log_audit(db, actor=current_user.username if current_user else None, module='assets', action='borrow', entity_type='asset', entity_id=asset.id, metadata={'borrowed_by': new_user})
+    db.commit()
+    return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+
+
+@router.post('/{asset_id}/borrow-return')
+@require_permission('can_edit_assets')
+def asset_borrow_return(asset_id: int, request: Request, note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
+    active_assignment = _get_active_assignment(db, asset)
+    if not active_assignment or active_assignment.status != 'borrowed':
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    previous_user = _close_active_assignment(db, asset, current_user.username, note.strip() or 'Thu hồi asset mượn', close_status='returned')
+    previous_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, note.strip() or 'Thu hồi asset mượn')
+    if previous_status != current_status:
+        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
+    log_audit(db, actor=current_user.username if current_user else None, module='assets', action='borrow_return', entity_type='asset', entity_id=asset.id, metadata={'returned_user': previous_user})
+    db.commit()
+    return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
 
 
 @router.post('/{asset_id}/retire')

@@ -117,6 +117,42 @@
         </div>
       </div>
 
+      <!-- Status History -->
+      <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+              <i data-lucide="git-branch-plus" class="w-5 h-5"></i>
+            </div>
+            <h3 class="text-lg font-bold text-on-surface">Lịch sử trạng thái</h3>
+          </div>
+          <span class="text-xs font-bold text-on-surface/30 uppercase tracking-widest">{{ status_history|length }}</span>
+        </div>
+        {% if status_history %}
+        <div class="space-y-4">
+          {% for item in status_history %}
+          <div class="rounded-2xl bg-surface-container-low p-4 border border-outline-variant/5">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-1">
+              <div class="text-sm font-bold text-on-surface">
+                {{ item.old_status_code or '—' }}
+                <span class="text-on-surface/30 mx-1">→</span>
+                {{ item.new_status_code }}
+              </div>
+              <div class="text-[10px] font-black text-on-surface/30 uppercase tracking-widest">
+                {{ item.changed_at.strftime('%Y-%m-%d %H:%M') if item.changed_at else '—' }}
+              </div>
+            </div>
+            <div class="text-xs text-on-surface/50">{{ item.changed_by or 'system' }}{% if item.note %} • {{ item.note }}{% endif %}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-on-surface/30">
+          <p class="text-sm font-bold uppercase tracking-widest">Chưa có lịch sử trạng thái</p>
+        </div>
+        {% endif %}
+      </div>
+
       <!-- Timeline & Event History -->
       <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
         <div class="flex items-center justify-between mb-8">
@@ -243,6 +279,51 @@
               <span>Tải về</span>
             </a>
           </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if asset and can_edit %}
+      <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
+        <h4 class="text-lg font-bold text-on-surface mb-6">Thao tác cấp phát</h4>
+        <div class="space-y-6">
+          {% if not asset.assigned_user %}
+          <form method="post" action="/assets/{{ asset.id }}/assign" class="space-y-3">
+            <input type="text" name="assigned_user" placeholder="Người nhận thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
+            <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <input type="text" name="note" placeholder="Ghi chú" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all">Assign</button>
+          </form>
+          <form method="post" action="/assets/{{ asset.id }}/borrow" class="space-y-3">
+            <input type="text" name="assigned_user" placeholder="Người mượn thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
+            <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <input type="text" name="note" placeholder="Ghi chú" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all">Borrow</button>
+          </form>
+          {% else %}
+          <div class="rounded-2xl bg-surface-container-low p-4 border border-outline-variant/5">
+            <div class="text-xs font-black text-on-surface/40 uppercase tracking-widest mb-1">Đang gán</div>
+            <div class="text-sm font-bold text-on-surface">{{ asset.assigned_user }}</div>
+            <div class="text-xs text-on-surface/50 mt-1">{{ active_assignment.status if active_assignment else 'assigned' }}</div>
+          </div>
+          <form method="post" action="/assets/{{ asset.id }}/return" class="space-y-3">
+            <input type="text" name="note" placeholder="Ghi chú thu hồi" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all">Return</button>
+          </form>
+          {% if active_assignment and active_assignment.status == 'borrowed' %}
+          <form method="post" action="/assets/{{ asset.id }}/borrow-return" class="space-y-3">
+            <input type="text" name="note" placeholder="Ghi chú trả thiết bị mượn" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all">Return Borrowed</button>
+          </form>
+          {% else %}
+          <form method="post" action="/assets/{{ asset.id }}/transfer" class="space-y-3">
+            <input type="text" name="assigned_user" placeholder="Người nhận mới" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
+            <input type="text" name="department" placeholder="Bộ phận mới (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <input type="text" name="note" placeholder="Ghi chú chuyển giao" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition-all">Transfer</button>
+          </form>
+          {% endif %}
+          {% endif %}
         </div>
       </div>
       {% endif %}

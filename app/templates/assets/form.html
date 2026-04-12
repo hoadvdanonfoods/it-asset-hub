@@ -87,8 +87,8 @@
             </div>
             <select name="status" 
               class="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/10 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none font-bold text-on-surface appearance-none">
-              {% set current = asset.display_status if asset else 'active' %}
-              {% for item in ['active', 'in_repair', 'inactive', 'retired', 'lost', 'disposed'] %}
+              {% set current = asset.display_status if asset else 'in_stock' %}
+              {% for item in ['in_stock', 'assigned', 'borrowed', 'repairing', 'retired', 'lost', 'disposed'] %}
               <option value="{{ item }}" {% if current == item %}selected{% endif %}>{{ item | upper }}</option>
               {% endfor %}
             </select>
