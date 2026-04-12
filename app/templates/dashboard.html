@@ -141,7 +141,7 @@
     </div>
     
     <div class="space-y-3 overflow-y-auto pr-2 custom-scrollbar" style="max-height: 380px;">
-      {% if alerts.warranty_expiring or alerts.overdue_maintenance or alerts.stale_incidents or alerts.missing_assignment %}
+      {% if alerts.warranty_expiring or alerts.overdue_maintenance or alerts.upcoming_maintenance or alerts.overdue_incidents or alerts.missing_assignment %}
         {# Warranty Alerts #}
         {% for item in alerts.warranty_expiring %}
         <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-amber-500 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
@@ -170,17 +170,31 @@
         </div>
         {% endfor %}
 
-        {# Stale Incidents #}
-        {% for alert in alerts.stale_incidents %}
+        {# Overdue Incidents #}
+        {% for alert in alerts.overdue_incidents %}
         <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-rose-600 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
           <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-rose-50 text-rose-600">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </div>
           <div class="flex-1">
-            <p class="text-sm font-bold text-on-surface">Sự cố chưa giải quyết</p>
-            <p class="text-[10px] text-on-surface/50">Sự cố #{{ alert.incident.id }} đang mở được {{ alert.age_days }} ngày.</p>
+            <p class="text-sm font-bold text-on-surface">Sự cố quá hạn SLA</p>
+            <p class="text-[10px] text-on-surface/50">Sự cố #{{ alert.incident.id }} ưu tiên {{ alert.priority|upper }} đã quá deadline xử lý.</p>
           </div>
           <a href="/incidents/{{ alert.incident.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Kiểm tra</a>
+        </div>
+        {% endfor %}
+
+        {# Upcoming Maintenance #}
+        {% for item in alerts.upcoming_maintenance %}
+        <div class="bg-surface-container-lowest p-4 rounded-2xl border-l-4 border-amber-500 shadow-sm flex items-center gap-4 group hover:bg-surface-container-low transition-colors cursor-pointer">
+          <div class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-50 text-amber-600">
+            <i data-lucide="bell-ring" class="w-5 h-5"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-bold text-on-surface">Bảo trì sắp tới</p>
+            <p class="text-[10px] text-on-surface/50">{{ item.asset.asset_code }} có lịch bảo trì vào {{ item.next_maintenance_date }}</p>
+          </div>
+          <a href="/maintenance/{{ item.id }}" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Xem lịch</a>
         </div>
         {% endfor %}
 
@@ -192,7 +206,7 @@
           </div>
           <div class="flex-1">
             <p class="text-sm font-bold text-on-surface">Chưa gán người sử dụng</p>
-            <p class="text-[10px] text-on-surface/50">{{ asset.asset_code }} (Active) chưa có thông tin người dùng.</p>
+            <p class="text-[10px] text-on-surface/50">{{ asset.asset_code }} đang ở trạng thái {{ asset.status }} nhưng chưa có thông tin người dùng.</p>
           </div>
           <a href="/assets/{{ asset.id }}/edit" class="text-primary font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Gán trực tiếp</a>
         </div>
