@@ -37,8 +37,20 @@ def _display_maintenance_type(item: Maintenance | None) -> str:
     return ''
 
 
+def _maintenance_due_state(item: Maintenance | None) -> str:
+    if not item or not item.next_maintenance_date:
+        return 'unscheduled'
+    today = date.today()
+    if item.next_maintenance_date < today:
+        return 'overdue'
+    if item.next_maintenance_date <= today + timedelta(days=7):
+        return 'upcoming'
+    return 'scheduled'
+
+
 def _maintenance_view_model(item: Maintenance):
     item.display_maintenance_type = _display_maintenance_type(item)
+    item.due_state = _maintenance_due_state(item)
     return item
 
 
@@ -68,8 +80,12 @@ def _filtered_maintenance(db: Session, technician: str | None = None, asset_code
 
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('maintenance')
-def maintenance_list(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+def maintenance_list(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), maintenance_type: str | None = Query(default=None), due_state: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     items = [_maintenance_view_model(item) for item in _filtered_maintenance(db, technician=technician, asset_code=asset_code)]
+    if maintenance_type:
+        items = [item for item in items if (item.display_maintenance_type or '').strip().lower() == maintenance_type.strip().lower()]
+    if due_state:
+        items = [item for item in items if getattr(item, 'due_state', 'unscheduled') == due_state]
     techs = sorted({i.technician for i in db.scalars(select(Maintenance)).all() if i.technician})
     
     # Add first_day_of_month and today for the filter/reporting modal
@@ -81,28 +97,37 @@ def maintenance_list(request: Request, technician: str | None = Query(default=No
         'items': items, 
         'technician': technician or '', 
         'asset_code': asset_code or '', 
+        'maintenance_type': maintenance_type or '',
+        'due_state': due_state or '',
         'techs': techs, 
         'current_user': current_user,
         'today': today_dt.strftime('%Y-%m-%d'),
-        'first_day_of_month': first_day
+        'first_day_of_month': first_day,
+        'maintenance_type_label': lambda value: value or 'Không rõ',
+        'due_state_options': ['overdue', 'upcoming', 'scheduled', 'unscheduled']
     })
 
 
 @router.get('/export')
 @require_permission('can_export_maintenance')
-def maintenance_export(request: Request, start_date: str = Query(None), end_date: str = Query(None), technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+def maintenance_export(request: Request, start_date: str = Query(None), end_date: str = Query(None), technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), maintenance_type: str | None = Query(default=None), due_state: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     if start_date and end_date:
         ctx = _get_maintenance_report_context(db, start_date, end_date, technician)
         items = ctx["items"]
     else:
         items = _filtered_maintenance(db, technician=technician, asset_code=asset_code)
+    items = [_maintenance_view_model(item) for item in items]
+    if maintenance_type:
+        items = [item for item in items if (item.display_maintenance_type or '').strip().lower() == maintenance_type.strip().lower()]
+    if due_state:
+        items = [item for item in items if getattr(item, 'due_state', 'unscheduled') == due_state]
         
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Maintenance'
-    ws.append(['ID', 'Thiết bị', 'Ngày', 'Kỹ thuật viên', 'Chi phí', 'Ngày tiếp theo', 'Nội dung', 'Kết quả'])
+    ws.append(['ID', 'Thiết bị', 'Ngày', 'Loại bảo trì', 'Kỹ thuật viên', 'Chi phí', 'Ngày tiếp theo', 'Trạng thái lịch', 'Nội dung', 'Kết quả'])
     for item in items:
-        ws.append([item.id, item.asset.asset_code if item.asset else '', str(item.maintenance_date), item.technician or '', float(item.cost) if item.cost is not None else '', str(item.next_maintenance_date) if item.next_maintenance_date else '', item.description, item.result or ''])
+        ws.append([item.id, item.asset.asset_code if item.asset else '', str(item.maintenance_date), item.display_maintenance_type or '', item.technician or '', float(item.cost) if item.cost is not None else '', str(item.next_maintenance_date) if item.next_maintenance_date else '', getattr(item, 'due_state', 'unscheduled'), item.description, item.result or ''])
     stream = io.BytesIO()
     wb.save(stream)
     content = stream.getvalue()
@@ -168,7 +193,8 @@ def maintenance_detail(maintenance_id: int, request: Request, db: Session = Depe
         'current_user': current_user,
         'status_label': status_label,
         'priority_label': priority_label,
-        'format_bangkok_datetime': format_bangkok_datetime
+        'format_bangkok_datetime': format_bangkok_datetime,
+        'maintenance_type_label': lambda value: value or 'Không rõ'
     })
 
 

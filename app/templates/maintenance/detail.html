@@ -14,7 +14,7 @@
     <div class="flex items-center gap-4">
       <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Chi tiết bảo trì #{{ item.id }}</h1>
       <span class="px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 text-[10px] font-bold uppercase tracking-widest border border-amber-500/20 shadow-sm">
-        COMPLETED
+        {{ item.display_maintenance_type or 'COMPLETED' }}
       </span>
     </div>
   </div>
@@ -53,8 +53,12 @@
             {% endif %}
           </div>
           <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
-            <span class="text-xs font-medium text-on-surface/40 uppercase">Người báo</span>
+            <span class="text-xs font-medium text-on-surface/40 uppercase">Người thực hiện</span>
             <span class="text-sm font-bold text-on-surface/80">{{ item.technician or '-' }}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-outline-variant/5">
+            <span class="text-xs font-medium text-on-surface/40 uppercase">Loại bảo trì</span>
+            <span class="text-sm font-bold text-on-surface/80">{{ item.display_maintenance_type or 'Không rõ' }}</span>
           </div>
         </div>
       </div>
@@ -153,6 +157,11 @@
               <i data-lucide="calendar-check" class="w-3 h-3"></i>
               {{ item.next_maintenance_date or 'Chưa lên kế hoạch' }}
             </div>
+            {% if item.next_maintenance_date %}
+            <div class="mt-2 text-[10px] font-bold uppercase tracking-widest {% if item.due_state == 'overdue' %}text-rose-600{% elif item.due_state == 'upcoming' %}text-amber-600{% else %}text-emerald-600{% endif %}">
+              {% if item.due_state == 'overdue' %}Đã quá hạn{% elif item.due_state == 'upcoming' %}Sắp tới trong 7 ngày{% else %}Đã có lịch{% endif %}
+            </div>
+            {% endif %}
           </div>
         </div>
       </div>
