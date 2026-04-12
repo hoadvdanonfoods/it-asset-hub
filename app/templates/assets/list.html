@@ -86,9 +86,9 @@
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for asset in assets %}
-        <tr class="hover:bg-indigo-500/5 transition-all duration-200 group asset-row">
+        <tr class="hover:bg-indigo-500/5 transition-all duration-200 group asset-row" data-asset-status="{{ asset.display_status or asset.status }}">
           <td class="px-6 py-5 text-center">
-            <input type="checkbox" name="asset_checkbox" value="{{ asset.id }}" class="asset-checkbox w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary cursor-pointer transition-all">
+            <input type="checkbox" name="asset_checkbox" value="{{ asset.id }}" data-asset-status="{{ asset.display_status or asset.status }}" class="asset-checkbox w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary cursor-pointer transition-all">
           </td>
           <td class="px-6 py-5 text-center">
             <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 transition-colors">
@@ -171,6 +171,11 @@
     <span class="text-white text-xl font-extrabold headline leading-none"><span id="selectedCountBar">0</span> <span class="text-xs font-medium opacity-60 ml-1">mục</span></span>
   </div>
   <div class="h-8 w-px bg-white/10"></div>
+  <div class="flex flex-col gap-1 min-w-[220px]">
+    <div class="text-[10px] text-white/40 font-bold uppercase tracking-widest">Trạng thái tập chọn</div>
+    <div id="selectionStatusSummary" class="text-xs text-white/80 font-medium">Chưa có lựa chọn</div>
+  </div>
+  <div class="h-8 w-px bg-white/10"></div>
   <div class="flex items-center gap-3">
     <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
       <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa
@@ -197,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const bulkActionBar = document.getElementById('bulkActionBar');
   const selectedCountDisplay = document.getElementById('selectedCountDisplay');
   const selectedCountBar = document.getElementById('selectedCountBar');
+  const selectionStatusSummary = document.getElementById('selectionStatusSummary');
   const cancelSelection = document.getElementById('cancelSelection');
   const openBulkEdit = document.getElementById('openBulkEdit');
   
@@ -204,6 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
   const closeBulkModal = document.getElementById('closeBulkModal');
   const bulkAssetIdsInput = document.getElementById('bulkAssetIds');
+  const bulkEditStatusHint = document.getElementById('bulkEditStatusHint');
 
   const openBulkArchive = document.getElementById('openBulkArchive');
   const bulkArchiveModal = document.getElementById('bulkArchiveModal');
@@ -211,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const bulkArchiveModalBackdrop = document.getElementById('bulkArchiveModalBackdrop');
   const bulkArchiveAssetIds = document.getElementById('bulkArchiveAssetIds');
   const archiveCountDisplay = document.getElementById('archiveCountDisplay');
+  const bulkArchiveStatusHint = document.getElementById('bulkArchiveStatusHint');
 
   const openBulkRestore = document.getElementById('openBulkRestore');
   const bulkRestoreModal = document.getElementById('bulkRestoreModal');
@@ -218,16 +226,56 @@ document.addEventListener('DOMContentLoaded', function() {
   const bulkRestoreModalBackdrop = document.getElementById('bulkRestoreModalBackdrop');
   const bulkRestoreAssetIds = document.getElementById('bulkRestoreAssetIds');
   const restoreCountDisplay = document.getElementById('restoreCountDisplay');
+  const bulkRestoreStatusHint = document.getElementById('bulkRestoreStatusHint');
+
+  function getSelectionMeta() {
+    const selected = Array.from(document.querySelectorAll('.asset-checkbox:checked'));
+    const ids = selected.map(cb => cb.value);
+    const statuses = selected.map(cb => cb.dataset.assetStatus || 'unknown');
+    const counts = statuses.reduce((acc, status) => {
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+    const uniqueStatuses = Object.keys(counts);
+    const archivable = statuses.filter(status => !['retired', 'disposed', 'lost'].includes(status)).length;
+    const restorable = statuses.filter(status => ['retired', 'disposed', 'lost'].includes(status)).length;
+    return { ids, statuses, counts, uniqueStatuses, archivable, restorable, total: selected.length };
+  }
+
+  function renderSelectionSummary(meta) {
+    if (!meta.total) {
+      selectionStatusSummary.textContent = 'Chưa có lựa chọn';
+      return;
+    }
+    if (meta.uniqueStatuses.length === 1) {
+      selectionStatusSummary.textContent = `${meta.total} thiết bị, cùng trạng thái ${meta.uniqueStatuses[0]}`;
+      return;
+    }
+    selectionStatusSummary.textContent = meta.uniqueStatuses.map(status => `${status} (${meta.counts[status]})`).join(', ');
+  }
+
+  function setButtonEnabled(button, enabled) {
+    if (!button) return;
+    button.disabled = !enabled;
+    button.classList.toggle('opacity-40', !enabled);
+    button.classList.toggle('cursor-not-allowed', !enabled);
+  }
 
   function updateBulkBar() {
-    const selected = document.querySelectorAll('.asset-checkbox:checked');
-    const count = selected.length;
+    const meta = getSelectionMeta();
+    const count = meta.total;
     
     if (count > 0) {
       selectedCountBar.textContent = count;
       selectedCountDisplay.textContent = count;
+      renderSelectionSummary(meta);
+      setButtonEnabled(openBulkArchive, meta.archivable > 0);
+      setButtonEnabled(openBulkRestore, meta.restorable > 0);
       bulkActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
     } else {
+      renderSelectionSummary(meta);
+      setButtonEnabled(openBulkArchive, false);
+      setButtonEnabled(openBulkRestore, false);
       bulkActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
     }
   }
@@ -255,28 +303,47 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Modal logic
   function getSelectedIds() {
-    return Array.from(document.querySelectorAll('.asset-checkbox:checked')).map(cb => cb.value);
+    return getSelectionMeta().ids;
   }
 
   openBulkEdit.addEventListener('click', function() {
-    const selected = getSelectedIds();
-    bulkAssetIdsInput.value = selected.join(',');
+    const meta = getSelectionMeta();
+    bulkAssetIdsInput.value = meta.ids.join(',');
+    if (bulkEditStatusHint) {
+      bulkEditStatusHint.textContent = meta.uniqueStatuses.length > 1
+        ? `Tập chọn đang mixed: ${meta.uniqueStatuses.map(status => `${status} (${meta.counts[status]})`).join(', ')}. Backend sẽ chỉ áp dụng các chuyển trạng thái hợp lệ.`
+        : `Tập chọn cùng trạng thái ${meta.uniqueStatuses[0] || 'unknown'}.`;
+    }
     bulkEditModal.classList.remove('hidden');
     setTimeout(() => initIcons(), 100);
   });
 
   openBulkArchive.addEventListener('click', function() {
-    const selected = getSelectedIds();
-    bulkArchiveAssetIds.value = selected.join(',');
-    archiveCountDisplay.textContent = selected.length;
+    const meta = getSelectionMeta();
+    if (!meta.archivable) return;
+    bulkArchiveAssetIds.value = meta.ids.join(',');
+    archiveCountDisplay.textContent = meta.archivable;
+    if (bulkArchiveStatusHint) {
+      const skipped = meta.total - meta.archivable;
+      bulkArchiveStatusHint.textContent = skipped > 0
+        ? `Sẽ archive ${meta.archivable} thiết bị hợp lệ, bỏ qua ${skipped} thiết bị đã ở trạng thái terminal.`
+        : `Toàn bộ ${meta.archivable} thiết bị đều có thể archive.`;
+    }
     bulkArchiveModal.classList.remove('hidden');
     setTimeout(() => initIcons(), 100);
   });
 
   openBulkRestore.addEventListener('click', function() {
-    const selected = getSelectedIds();
-    bulkRestoreAssetIds.value = selected.join(',');
-    restoreCountDisplay.textContent = selected.length;
+    const meta = getSelectionMeta();
+    if (!meta.restorable) return;
+    bulkRestoreAssetIds.value = meta.ids.join(',');
+    restoreCountDisplay.textContent = meta.restorable;
+    if (bulkRestoreStatusHint) {
+      const skipped = meta.total - meta.restorable;
+      bulkRestoreStatusHint.textContent = skipped > 0
+        ? `Sẽ restore ${meta.restorable} thiết bị terminal, bỏ qua ${skipped} thiết bị không cần restore.`
+        : `Toàn bộ ${meta.restorable} thiết bị đều có thể restore về in_stock.`;
+    }
     bulkRestoreModal.classList.remove('hidden');
     setTimeout(() => initIcons(), 100);
   });
