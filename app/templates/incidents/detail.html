@@ -96,12 +96,22 @@
           </div>
         </div>
 
-        {% if item.resolved_at %}
-        <div class="pt-4 mt-4 border-t border-outline-variant/10">
-          <div class="text-[10px] font-black underline decoration-rose-500/30 underline-offset-4 uppercase tracking-[0.15em] text-on-surface/30 mb-1">Thời gian xử lý</div>
-          <div class="text-lg font-black text-rose-600 tracking-tight">{{ format_duration(item.reported_at, item.resolved_at) }}</div>
+        <div class="pt-4 mt-4 border-t border-outline-variant/10 space-y-3">
+          <div>
+            <div class="text-[10px] font-black underline decoration-rose-500/30 underline-offset-4 uppercase tracking-[0.15em] text-on-surface/30 mb-1">SLA mục tiêu</div>
+            <div class="text-lg font-black text-on-surface tracking-tight">{{ item.sla_hours }} giờ</div>
+            <div class="text-[10px] text-on-surface/40 font-medium mt-1">Deadline: {{ format_bangkok_datetime(item.due_at) if item.due_at else '—' }}</div>
+          </div>
+          {% if item.resolved_at %}
+          <div>
+            <div class="text-[10px] font-black underline decoration-rose-500/30 underline-offset-4 uppercase tracking-[0.15em] text-on-surface/30 mb-1">Thời gian xử lý</div>
+            <div class="text-lg font-black {% if item.resolved_at <= item.due_at %}text-emerald-600{% else %}text-amber-600{% endif %} tracking-tight">{{ format_duration(item.reported_at, item.resolved_at) }}</div>
+            <div class="text-[10px] text-on-surface/40 font-medium mt-1">{% if item.resolved_at <= item.due_at %}Hoàn tất đúng SLA{% else %}Hoàn tất trễ SLA{% endif %}</div>
+          </div>
+          {% elif item.is_overdue %}
+          <div class="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-xs font-bold text-rose-700">Ticket này đang quá hạn SLA và cần được ưu tiên xử lý.</div>
+          {% endif %}
         </div>
-        {% endif %}
       </div>
     </div>
 

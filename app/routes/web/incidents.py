@@ -34,6 +34,11 @@ INCIDENT_PRIORITY_META = {
 }
 FINAL_INCIDENT_STATUSES = {'resolved', 'closed', 'cancelled'}
 INCIDENT_SOURCES = ['user_report', 'monitoring', 'checklist', 'system_generated']
+INCIDENT_SLA_HOURS = {
+    'low': 24,
+    'medium': 8,
+    'high': 4,
+}
 
 
 def format_bangkok_datetime(value: datetime | None) -> str:
@@ -92,6 +97,28 @@ def source_label(source: str | None) -> str:
         'system_generated': 'System Generated',
     }
     return mapping.get(key, key or 'User Report')
+
+
+def incident_sla_hours(priority: str | None) -> int:
+    return INCIDENT_SLA_HOURS.get(_normalize_priority(priority), INCIDENT_SLA_HOURS['medium'])
+
+
+def incident_due_at(item: Incident | None) -> datetime | None:
+    if not item or not item.reported_at:
+        return None
+    from datetime import timedelta
+    return item.reported_at + timedelta(hours=incident_sla_hours(getattr(item, 'display_priority', None) or getattr(item, 'priority', None)))
+
+
+def incident_is_overdue(item: Incident | None) -> bool:
+    if not item:
+        return False
+    if (item.status or '').strip().lower() in FINAL_INCIDENT_STATUSES:
+        return False
+    due_at = incident_due_at(item)
+    if not due_at:
+        return False
+    return datetime.utcnow() > due_at
 
 
 def _normalize_status(value: str | None) -> str:
@@ -160,6 +187,9 @@ def _display_incident_department(item: Incident | None) -> str:
 def _incident_view_model(item: Incident):
     item.display_priority = _display_incident_priority(item)
     item.display_department = _display_incident_department(item)
+    item.sla_hours = incident_sla_hours(item.display_priority)
+    item.due_at = incident_due_at(item)
+    item.is_overdue = incident_is_overdue(item)
     return item
 
 
@@ -232,6 +262,7 @@ def incident_list(request: Request, status: str | None = Query(default=None), pr
         'incident_priorities': INCIDENT_PRIORITIES,
         'incident_sources': INCIDENT_SOURCES,
         'source_label': source_label,
+        'incident_sla_hours': incident_sla_hours,
     })
 
 
@@ -324,6 +355,7 @@ def incident_detail(incident_id: int, request: Request, db: Session = Depends(ge
         'priority_label': priority_label,
         'priority_badge_class': priority_badge_class,
         'source_label': source_label,
+        'incident_sla_hours': incident_sla_hours,
     })
 
 

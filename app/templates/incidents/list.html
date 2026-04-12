@@ -102,13 +102,13 @@
           <th class="px-6 py-5 w-32 text-center">Độ ưu tiên</th>
           <th class="px-6 py-5 w-36 text-center">Trạng thái</th>
           <th class="px-6 py-5 w-48">Thời điểm báo</th>
-          <th class="px-6 py-5 w-32 text-center">Xử lý</th>
+          <th class="px-6 py-5 w-40 text-center">SLA</th>
           <th class="px-6 py-5 w-28 text-right"></th>
         </tr>
       </thead>
       <tbody class="divide-y divide-outline-variant/5">
         {% for item in items %}
-        <tr class="hover:bg-rose-500/[0.03] transition-colors group cursor-default">
+        <tr class="hover:bg-rose-500/[0.03] transition-colors group cursor-default {% if item.is_overdue %}bg-rose-500/[0.04]{% endif %}">
           <td class="px-6 py-5 text-center">
             <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-surface-container-highest text-[11px] font-extrabold text-on-surface/40 group-hover:bg-rose-500/10 group-hover:text-rose-600 transition-colors">
               {{ loop.index }}
@@ -188,20 +188,25 @@
               </div>
               <div class="text-[10px] text-on-surface/30 font-medium italic flex items-center gap-1">
                 <i data-lucide="timer" class="w-3 h-3"></i>
-                Báo cách đây {{ format_duration(item.reported_at, none) }}
+                Ghi nhận {{ format_bangkok_datetime(item.reported_at) }}
               </div>
             </div>
           </td>
           <td class="px-6 py-5 text-center">
-            {% set dur = format_duration(item.reported_at, item.resolved_at) %}
-            {% if dur %}
+            {% if item.resolved_at %}
             <div class="flex flex-col items-center gap-0.5">
-              <div class="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{{ dur }}</div>
-              <div class="text-[9px] text-on-surface/30 font-medium italic">SLA Met</div>
+              <div class="text-[10px] font-black {% if item.resolved_at <= item.due_at %}text-emerald-600{% else %}text-amber-600{% endif %} uppercase tracking-widest">{{ format_duration(item.reported_at, item.resolved_at) }}</div>
+              <div class="text-[9px] text-on-surface/30 font-medium italic">{% if item.resolved_at <= item.due_at %}Đúng SLA{% else %}Trễ SLA{% endif %}</div>
+            </div>
+            {% elif item.is_overdue %}
+            <div class="flex flex-col items-center gap-0.5">
+              <div class="text-[10px] font-black text-rose-600 uppercase tracking-widest">Quá hạn</div>
+              <div class="text-[9px] text-on-surface/30 font-medium italic">Mục tiêu {{ item.sla_hours }}h</div>
             </div>
             {% else %}
-            <div class="flex items-center justify-center text-on-surface/10 pl-2">
-              <i data-lucide="hourglass" class="w-4 h-4 animate-bounce-subtle"></i>
+            <div class="flex flex-col items-center gap-0.5">
+              <div class="text-[10px] font-black text-sky-600 uppercase tracking-widest">Trong hạn</div>
+              <div class="text-[9px] text-on-surface/30 font-medium italic">Mục tiêu {{ item.sla_hours }}h</div>
             </div>
             {% endif %}
           </td>
