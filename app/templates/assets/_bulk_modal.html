@@ -39,9 +39,10 @@
             <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Trạng thái (Status)</label>
             <select name="status" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
               <option value="">-- Không thay đổi --</option>
-              <option value="active">Active</option>
-              <option value="in_repair">In Repair</option>
-              <option value="inactive">Inactive</option>
+              <option value="in_stock">In Stock</option>
+              <option value="assigned">Assigned</option>
+              <option value="borrowed">Borrowed</option>
+              <option value="repairing">Repairing</option>
               <option value="retired">Retired</option>
               <option value="lost">Lost</option>
               <option value="disposed">Disposed</option>
@@ -106,7 +107,7 @@
         
         <div class="bg-success/5 px-6 py-4 border-b border-success/10">
           <h3 class="text-lg font-bold text-success headline">Khôi phục hàng loạt</h3>
-          <p class="text-xs text-on-surface/60">Khôi phục <span id="restoreCountDisplay" class="font-bold text-success">0</span> thiết bị đã chọn về trạng thái Active</p>
+          <p class="text-xs text-on-surface/60">Khôi phục <span id="restoreCountDisplay" class="font-bold text-success">0</span> thiết bị đã chọn về trạng thái In Stock</p>
         </div>
         
         <div class="px-6 py-6 space-y-4">

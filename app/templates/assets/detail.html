@@ -287,7 +287,7 @@
       <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
         <div class="flex items-start justify-between gap-4 mb-6">
           <div>
-            <h4 class="text-lg font-bold text-on-surface">Thao tác cấp phát</h4>
+            <h4 class="text-lg font-bold text-on-surface">Điều phối cấp phát</h4>
             <p class="text-xs text-on-surface/40 mt-1">Transitions hợp lệ: {{ allowed_transitions | join(', ') }}</p>
           </div>
           <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-black uppercase tracking-widest">
@@ -295,61 +295,154 @@
           </span>
         </div>
 
-        <div class="space-y-6">
-          {% if asset.assigned_user %}
-          <div class="rounded-2xl bg-surface-container-low p-4 border border-outline-variant/5">
-            <div class="text-xs font-black text-on-surface/40 uppercase tracking-widest mb-1">Đang gán</div>
-            <div class="text-sm font-bold text-on-surface">{{ asset.assigned_user }}</div>
-            <div class="text-xs text-on-surface/50 mt-1">{{ active_assignment.status if active_assignment else 'assigned' }}</div>
+        {% if asset.assigned_user %}
+        <div class="rounded-2xl bg-gradient-to-br from-sky-500/10 to-indigo-500/10 p-5 border border-sky-500/15 mb-6">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <div class="text-xs font-black text-on-surface/40 uppercase tracking-widest mb-2">Đang giữ thiết bị</div>
+              <div class="text-lg font-extrabold text-on-surface">{{ asset.assigned_user }}</div>
+              <div class="text-xs text-on-surface/50 mt-1">{{ active_assignment.status if active_assignment else 'assigned' }}</div>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-white/70 border border-white/60 flex items-center justify-center text-sky-600 shadow-sm">
+              <i data-lucide="user-check" class="w-5 h-5"></i>
+            </div>
           </div>
-          {% endif %}
+        </div>
+        {% endif %}
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {% if action_flags.can_assign %}
-          <form method="post" action="/assets/{{ asset.id }}/assign" class="space-y-3">
-            <input type="text" name="assigned_user" placeholder="Người nhận thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
-            <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <input type="text" name="note" placeholder="Ghi chú" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all">Assign</button>
-          </form>
+          <button type="button" data-assignment-modal-open="assignModal" class="text-left rounded-2xl border border-indigo-500/15 bg-indigo-500/5 p-4 hover:bg-indigo-500/10 transition-all">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm"><i data-lucide="user-plus" class="w-4 h-4"></i></div>
+              <div>
+                <div class="text-sm font-bold text-on-surface">Assign</div>
+                <div class="text-xs text-on-surface/50">Cấp phát cho nhân sự sử dụng lâu dài</div>
+              </div>
+            </div>
+          </button>
           {% endif %}
 
           {% if action_flags.can_borrow %}
-          <form method="post" action="/assets/{{ asset.id }}/borrow" class="space-y-3">
-            <input type="text" name="assigned_user" placeholder="Người mượn thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
-            <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <input type="text" name="note" placeholder="Ghi chú" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all">Borrow</button>
-          </form>
-          {% endif %}
-
-          {% if action_flags.can_return %}
-          <form method="post" action="/assets/{{ asset.id }}/return" class="space-y-3">
-            <input type="text" name="note" placeholder="Ghi chú thu hồi" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all">Return</button>
-          </form>
-          {% endif %}
-
-          {% if action_flags.can_borrow_return %}
-          <form method="post" action="/assets/{{ asset.id }}/borrow-return" class="space-y-3">
-            <input type="text" name="note" placeholder="Ghi chú trả thiết bị mượn" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all">Return Borrowed</button>
-          </form>
+          <button type="button" data-assignment-modal-open="borrowModal" class="text-left rounded-2xl border border-amber-500/15 bg-amber-500/5 p-4 hover:bg-amber-500/10 transition-all">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-amber-600 text-white flex items-center justify-center shadow-sm"><i data-lucide="hand" class="w-4 h-4"></i></div>
+              <div>
+                <div class="text-sm font-bold text-on-surface">Borrow</div>
+                <div class="text-xs text-on-surface/50">Cho mượn tạm thời và theo dõi hoàn trả</div>
+              </div>
+            </div>
+          </button>
           {% endif %}
 
           {% if action_flags.can_transfer %}
-          <form method="post" action="/assets/{{ asset.id }}/transfer" class="space-y-3">
-            <input type="text" name="assigned_user" placeholder="Người nhận mới" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
-            <input type="text" name="department" placeholder="Bộ phận mới (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <input type="text" name="note" placeholder="Ghi chú chuyển giao" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
-            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition-all">Transfer</button>
-          </form>
+          <button type="button" data-assignment-modal-open="transferModal" class="text-left rounded-2xl border border-sky-500/15 bg-sky-500/5 p-4 hover:bg-sky-500/10 transition-all">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center shadow-sm"><i data-lucide="repeat" class="w-4 h-4"></i></div>
+              <div>
+                <div class="text-sm font-bold text-on-surface">Transfer</div>
+                <div class="text-xs text-on-surface/50">Chuyển giao sang người dùng mới</div>
+              </div>
+            </div>
+          </button>
           {% endif %}
 
-          {% if not action_flags.can_assign and not action_flags.can_borrow and not action_flags.can_return and not action_flags.can_borrow_return and not action_flags.can_transfer %}
-          <div class="rounded-2xl border border-dashed border-outline-variant/20 p-4 text-sm text-on-surface/50">
-            Không có thao tác cấp phát phù hợp cho trạng thái hiện tại.
-          </div>
+          {% if action_flags.can_return %}
+          <button type="button" data-assignment-modal-open="returnModal" class="text-left rounded-2xl border border-rose-500/15 bg-rose-500/5 p-4 hover:bg-rose-500/10 transition-all">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-sm"><i data-lucide="undo-2" class="w-4 h-4"></i></div>
+              <div>
+                <div class="text-sm font-bold text-on-surface">Return</div>
+                <div class="text-xs text-on-surface/50">Thu hồi thiết bị về kho sẵn sàng</div>
+              </div>
+            </div>
+          </button>
           {% endif %}
+
+          {% if action_flags.can_borrow_return %}
+          <button type="button" data-assignment-modal-open="borrowReturnModal" class="text-left rounded-2xl border border-emerald-500/15 bg-emerald-500/5 p-4 hover:bg-emerald-500/10 transition-all sm:col-span-2">
+            <div class="flex items-center gap-3 mb-2">
+              <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-sm"><i data-lucide="badge-check" class="w-4 h-4"></i></div>
+              <div>
+                <div class="text-sm font-bold text-on-surface">Return Borrowed</div>
+                <div class="text-xs text-on-surface/50">Xác nhận hoàn trả thiết bị đang ở trạng thái mượn</div>
+              </div>
+            </div>
+          </button>
+          {% endif %}
+        </div>
+
+        {% if not action_flags.can_assign and not action_flags.can_borrow and not action_flags.can_return and not action_flags.can_borrow_return and not action_flags.can_transfer %}
+        <div class="rounded-2xl border border-dashed border-outline-variant/20 p-4 text-sm text-on-surface/50 mt-6">
+          Không có thao tác cấp phát phù hợp cho trạng thái hiện tại.
+        </div>
+        {% endif %}
+      </div>
+
+      <div id="assignmentModalBackdrop" class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40 hidden"></div>
+      <div id="assignModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
+          <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <h4 class="text-xl font-extrabold text-on-surface mb-2">Assign asset</h4>
+          <p class="text-sm text-on-surface/50 mb-6">Cấp phát thiết bị cho người dùng chính thức.</p>
+          <form method="post" action="/assets/{{ asset.id }}/assign" class="space-y-4">
+            <input type="text" name="assigned_user" placeholder="Người nhận thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
+            <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <textarea name="note" placeholder="Ghi chú" rows="3" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"></textarea>
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all">Xác nhận cấp phát</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="borrowModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
+          <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <h4 class="text-xl font-extrabold text-on-surface mb-2">Borrow asset</h4>
+          <p class="text-sm text-on-surface/50 mb-6">Cho mượn thiết bị tạm thời và lưu dấu vết hoàn trả.</p>
+          <form method="post" action="/assets/{{ asset.id }}/borrow" class="space-y-4">
+            <input type="text" name="assigned_user" placeholder="Người mượn thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
+            <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <textarea name="note" placeholder="Ghi chú" rows="3" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"></textarea>
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all">Xác nhận cho mượn</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="transferModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
+          <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <h4 class="text-xl font-extrabold text-on-surface mb-2">Transfer asset</h4>
+          <p class="text-sm text-on-surface/50 mb-6">Chuyển thiết bị từ người dùng hiện tại sang người dùng mới.</p>
+          <form method="post" action="/assets/{{ asset.id }}/transfer" class="space-y-4">
+            <input type="text" name="assigned_user" placeholder="Người nhận mới" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
+            <input type="text" name="department" placeholder="Bộ phận mới (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
+            <textarea name="note" placeholder="Ghi chú chuyển giao" rows="3" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"></textarea>
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition-all">Xác nhận chuyển giao</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="returnModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
+          <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <h4 class="text-xl font-extrabold text-on-surface mb-2">Return asset</h4>
+          <p class="text-sm text-on-surface/50 mb-6">Thu hồi thiết bị đang cấp phát về trạng thái sẵn sàng.</p>
+          <form method="post" action="/assets/{{ asset.id }}/return" class="space-y-4">
+            <textarea name="note" placeholder="Ghi chú thu hồi" rows="3" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"></textarea>
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all">Xác nhận thu hồi</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="borrowReturnModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
+          <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
+          <h4 class="text-xl font-extrabold text-on-surface mb-2">Return borrowed asset</h4>
+          <p class="text-sm text-on-surface/50 mb-6">Xác nhận hoàn trả thiết bị đang ở trạng thái mượn.</p>
+          <form method="post" action="/assets/{{ asset.id }}/borrow-return" class="space-y-4">
+            <textarea name="note" placeholder="Ghi chú trả thiết bị mượn" rows="3" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"></textarea>
+            <button type="submit" class="w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all">Xác nhận hoàn trả</button>
+          </form>
         </div>
       </div>
       {% endif %}
@@ -375,4 +468,53 @@
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const backdrop = document.getElementById('assignmentModalBackdrop');
+  const modals = document.querySelectorAll('.assignment-modal');
+  const openButtons = document.querySelectorAll('[data-assignment-modal-open]');
+  const closeButtons = document.querySelectorAll('[data-assignment-modal-close]');
+
+  function closeAllAssignmentModals() {
+    modals.forEach((modal) => {
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    });
+    if (backdrop) backdrop.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+  }
+
+  function openAssignmentModal(id) {
+    closeAllAssignmentModals();
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    if (backdrop) backdrop.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+  }
+
+  openButtons.forEach((button) => {
+    button.addEventListener('click', function() {
+      openAssignmentModal(this.getAttribute('data-assignment-modal-open'));
+    });
+  });
+
+  closeButtons.forEach((button) => {
+    button.addEventListener('click', closeAllAssignmentModals);
+  });
+
+  if (backdrop) {
+    backdrop.addEventListener('click', closeAllAssignmentModals);
+  }
+
+  document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') closeAllAssignmentModals();
+  });
+});
+</script>
 {% endblock %}
