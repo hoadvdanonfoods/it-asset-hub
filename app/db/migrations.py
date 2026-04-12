@@ -112,6 +112,10 @@ FK_INDEXES = [
     "CREATE INDEX IF NOT EXISTS ix_maintenances_maintenance_type_id ON maintenances (maintenance_type_id)",
     "CREATE INDEX IF NOT EXISTS ix_maintenances_vendor_id ON maintenances (vendor_id)",
     "CREATE INDEX IF NOT EXISTS ix_asset_assignments_employee_id ON asset_assignments (employee_id)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_status_history_asset_id ON asset_status_history (asset_id)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_status_history_old_status_id ON asset_status_history (old_status_id)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_status_history_new_status_id ON asset_status_history (new_status_id)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_status_history_changed_at ON asset_status_history (changed_at)",
 ]
 
 SEED_ROWS = {
@@ -152,6 +156,24 @@ def _add_column_if_missing(conn, table_name: str, column_name: str, column_type:
 def ensure_master_tables(conn) -> None:
     for sql in MASTER_TABLES.values():
         conn.execute(text(sql))
+    conn.execute(
+        text(
+            """CREATE TABLE IF NOT EXISTS asset_status_history (
+                id INTEGER PRIMARY KEY,
+                asset_id INTEGER NOT NULL,
+                old_status_id INTEGER,
+                new_status_id INTEGER,
+                old_status_code VARCHAR(50),
+                new_status_code VARCHAR(50) NOT NULL,
+                changed_by VARCHAR(120),
+                changed_at DATETIME,
+                note TEXT,
+                FOREIGN KEY(asset_id) REFERENCES assets(id),
+                FOREIGN KEY(old_status_id) REFERENCES asset_statuses(id),
+                FOREIGN KEY(new_status_id) REFERENCES asset_statuses(id)
+            )"""
+        )
+    )
     for sql in MASTER_INDEXES:
         conn.execute(text(sql))
 
@@ -199,10 +221,35 @@ LOOKUP_FIELDS = {
 }
 
 
-def _lookup_id(conn, table_name: str, column_name: str, raw_value: str | None):
+def _normalize_lookup_value(table_name: str, raw_value: str | None) -> str | None:
     if not raw_value:
         return None
     normalized = raw_value.strip()
+    if not normalized:
+        return None
+    if table_name == 'asset_statuses':
+        aliases = {
+            'active': 'ASSIGNED',
+            'inactive': 'IN_STOCK',
+            'in_repair': 'REPAIRING',
+            'in repair': 'REPAIRING',
+            'repair': 'REPAIRING',
+            'repairing': 'REPAIRING',
+            'broken': 'REPAIRING',
+            'retired': 'RETIRED',
+            'disposed': 'DISPOSED',
+            'lost': 'LOST',
+            'borrowed': 'BORROWED',
+            'assigned': 'ASSIGNED',
+            'in_stock': 'IN_STOCK',
+            'in stock': 'IN_STOCK',
+        }
+        return aliases.get(normalized.lower(), normalized.upper())
+    return normalized
+
+
+def _lookup_id(conn, table_name: str, column_name: str, raw_value: str | None):
+    normalized = _normalize_lookup_value(table_name, raw_value)
     if not normalized:
         return None
     field1, field2 = LOOKUP_FIELDS.get(table_name, ('code', 'name'))
@@ -438,4 +485,11 @@ def ensure_schema() -> None:
         ensure_master_tables(conn)
         ensure_fk_columns(conn)
         seed_master_data(conn)
+        try:
+            conn.execute(text("UPDATE assets SET status = 'assigned' WHERE lower(COALESCE(status, '')) = 'active' AND COALESCE(assigned_user, '') <> ''"))
+            conn.execute(text("UPDATE assets SET status = 'in_stock' WHERE lower(COALESCE(status, '')) IN ('active', 'inactive') AND COALESCE(assigned_user, '') = ''"))
+            conn.execute(text("UPDATE assets SET status = 'repairing' WHERE lower(COALESCE(status, '')) IN ('in_repair', 'repair', 'repairing', 'broken')"))
+            conn.execute(text("UPDATE assets SET status = lower(status) WHERE upper(COALESCE(status, '')) IN ('IN_STOCK', 'ASSIGNED', 'BORROWED', 'REPAIRING', 'RETIRED', 'DISPOSED', 'LOST')"))
+        except Exception:
+            pass
         backfill_master_data(conn)

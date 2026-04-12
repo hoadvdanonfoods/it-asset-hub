@@ -13,14 +13,32 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import has_permission, require_module_access, require_permission
-from app.db.models import Asset, AssetAssignment, AssetEvent, User, Department, Employee, AssetType, Location, AssetStatus
+from app.db.models import Asset, AssetAssignment, AssetEvent, AssetStatusHistory, User, Department, Employee, AssetType, Location, AssetStatus
 from app.db.session import get_db
 from app.services.audit import log_audit
 
 router = APIRouter(prefix='/assets', tags=['assets'])
 templates = Jinja2Templates(directory='app/templates')
 DATE_FMT = '%Y-%m-%d'
-ASSET_STATUSES = ['active', 'in_repair', 'inactive', 'retired', 'lost', 'disposed']
+ASSET_STATUSES = ['in_stock', 'assigned', 'borrowed', 'repairing', 'retired', 'disposed', 'lost']
+ASSET_STATUS_TRANSITIONS = {
+    'in_stock': {'in_stock', 'assigned', 'borrowed', 'repairing', 'retired', 'disposed', 'lost'},
+    'assigned': {'assigned', 'repairing', 'in_stock', 'retired', 'disposed', 'lost', 'borrowed'},
+    'borrowed': {'borrowed', 'in_stock', 'repairing', 'retired', 'disposed', 'lost', 'assigned'},
+    'repairing': {'repairing', 'in_stock', 'retired', 'disposed', 'lost', 'assigned'},
+    'retired': {'retired'},
+    'disposed': {'disposed'},
+    'lost': {'lost'},
+}
+STATUS_LABELS = {
+    'in_stock': 'In Stock',
+    'assigned': 'Assigned',
+    'borrowed': 'Borrowed',
+    'repairing': 'Repairing',
+    'retired': 'Retired',
+    'disposed': 'Disposed',
+    'lost': 'Lost',
+}
 IMPORT_HEADERS = [
     'Mã thiết bị',
     'Tên thiết bị',
@@ -69,7 +87,7 @@ class AssetImportDTO:
             location=row_map.get('Vị trí', '').strip() or None,
             purchase_date=row_map.get('Ngày mua', '').strip() or None,
             warranty_expiry=row_map.get('Hết bảo hành', '').strip() or None,
-            status=_normalize_status(row_map.get('Trạng thái', '').strip() or 'active'),
+            status=_normalize_status(row_map.get('Trạng thái', '').strip() or 'in_stock'),
             notes=row_map.get('Ghi chú', '').strip() or None,
         )
 
@@ -94,8 +112,9 @@ def _display_location(asset: Asset | None) -> str:
 
 def _display_status(asset: Asset | None) -> str:
     if not asset:
-        return 'active'
-    return getattr(getattr(asset, 'status_ref', None), 'code', None) or asset.status or 'active'
+        return 'in_stock'
+    status_value = getattr(getattr(asset, 'status_ref', None), 'code', None) or asset.status or 'in_stock'
+    return _normalize_status(status_value)
 
 
 def _master_data_context(db: Session):
@@ -139,6 +158,17 @@ def _resolve_status_value(db: Session, value: str | None):
     normalized = _normalize_status(value)
     row = db.execute(select(AssetStatus.id, AssetStatus.code).where(or_(AssetStatus.code == normalized, AssetStatus.code == normalized.upper(), AssetStatus.name == value)).limit(1)).first()
     return normalized, (row[0] if row else None)
+
+
+def _set_asset_status(db: Session, asset: Asset, target_status: str | None, actor: str | None, note: str | None = None):
+    old_status = asset.status
+    old_status_id = asset.status_id
+    normalized_status, status_id = _resolve_status_value(db, target_status)
+    _assert_valid_status_transition(old_status, normalized_status)
+    asset.status = normalized_status
+    asset.status_id = status_id
+    _record_status_history(db, asset, old_status, old_status_id, normalized_status, status_id, actor, note)
+    return old_status, normalized_status
 
 
 def _resolve_employee_id(db: Session, value: str | None):
@@ -200,6 +230,32 @@ def _log_event(db: Session, asset_id: int, event_type: str, title: str, descript
     db.add(AssetEvent(asset_id=asset_id, event_type=event_type, title=title, description=description, actor=actor))
 
 
+def _assert_valid_status_transition(old_status: str | None, new_status: str | None):
+    current = _normalize_status(old_status)
+    target = _normalize_status(new_status)
+    allowed = ASSET_STATUS_TRANSITIONS.get(current, {current})
+    if target not in allowed:
+        raise ValueError(f'Không cho phép chuyển trạng thái từ {current} sang {target}.')
+
+
+def _record_status_history(db: Session, asset: Asset, old_status: str | None, old_status_id: int | None, new_status: str | None, new_status_id: int | None, actor: str | None, note: str | None = None):
+    normalized_old = _normalize_status(old_status)
+    normalized_new = _normalize_status(new_status)
+    if normalized_old == normalized_new and old_status_id == new_status_id:
+        return
+    db.add(
+        AssetStatusHistory(
+            asset_id=asset.id,
+            old_status_id=old_status_id,
+            new_status_id=new_status_id,
+            old_status_code=normalized_old,
+            new_status_code=normalized_new,
+            changed_by=actor,
+            note=note,
+        )
+    )
+
+
 def _normalize_text(value):
     if value is None:
         return ''
@@ -211,15 +267,20 @@ def _normalize_text(value):
 def _normalize_status(value: str | None) -> str:
     raw = (value or '').strip().lower()
     aliases = {
-        'repair': 'in_repair',
-        'in-repair': 'in_repair',
-        'in repair': 'in_repair',
-        'broken': 'inactive',
+        'active': 'assigned',
+        'inactive': 'in_stock',
+        'in_repair': 'repairing',
+        'repair': 'repairing',
+        'in-repair': 'repairing',
+        'in repair': 'repairing',
+        'broken': 'repairing',
         'archive': 'retired',
         'archived': 'retired',
+        'instock': 'in_stock',
+        'in stock': 'in_stock',
     }
-    normalized = aliases.get(raw, raw or 'active')
-    return normalized if normalized in ASSET_STATUSES else 'active'
+    normalized = aliases.get(raw, raw or 'in_stock')
+    return normalized if normalized in ASSET_STATUSES else 'in_stock'
 
 
 def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None = None, department: str | None = None, status: str | None = None, warranty: str | None = None, filter: str | None = None):
@@ -368,7 +429,8 @@ def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, act
         if not asset:
             now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if dto.assigned_user else None
             asset_type_value, category_id = _resolve_asset_type_value(db, dto.asset_type)
-            status_value, status_id = _resolve_status_value(db, dto.status)
+            requested_status = 'assigned' if dto.assigned_user and _normalize_status(dto.status) == 'in_stock' else dto.status
+            status_value, status_id = _resolve_status_value(db, requested_status)
             asset = Asset(**asdict(dto), asset_type=asset_type_value, category_id=category_id, department_id=_resolve_department_id(db, dto.department), location_id=_resolve_location_id(db, dto.location), status=status_value, status_id=status_id, assigned_at=now_str)
             db.add(asset)
             db.flush()
@@ -394,11 +456,14 @@ def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, act
         asset.location_id = _resolve_location_id(db, dto.location)
         asset.purchase_date = dto.purchase_date
         asset.warranty_expiry = dto.warranty_expiry
-        asset.status, asset.status_id = _resolve_status_value(db, dto.status)
+        requested_status = 'assigned' if dto.assigned_user and _normalize_status(dto.status) == 'in_stock' else dto.status
+        previous_status, current_status = _set_asset_status(db, asset, requested_status, actor, 'Import từ Excel')
         asset.notes = dto.notes
         _apply_assignment_change(db, asset, dto.assigned_user, actor, 'Import từ Excel')
         if previous_user == dto.assigned_user:
             asset.assigned_user = dto.assigned_user
+        if previous_status != current_status:
+            _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', actor)
         _log_event(db, asset.id, 'asset_imported', 'Cập nhật asset từ import', f'Cập nhật từ Excel: {asset.asset_code}', actor)
         updated += 1
     db.commit()
@@ -418,7 +483,7 @@ def asset_api_list(request: Request, db: Session = Depends(get_db), current_user
             raw_status = status.strip().lower()
             stmt = stmt.where(Asset.status == raw_status)
         else:
-            stmt = stmt.where(Asset.status == 'active')
+            stmt = stmt.where(Asset.status.in_(['assigned', 'in_stock']))
         
         assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
         return {
@@ -578,12 +643,15 @@ def asset_new(request: Request, db: Session = Depends(get_db), current_user=None
 
 @router.post('/new')
 @require_permission('can_create_assets')
-def asset_create(request: Request, asset_code: str = Form(...), asset_name: str = Form(...), asset_type: str = Form(...), ip_address: str = Form(default=''), model: str = Form(default=''), serial_number: str = Form(default=''), department: str = Form(default=''), assigned_user: str = Form(default=''), location: str = Form(default=''), purchase_date: str = Form(default=''), warranty_expiry: str = Form(default=''), status: str = Form(default='active'), notes: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def asset_create(request: Request, asset_code: str = Form(...), asset_name: str = Form(...), asset_type: str = Form(...), ip_address: str = Form(default=''), model: str = Form(default=''), serial_number: str = Form(default=''), department: str = Form(default=''), assigned_user: str = Form(default=''), location: str = Form(default=''), purchase_date: str = Form(default=''), warranty_expiry: str = Form(default=''), status: str = Form(default='in_stock'), notes: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     existing = db.scalar(select(Asset).where(Asset.asset_code == asset_code.strip()))
     if existing:
         return _render_form(request, db, error='Mã thiết bị đã tồn tại.', current_user=current_user)
     asset_type_value, category_id = _resolve_asset_type_value(db, asset_type)
-    normalized_status, status_id = _resolve_status_value(db, status)
+    requested_status = status
+    if assigned_user.strip() and _normalize_status(status) == 'in_stock':
+        requested_status = 'assigned'
+    normalized_status, status_id = _resolve_status_value(db, requested_status)
     now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if assigned_user.strip() else None
     asset = Asset(asset_code=asset_code.strip(), asset_name=asset_name.strip(), asset_type=asset_type_value, category_id=category_id, ip_address=ip_address.strip() or None, model=model.strip() or None, serial_number=serial_number.strip() or None, department=department.strip() or None, department_id=_resolve_department_id(db, department), assigned_user=assigned_user.strip() or None, assigned_at=now_str, location=location.strip() or None, location_id=_resolve_location_id(db, location), purchase_date=purchase_date.strip() or None, warranty_expiry=warranty_expiry.strip() or None, status=normalized_status, status_id=status_id, notes=notes.strip() or None)
     db.add(asset)
@@ -644,10 +712,12 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
             asset.department_id = updates.get('department_id')
             changed = True
         if 'status' in updates and asset.status != updates['status']:
-            asset.status = updates['status']
-            asset.status_id = updates.get('status_id')
+            try:
+                previous_status, current_status = _set_asset_status(db, asset, updates['status'], current_user.username, 'Cập nhật hàng loạt (Bulk edit)')
+            except ValueError:
+                continue
             changed = True
-            _log_event(db, asset.id, 'asset_status_changed', 'Bulk edit: Đổi trạng thái', f'{old_status} -> {asset.status}', current_user.username)
+            _log_event(db, asset.id, 'asset_status_changed', 'Bulk edit: Đổi trạng thái', f'{previous_status} -> {current_status}', current_user.username)
         if 'location' in updates and asset.location != updates['location']:
             asset.location = updates['location']
             asset.location_id = updates.get('location_id')
@@ -700,8 +770,11 @@ def asset_bulk_archive(request: Request, asset_ids: str = Form(...), confirm_tex
         if not asset:
             continue
         if asset.status != 'retired':
-            asset.status = 'retired'
-            _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'Cập nhật hàng loạt: Đánh dấu retired cho {asset.asset_code}', current_user.username)
+            try:
+                previous_status, current_status = _set_asset_status(db, asset, 'retired', current_user.username, 'Cập nhật hàng loạt: ngừng sử dụng asset')
+            except ValueError:
+                continue
+            _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'Cập nhật hàng loạt: {previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
             log_audit(
                 db,
                 actor=current_user.username if current_user else None,
@@ -737,10 +810,13 @@ def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session
         asset = db.get(Asset, asset_id)
         if not asset:
             continue
-        if asset.status in ('retired', 'inactive', 'disposed', 'lost', 'in_repair'):
+        if asset.status in ('retired', 'disposed', 'lost', 'repairing', 'assigned', 'borrowed', 'in_stock'):
             previous_status = asset.status
-            asset.status = 'active'
-            _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: Khôi phục active cho {asset.asset_code}', current_user.username)
+            try:
+                _old_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, 'Cập nhật hàng loạt: khôi phục asset')
+            except ValueError:
+                continue
+            _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: {previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
             log_audit(
                 db,
                 actor=current_user.username if current_user else None,
@@ -772,9 +848,10 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
             alerts.append(('danger', f'Bảo hành đã hết {abs(days)} ngày.'))
         elif days is not None and days <= 30:
             alerts.append(('warning', f'Bảo hành sẽ hết trong {days} ngày.'))
-        if asset.status in ('retired', 'disposed', 'lost'):
-            alerts.append(('secondary', f'Thiết bị đang ở trạng thái {asset.status}.'))
-        elif asset.status == 'in_repair':
+        normalized_status = _normalize_status(asset.status)
+        if normalized_status in ('retired', 'disposed', 'lost'):
+            alerts.append(('secondary', f"Thiết bị đang ở trạng thái {STATUS_LABELS.get(normalized_status, normalized_status)}."))
+        elif normalized_status == 'repairing':
             alerts.append(('info', 'Thiết bị đang trong quá trình sửa chữa.'))
     if asset:
         _asset_view_model(asset)
@@ -793,8 +870,11 @@ def asset_retire(asset_id: int, request: Request, db: Session = Depends(get_db),
     asset = db.get(Asset, asset_id)
     if not asset:
         return RedirectResponse(url='/assets/', status_code=303)
-    asset.status = 'retired'
-    _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'Đánh dấu retired cho {asset.asset_code}', current_user.username)
+    try:
+        previous_status, current_status = _set_asset_status(db, asset, 'retired', current_user.username, 'Ngừng sử dụng asset')
+    except ValueError:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'{previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
     db.commit()
     return RedirectResponse(url='/assets/', status_code=303)
 
@@ -805,8 +885,11 @@ def asset_restore(asset_id: int, request: Request, db: Session = Depends(get_db)
     asset = db.get(Asset, asset_id)
     if not asset:
         return RedirectResponse(url='/assets/', status_code=303)
-    asset.status = 'active'
-    _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Khôi phục active cho {asset.asset_code}', current_user.username)
+    try:
+        previous_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, 'Khôi phục asset')
+    except ValueError:
+        return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'{previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
     db.commit()
     return RedirectResponse(url='/assets/', status_code=303)
 
@@ -820,7 +903,7 @@ def asset_edit(asset_id: int, request: Request, db: Session = Depends(get_db), c
 
 @router.post('/{asset_id}/edit')
 @require_permission('can_edit_assets')
-def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), asset_name: str = Form(...), asset_type: str = Form(...), ip_address: str = Form(default=''), model: str = Form(default=''), serial_number: str = Form(default=''), department: str = Form(default=''), assigned_user: str = Form(default=''), location: str = Form(default=''), purchase_date: str = Form(default=''), warranty_expiry: str = Form(default=''), status: str = Form(default='active'), notes: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), asset_name: str = Form(...), asset_type: str = Form(...), ip_address: str = Form(default=''), model: str = Form(default=''), serial_number: str = Form(default=''), department: str = Form(default=''), assigned_user: str = Form(default=''), location: str = Form(default=''), purchase_date: str = Form(default=''), warranty_expiry: str = Form(default=''), status: str = Form(default='in_stock'), notes: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     asset = db.get(Asset, asset_id)
     new_user = assigned_user.strip() or None
     old_status = asset.status
@@ -836,11 +919,19 @@ def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), a
     asset.location_id = _resolve_location_id(db, location)
     asset.purchase_date = purchase_date.strip() or None
     asset.warranty_expiry = warranty_expiry.strip() or None
-    asset.status, asset.status_id = _resolve_status_value(db, status)
+    requested_status = status
+    if new_user and _normalize_status(status) == 'in_stock':
+        requested_status = 'assigned'
+    elif not new_user and _normalize_status(status) == 'assigned':
+        requested_status = 'in_stock'
+    try:
+        previous_status, current_status = _set_asset_status(db, asset, requested_status, current_user.username, 'Cập nhật thông tin asset')
+    except ValueError as exc:
+        return _render_form(request, db, asset=asset, error=str(exc), current_user=current_user)
     asset.notes = notes.strip() or None
     _apply_assignment_change(db, asset, new_user, current_user.username, 'Cập nhật thông tin asset')
     if old_status != asset.status:
-        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{old_status} -> {asset.status}', current_user.username)
+        _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
     _log_event(db, asset.id, 'asset_updated', 'Cập nhật asset', f'Cập nhật thông tin thiết bị {asset.asset_code}', current_user.username)
     db.commit()
     return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)

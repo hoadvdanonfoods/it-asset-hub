@@ -34,3 +34,4 @@ class Asset(Base):
     incidents = relationship('Incident', back_populates='asset', cascade='all, delete-orphan')
     assignments = relationship('AssetAssignment', back_populates='asset', cascade='all, delete-orphan', order_by='desc(AssetAssignment.assigned_at)', foreign_keys='AssetAssignment.asset_id')
     events = relationship('AssetEvent', back_populates='asset', cascade='all, delete-orphan', order_by='desc(AssetEvent.created_at)')
+    status_history = relationship('AssetStatusHistory', back_populates='asset', cascade='all, delete-orphan', order_by='desc(AssetStatusHistory.changed_at)')

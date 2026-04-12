@@ -1,6 +1,6 @@
 # Session Checkpoint
 
-Updated: 2026-04-11 18:45 GMT+7
+Updated: 2026-04-12 19:18 GMT+7
 
 ## Current runtime status
 - App is running successfully on `http://127.0.0.1:8002`
@@ -117,9 +117,9 @@ Still pending:
 
 ## Recommended next step
 Do this next:
-1. complete maintenance compatibility layer
-2. audit unmatched legacy values into a report
-3. then continue assignment normalization cleanup and minimal safe UI rollout
+1. implement Phase 2 assignment actions end-to-end (assign, return, transfer, borrow/return borrowed)
+2. show assignment history + status history on asset detail page
+3. then tighten transition-aware UI actions and smoke-test the full lifecycle flow
 
 ## Progress update after checkpoint creation
 
@@ -203,6 +203,36 @@ Smoke-tested after change:
 Also modified earlier in repo and left present:
 - `app/routes/web/master_data.py`
 - `app/templates/master_data/list.html`
+
+### Phase 2 asset lifecycle progress
+Completed in this session:
+- added new ORM model: `AssetStatusHistory`
+- added idempotent schema creation for `asset_status_history`
+- added indexes for status history table
+- added server-side status transition validation in `app/routes/web/assets.py`
+- wired status history writes into create/edit/import/bulk-retire/bulk-restore/status-change flows
+- aligned runtime status handling with roadmap Phase 2 states:
+  - `in_stock`
+  - `assigned`
+  - `borrowed`
+  - `repairing`
+  - `retired`
+  - `disposed`
+  - `lost`
+- added legacy-to-phase2 status normalization so existing `active/inactive/in_repair` data is mapped safely
+- migration startup now converts legacy asset status strings before FK/status backfill
+
+Smoke-tested after change:
+- app import/startup succeeds
+- asset statuses in DB now normalize to Phase 2 values
+- sampled DB status counts after migration:
+  - `assigned`: 213
+  - `in_stock`: 40
+
+Known remaining gaps for Phase 2:
+- asset detail page does not yet render status history timeline
+- assignment actions are still implicit through edit/import, not dedicated flows yet
+- current transition rules are backend-only and not yet reflected in action button availability
 
 ## Notes
 - `verify_final.py` is untracked and should be reviewed before commit or removed if temporary.
