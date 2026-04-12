@@ -110,7 +110,7 @@
             <div class="flex justify-between items-center py-2">
               <span class="text-xs font-bold text-on-surface/40 uppercase tracking-widest">Trạng thái</span>
               <span class="px-2 py-0.5 rounded-lg bg-surface-container-highest text-on-surface text-[10px] font-black uppercase tracking-widest">
-                {{ asset.display_status or asset.status }}
+                {{ asset.status_label or asset.display_status or asset.status }}
               </span>
             </div>
           </div>
@@ -285,37 +285,58 @@
 
       {% if asset and can_edit %}
       <div class="bg-surface-container-lowest rounded-3xl p-8 shadow-sm border border-outline-variant/10">
-        <h4 class="text-lg font-bold text-on-surface mb-6">Thao tác cấp phát</h4>
+        <div class="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h4 class="text-lg font-bold text-on-surface">Thao tác cấp phát</h4>
+            <p class="text-xs text-on-surface/40 mt-1">Transitions hợp lệ: {{ allowed_transitions | join(', ') }}</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-black uppercase tracking-widest">
+            {{ asset.status_label or asset.display_status or asset.status }}
+          </span>
+        </div>
+
         <div class="space-y-6">
-          {% if not asset.assigned_user %}
+          {% if asset.assigned_user %}
+          <div class="rounded-2xl bg-surface-container-low p-4 border border-outline-variant/5">
+            <div class="text-xs font-black text-on-surface/40 uppercase tracking-widest mb-1">Đang gán</div>
+            <div class="text-sm font-bold text-on-surface">{{ asset.assigned_user }}</div>
+            <div class="text-xs text-on-surface/50 mt-1">{{ active_assignment.status if active_assignment else 'assigned' }}</div>
+          </div>
+          {% endif %}
+
+          {% if action_flags.can_assign %}
           <form method="post" action="/assets/{{ asset.id }}/assign" class="space-y-3">
             <input type="text" name="assigned_user" placeholder="Người nhận thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
             <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
             <input type="text" name="note" placeholder="Ghi chú" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
             <button type="submit" class="w-full px-5 py-3 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all">Assign</button>
           </form>
+          {% endif %}
+
+          {% if action_flags.can_borrow %}
           <form method="post" action="/assets/{{ asset.id }}/borrow" class="space-y-3">
             <input type="text" name="assigned_user" placeholder="Người mượn thiết bị" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
             <input type="text" name="department" placeholder="Bộ phận (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
             <input type="text" name="note" placeholder="Ghi chú" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
             <button type="submit" class="w-full px-5 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700 transition-all">Borrow</button>
           </form>
-          {% else %}
-          <div class="rounded-2xl bg-surface-container-low p-4 border border-outline-variant/5">
-            <div class="text-xs font-black text-on-surface/40 uppercase tracking-widest mb-1">Đang gán</div>
-            <div class="text-sm font-bold text-on-surface">{{ asset.assigned_user }}</div>
-            <div class="text-xs text-on-surface/50 mt-1">{{ active_assignment.status if active_assignment else 'assigned' }}</div>
-          </div>
+          {% endif %}
+
+          {% if action_flags.can_return %}
           <form method="post" action="/assets/{{ asset.id }}/return" class="space-y-3">
             <input type="text" name="note" placeholder="Ghi chú thu hồi" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
             <button type="submit" class="w-full px-5 py-3 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 transition-all">Return</button>
           </form>
-          {% if active_assignment and active_assignment.status == 'borrowed' %}
+          {% endif %}
+
+          {% if action_flags.can_borrow_return %}
           <form method="post" action="/assets/{{ asset.id }}/borrow-return" class="space-y-3">
             <input type="text" name="note" placeholder="Ghi chú trả thiết bị mượn" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
             <button type="submit" class="w-full px-5 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition-all">Return Borrowed</button>
           </form>
-          {% else %}
+          {% endif %}
+
+          {% if action_flags.can_transfer %}
           <form method="post" action="/assets/{{ asset.id }}/transfer" class="space-y-3">
             <input type="text" name="assigned_user" placeholder="Người nhận mới" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium" required>
             <input type="text" name="department" placeholder="Bộ phận mới (tuỳ chọn)" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium">
@@ -323,6 +344,11 @@
             <button type="submit" class="w-full px-5 py-3 rounded-xl bg-sky-600 text-white font-bold hover:bg-sky-700 transition-all">Transfer</button>
           </form>
           {% endif %}
+
+          {% if not action_flags.can_assign and not action_flags.can_borrow and not action_flags.can_return and not action_flags.can_borrow_return and not action_flags.can_transfer %}
+          <div class="rounded-2xl border border-dashed border-outline-variant/20 p-4 text-sm text-on-surface/50">
+            Không có thao tác cấp phát phù hợp cho trạng thái hiện tại.
+          </div>
           {% endif %}
         </div>
       </div>

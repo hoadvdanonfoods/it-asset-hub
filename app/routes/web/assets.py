@@ -178,11 +178,33 @@ def _resolve_employee_id(db: Session, value: str | None):
     return db.scalar(select(Employee.id).where(or_(Employee.full_name == raw, Employee.employee_code == raw)).limit(1))
 
 
+def _allowed_transitions_for(asset: Asset | None) -> set[str]:
+    current = _normalize_status(getattr(asset, 'status', None) if asset else None)
+    return ASSET_STATUS_TRANSITIONS.get(current, {current})
+
+
+def _asset_action_flags(asset: Asset | None, active_assignment: AssetAssignment | None = None) -> dict[str, bool]:
+    current = _normalize_status(getattr(asset, 'status', None) if asset else None)
+    assignment_state = getattr(active_assignment, 'status', None)
+    has_assignee = bool(getattr(asset, 'assigned_user', None))
+    allowed = _allowed_transitions_for(asset)
+    return {
+        'can_assign': (not has_assignee) and ('assigned' in allowed) and current in {'in_stock', 'repairing'},
+        'can_borrow': (not has_assignee) and ('borrowed' in allowed) and current in {'in_stock'},
+        'can_return': has_assignee and assignment_state == 'assigned' and ('in_stock' in allowed),
+        'can_transfer': has_assignee and assignment_state == 'assigned' and ('assigned' in allowed),
+        'can_borrow_return': has_assignee and assignment_state == 'borrowed' and ('in_stock' in allowed),
+        'can_retire': 'retired' in allowed and current != 'retired',
+        'can_restore': current in {'retired', 'disposed', 'lost'} and ('in_stock' in allowed or current in {'retired', 'disposed', 'lost'}),
+    }
+
+
 def _asset_view_model(asset: Asset):
     asset.display_asset_type = _display_asset_type(asset)
     asset.display_department = _display_department(asset)
     asset.display_location = _display_location(asset)
     asset.display_status = _display_status(asset)
+    asset.status_label = STATUS_LABELS.get(asset.display_status, asset.display_status)
     return asset
 
 
@@ -530,7 +552,7 @@ def asset_list(request: Request, q: str | None = Query(default=None), asset_type
     assets = [_asset_view_model(asset) for asset in _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)]
     asset_types = sorted({asset.display_asset_type or asset.asset_type for asset in assets if (asset.display_asset_type or asset.asset_type) and (asset.display_asset_type or asset.asset_type) != 'Camera'})
     departments = sorted({asset.display_department or asset.department for asset in assets if asset.display_department or asset.department})
-    statuses = [item for item in ASSET_STATUSES if item in {a.display_status or a.status for a in assets} or item == status or item == 'active']
+    statuses = [item for item in ASSET_STATUSES if item in {a.display_status or a.status for a in assets} or item == status or item == 'in_stock']
     return templates.TemplateResponse('assets/list.html', {
         'request': request, 
         'assets': assets, 
@@ -847,7 +869,7 @@ def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session
                 action='bulk_restore',
                 entity_type='asset',
                 entity_id=asset.id,
-                metadata={'from_status': previous_status, 'to_status': 'active'},
+                metadata={'from_status': previous_status, 'to_status': 'in_stock'},
             )
             updated_count += 1
 
@@ -879,6 +901,7 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
             alerts.append(('info', 'Thiết bị đang trong quá trình sửa chữa.'))
     if asset:
         _asset_view_model(asset)
+    action_flags = _asset_action_flags(asset, active_assignment)
     return templates.TemplateResponse('assets/detail.html', {
         'request': request, 
         'asset': asset, 
@@ -887,6 +910,8 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
         'can_edit': can_edit,
         'active_assignment': active_assignment,
         'status_history': list(asset.status_history or []),
+        'action_flags': action_flags,
+        'allowed_transitions': sorted(_allowed_transitions_for(asset)),
     })
 
 

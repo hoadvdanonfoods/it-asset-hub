@@ -1,6 +1,6 @@
 # Session Checkpoint
 
-Updated: 2026-04-12 19:18 GMT+7
+Updated: 2026-04-12 19:35 GMT+7
 
 ## Current runtime status
 - App is running successfully on `http://127.0.0.1:8002`
@@ -230,9 +230,9 @@ Smoke-tested after change:
   - `in_stock`: 40
 
 Known remaining gaps for Phase 2:
-- action visibility is improved on asset detail, but not yet fully constrained everywhere in list/form UI
 - transfer/borrow flows currently use simple inline forms, not polished modal UX yet
 - dedicated borrow metadata and richer assignment snapshot fields are not yet stored in `asset_assignments`
+- list bulk actions are still generic and do not yet adapt to mixed lifecycle selections
 
 ### Phase 2 assignment workflow progress
 Completed in this session:
@@ -259,6 +259,10 @@ Completed in this session:
   - active assignment context
 - asset form status options updated to Phase 2 lifecycle values
 - asset list status badge logic updated for new lifecycle states
+- asset detail assignment action forms now render only when valid for the current lifecycle/assignment state
+- asset detail page now shows allowed lifecycle transitions for quick operator guidance
+- asset list retire/restore buttons now hide for terminal/non-terminal states consistently
+- status labels now render through `STATUS_LABELS` on detail/list screens
 
 Smoke-tested after change:
 - imported app successfully after route/template changes
@@ -268,6 +272,7 @@ Smoke-tested after change:
   - return
   - restore original state via rollback
 - transition logic remained valid during assignment flow test
+- `python3 -m compileall app` passed after UI constraint updates
 
 ## Notes
 - `verify_final.py` is untracked and should be reviewed before commit or removed if temporary.
