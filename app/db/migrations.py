@@ -1,9 +1,46 @@
+import re
+
 from sqlalchemy import text
 
 from app.db.session import engine
 
 
 MASTER_TABLES = {
+    'departments': """CREATE TABLE IF NOT EXISTS departments (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        is_active BOOLEAN DEFAULT 1,
+        note TEXT
+    )""",
+    'employees': """CREATE TABLE IF NOT EXISTS employees (
+        id INTEGER PRIMARY KEY,
+        employee_code VARCHAR(50) NOT NULL UNIQUE,
+        full_name VARCHAR(120) NOT NULL,
+        department_id INTEGER,
+        title VARCHAR(120),
+        email VARCHAR(120),
+        phone VARCHAR(50),
+        is_active BOOLEAN DEFAULT 1,
+        note TEXT,
+        FOREIGN KEY(department_id) REFERENCES departments(id)
+    )""",
+    'asset_types': """CREATE TABLE IF NOT EXISTS asset_types (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        category_group VARCHAR(120),
+        is_active BOOLEAN DEFAULT 1,
+        note TEXT
+    )""",
+    'locations': """CREATE TABLE IF NOT EXISTS locations (
+        id INTEGER PRIMARY KEY,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        site_group VARCHAR(120),
+        is_active BOOLEAN DEFAULT 1,
+        note TEXT
+    )""",
     'asset_categories': """CREATE TABLE IF NOT EXISTS asset_categories (
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
@@ -67,6 +104,10 @@ MASTER_TABLES = {
 }
 
 MASTER_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS ix_departments_code ON departments (code)",
+    "CREATE INDEX IF NOT EXISTS ix_employees_employee_code ON employees (employee_code)",
+    "CREATE INDEX IF NOT EXISTS ix_asset_types_code ON asset_types (code)",
+    "CREATE INDEX IF NOT EXISTS ix_locations_code ON locations (code)",
     "CREATE INDEX IF NOT EXISTS ix_asset_categories_code ON asset_categories (code)",
     "CREATE INDEX IF NOT EXISTS ix_asset_statuses_code ON asset_statuses (code)",
     "CREATE INDEX IF NOT EXISTS ix_vendors_code ON vendors (code)",
@@ -220,12 +261,98 @@ LOOKUP_FIELDS = {
     'maintenance_types': ('code', 'name'),
 }
 
+AUTO_SEEDABLE_TABLES = {'asset_categories', 'departments', 'locations', 'employees'}
+
+
+def _slugify_code(value: str | None, fallback_prefix: str) -> str:
+    raw = (value or '').strip()
+    slug = re.sub(r'[^a-z0-9]+', '_', raw.lower()).strip('_')
+    return (slug or fallback_prefix)[:50]
+
+
+def _ensure_master_row(conn, table_name: str, raw_value: str | None):
+    normalized = _normalize_lookup_value(table_name, raw_value)
+    if not normalized:
+        return None
+    if table_name not in AUTO_SEEDABLE_TABLES:
+        return None
+
+    if table_name == 'asset_categories':
+        code = _slugify_code(normalized, 'category')
+        conn.execute(
+            text(
+                """
+                INSERT INTO asset_categories (code, name, description, is_active, sort_order, created_at, updated_at)
+                SELECT :code, :name, :description, 1, 999, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM asset_categories WHERE lower(code) = lower(:code) OR lower(name) = lower(:name)
+                )
+                """
+            ),
+            {'code': code, 'name': normalized, 'description': 'Auto-created from legacy asset data during migration backfill'},
+        )
+        row = conn.execute(text("SELECT id FROM asset_categories WHERE lower(code) = lower(:code) OR lower(name) = lower(:name) LIMIT 1"), {'code': code, 'name': normalized}).fetchone()
+        return row[0] if row else None
+
+    if table_name == 'departments':
+        code = _slugify_code(normalized, 'department')
+        conn.execute(
+            text(
+                """
+                INSERT INTO departments (code, name, is_active, note)
+                SELECT :code, :name, 1, :note
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM departments WHERE lower(code) = lower(:code) OR lower(name) = lower(:name)
+                )
+                """
+            ),
+            {'code': code, 'name': normalized, 'note': 'Auto-created from legacy asset/incident data during migration backfill'},
+        )
+        row = conn.execute(text("SELECT id FROM departments WHERE lower(code) = lower(:code) OR lower(name) = lower(:name) LIMIT 1"), {'code': code, 'name': normalized}).fetchone()
+        return row[0] if row else None
+
+    if table_name == 'locations':
+        code = _slugify_code(normalized, 'location')
+        conn.execute(
+            text(
+                """
+                INSERT INTO locations (code, name, is_active, note)
+                SELECT :code, :name, 1, :note
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM locations WHERE lower(code) = lower(:code) OR lower(name) = lower(:name)
+                )
+                """
+            ),
+            {'code': code, 'name': normalized, 'note': 'Auto-created from legacy asset data during migration backfill'},
+        )
+        row = conn.execute(text("SELECT id FROM locations WHERE lower(code) = lower(:code) OR lower(name) = lower(:name) LIMIT 1"), {'code': code, 'name': normalized}).fetchone()
+        return row[0] if row else None
+
+    if table_name == 'employees':
+        code = _slugify_code(normalized, 'employee')
+        conn.execute(
+            text(
+                """
+                INSERT INTO employees (employee_code, full_name, is_active, note)
+                SELECT :code, :name, 1, :note
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM employees WHERE lower(employee_code) = lower(:code) OR lower(full_name) = lower(:name)
+                )
+                """
+            ),
+            {'code': code, 'name': normalized, 'note': 'Auto-created from legacy assignment data during migration backfill'},
+        )
+        row = conn.execute(text("SELECT id FROM employees WHERE lower(employee_code) = lower(:code) OR lower(full_name) = lower(:name) LIMIT 1"), {'code': code, 'name': normalized}).fetchone()
+        return row[0] if row else None
+
+    return None
+
 
 def _normalize_lookup_value(table_name: str, raw_value: str | None) -> str | None:
     if not raw_value:
         return None
     normalized = raw_value.strip()
-    if not normalized:
+    if not normalized or normalized.lower() == 'none':
         return None
     if table_name == 'asset_statuses':
         aliases = {
@@ -245,10 +372,12 @@ def _normalize_lookup_value(table_name: str, raw_value: str | None) -> str | Non
             'in stock': 'IN_STOCK',
         }
         return aliases.get(normalized.lower(), normalized.upper())
-    return normalized
+    if table_name in {'departments', 'locations'}:
+        return re.sub(r'\s+', ' ', normalized).strip().upper()
+    return re.sub(r'\s+', ' ', normalized).strip()
 
 
-def _lookup_id(conn, table_name: str, column_name: str, raw_value: str | None):
+def _lookup_id(conn, table_name: str, column_name: str, raw_value: str | None, unmatched_tracker: dict | None = None):
     normalized = _normalize_lookup_value(table_name, raw_value)
     if not normalized:
         return None
@@ -261,11 +390,30 @@ def _lookup_id(conn, table_name: str, column_name: str, raw_value: str | None):
     ).fetchone()
     if row:
         return row[0]
-    print(f"[backfill] unmatched {table_name}.{column_name}: {normalized}")
+
+    seeded_id = _ensure_master_row(conn, table_name, normalized)
+    if seeded_id:
+        return seeded_id
+
+    if unmatched_tracker is not None:
+        key = (table_name, column_name)
+        unmatched_tracker.setdefault(key, {})
+        unmatched_tracker[key][normalized] = unmatched_tracker[key].get(normalized, 0) + 1
     return None
 
 
+def _print_unmatched_summary(unmatched_tracker: dict) -> None:
+    for (table_name, column_name), values in sorted(unmatched_tracker.items()):
+        total = sum(values.values())
+        unique = len(values)
+        top_values = sorted(values.items(), key=lambda item: (-item[1], item[0]))[:10]
+        preview = ', '.join(f'{value} ({count})' for value, count in top_values)
+        suffix = ' ...' if unique > len(top_values) else ''
+        print(f"[backfill] unmatched {table_name}.{column_name}: {total} rows, {unique} unique -> {preview}{suffix}")
+
+
 def backfill_master_data(conn) -> None:
+    unmatched_tracker: dict[tuple[str, str], dict[str, int]] = {}
     asset_rows = conn.execute(
         text(
             "SELECT id, asset_type, status, department, location FROM assets "
@@ -273,10 +421,10 @@ def backfill_master_data(conn) -> None:
         )
     ).fetchall()
     for row in asset_rows:
-        category_id = _lookup_id(conn, 'asset_categories', 'asset_type', row[1])
-        status_id = _lookup_id(conn, 'asset_statuses', 'status', row[2])
-        department_id = _lookup_id(conn, 'departments', 'department', row[3])
-        location_id = _lookup_id(conn, 'locations', 'location', row[4])
+        category_id = _lookup_id(conn, 'asset_categories', 'asset_type', row[1], unmatched_tracker)
+        status_id = _lookup_id(conn, 'asset_statuses', 'status', row[2], unmatched_tracker)
+        department_id = _lookup_id(conn, 'departments', 'department', row[3], unmatched_tracker)
+        location_id = _lookup_id(conn, 'locations', 'location', row[4], unmatched_tracker)
         conn.execute(
             text(
                 """
@@ -301,8 +449,8 @@ def backfill_master_data(conn) -> None:
         text("SELECT id, priority, requester_department FROM incidents WHERE priority_id IS NULL OR department_id IS NULL")
     ).fetchall()
     for row in incident_rows:
-        priority_id = _lookup_id(conn, 'priorities', 'priority', row[1])
-        department_id = _lookup_id(conn, 'departments', 'requester_department', row[2])
+        priority_id = _lookup_id(conn, 'priorities', 'priority', row[1], unmatched_tracker)
+        department_id = _lookup_id(conn, 'departments', 'requester_department', row[2], unmatched_tracker)
         conn.execute(
             text(
                 """
@@ -319,7 +467,7 @@ def backfill_master_data(conn) -> None:
         text("SELECT id, assigned_user FROM asset_assignments WHERE employee_id IS NULL")
     ).fetchall()
     for row in assignment_rows:
-        employee_id = _lookup_id(conn, 'employees', 'assigned_user', row[1])
+        employee_id = _lookup_id(conn, 'employees', 'assigned_user', row[1], unmatched_tracker)
         conn.execute(
             text("UPDATE asset_assignments SET employee_id = COALESCE(employee_id, :employee_id) WHERE id = :id"),
             {'id': row[0], 'employee_id': employee_id},
@@ -347,6 +495,9 @@ def backfill_master_data(conn) -> None:
                 text("UPDATE assets SET current_assignment_id = :assignment_id WHERE id = :id"),
                 {'id': row[0], 'assignment_id': row[1]},
             )
+
+    if unmatched_tracker:
+        _print_unmatched_summary(unmatched_tracker)
 
 
 def ensure_schema() -> None:
