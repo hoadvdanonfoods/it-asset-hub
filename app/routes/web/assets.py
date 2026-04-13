@@ -26,9 +26,9 @@ ASSET_STATUS_TRANSITIONS = {
     'assigned': {'assigned', 'repairing', 'in_stock', 'retired', 'disposed', 'lost', 'borrowed'},
     'borrowed': {'borrowed', 'in_stock', 'repairing', 'retired', 'disposed', 'lost', 'assigned'},
     'repairing': {'repairing', 'in_stock', 'retired', 'disposed', 'lost', 'assigned'},
-    'retired': {'retired'},
-    'disposed': {'disposed'},
-    'lost': {'lost'},
+    'retired': {'retired', 'in_stock'},
+    'disposed': {'disposed', 'in_stock'},
+    'lost': {'lost', 'in_stock'},
 }
 STATUS_LABELS = {
     'in_stock': 'In Stock',
@@ -165,6 +165,11 @@ def _set_asset_status(db: Session, asset: Asset, target_status: str | None, acto
     old_status_id = asset.status_id
     normalized_status, status_id = _resolve_status_value(db, target_status)
     _assert_valid_status_transition(old_status, normalized_status)
+
+    if normalized_status in {'retired', 'disposed', 'lost', 'in_stock'} and getattr(asset, 'assigned_user', None):
+        close_status = 'returned' if normalized_status == 'in_stock' else 'retired'
+        _close_active_assignment(db, asset, actor, note or f'Đổi trạng thái sang {normalized_status}', close_status=close_status)
+
     asset.status = normalized_status
     asset.status_id = status_id
     _record_status_history(db, asset, old_status, old_status_id, normalized_status, status_id, actor, note)
@@ -417,6 +422,19 @@ def _close_active_assignment(db: Session, asset: Asset, actor: str | None, sourc
         current_assignment.status = close_status
         current_assignment.unassigned_at = now_dt
         current_assignment.returned_by = actor
+    elif previous_user:
+        fallback_assignment = AssetAssignment(
+            asset_id=asset.id,
+            employee_id=_resolve_employee_id(db, previous_user),
+            assigned_user=previous_user,
+            assigned_by=actor,
+            assigned_at=now_dt,
+            unassigned_at=now_dt,
+            returned_by=actor,
+            note=f'{source} (đóng cấp phát lệch dữ liệu)',
+            status=close_status,
+        )
+        db.add(fallback_assignment)
     if previous_user:
         title = 'Thu hồi asset' if close_status == 'returned' else 'Kết thúc mượn asset'
         event_type = 'returned' if close_status == 'returned' else 'borrow_returned'
