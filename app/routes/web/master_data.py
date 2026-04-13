@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, File, Request, UploadFile
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -30,6 +30,7 @@ MODEL_CONFIG = {
             {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'is_active', 'note'],
+        'unique_field': 'code',
     },
     'employees': {
         'label': 'Nhân viên',
@@ -49,6 +50,7 @@ MODEL_CONFIG = {
             {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['employee_code', 'full_name', 'department_id', 'title', 'email', 'phone', 'is_active'],
+        'unique_field': 'employee_code',
     },
     'asset_types': {
         'label': 'Loại tài sản',
@@ -65,6 +67,7 @@ MODEL_CONFIG = {
             {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'category_group', 'is_active', 'note'],
+        'unique_field': 'code',
     },
     'locations': {
         'label': 'Vị trí',
@@ -81,6 +84,7 @@ MODEL_CONFIG = {
             {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'site_group', 'is_active', 'note'],
+        'unique_field': 'code',
     },
     'asset_categories': {
         'label': 'Nhóm tài sản',
@@ -97,6 +101,7 @@ MODEL_CONFIG = {
             {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+        'unique_field': 'code',
     },
     'asset_statuses': {
         'label': 'Trạng thái tài sản',
@@ -113,6 +118,7 @@ MODEL_CONFIG = {
             {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+        'unique_field': 'code',
     },
     'vendors': {
         'label': 'Nhà cung cấp',
@@ -129,6 +135,7 @@ MODEL_CONFIG = {
             {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+        'unique_field': 'code',
     },
     'incident_categories': {
         'label': 'Nhóm sự cố',
@@ -145,6 +152,7 @@ MODEL_CONFIG = {
             {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+        'unique_field': 'code',
     },
     'priorities': {
         'label': 'Độ ưu tiên',
@@ -161,6 +169,7 @@ MODEL_CONFIG = {
             {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+        'unique_field': 'code',
     },
     'maintenance_types': {
         'label': 'Loại bảo trì',
@@ -177,6 +186,7 @@ MODEL_CONFIG = {
             {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
+        'unique_field': 'code',
     },
 }
 
@@ -203,6 +213,29 @@ def _parse_form_data(request_form, config):
                 value = None
         data[key] = value
     return data
+
+
+def _clean_import_row(row_data, config):
+    allowed_fields = {field['key'] for field in config['columns'] if field['key'] != 'id'}
+    cleaned = {}
+    for field in config['columns']:
+        key = field['key']
+        if key not in allowed_fields:
+            continue
+        value = row_data.get(key)
+        if isinstance(value, str):
+            value = value.strip()
+        if value == '':
+            value = None
+        if field['type'] == 'boolean':
+            value = str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'on') if value is not None else False
+        if field['type'] == 'number' and value is not None:
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                value = None
+        cleaned[key] = value
+    return cleaned
 
 
 @router.get('/{model_name}', response_class=HTMLResponse)
@@ -266,30 +299,48 @@ async def import_model(request: Request, model_name: str, current_user=None, fil
     workbook = openpyxl.load_workbook(io.BytesIO(contents))
     sheet = workbook.active
     headers = [cell.value for cell in sheet[1]]
-    allowed_fields = {field['key'] for field in config['columns'] if field['key'] != 'id'}
+    unique_field = config.get('unique_field')
 
     for row in sheet.iter_rows(min_row=2, values_only=True):
         row_data = dict(zip(headers, row))
-        cleaned = {}
-        for field in config['columns']:
-            key = field['key']
-            if key not in allowed_fields:
-                continue
-            value = row_data.get(key)
-            if isinstance(value, str):
-                value = value.strip()
-            if value == '':
-                value = None
-            if field['type'] == 'boolean':
-                value = str(value).strip().lower() in ('1', 'true', 'yes', 'y', 'on') if value is not None else False
-            if field['type'] == 'number' and value is not None:
-                try:
-                    value = int(value)
-                except (TypeError, ValueError):
-                    value = None
-            cleaned[key] = value
+        cleaned = _clean_import_row(row_data, config)
         if any(v is not None and v != '' for v in cleaned.values()):
-            db.add(config['model'](**cleaned))
+            existing = None
+            unique_value = cleaned.get(unique_field) if unique_field else None
+            if unique_field and unique_value not in (None, ''):
+                existing = db.scalar(select(config['model']).where(getattr(config['model'], unique_field) == unique_value))
+            if existing:
+                for key, value in cleaned.items():
+                    setattr(existing, key, value)
+            else:
+                db.add(config['model'](**cleaned))
 
     db.commit()
     return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+
+
+@router.get('/{model_name}/export')
+@require_permission('can_manage_system')
+async def export_model(model_name: str, current_user=None, db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+
+    items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = config['label'][:31]
+
+    columns = [field['key'] for field in config['columns']]
+    sheet.append(columns)
+
+    for item in items:
+        sheet.append([getattr(item, key, None) for key in columns])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+
+    filename = f'{model_name}_export.xlsx'
+    headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
+    return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
