@@ -9,18 +9,11 @@
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for item in items %}
-    <div class="bg-white rounded-3xl shadow-sm border border-outline-variant/10 p-6 text-center break-inside-avoid print-card">
-      <div class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">QR Thiết bị</div>
-      <div class="text-lg font-extrabold text-slate-900 mb-1">{{ item.asset.asset_code }}</div>
-      <div class="text-xs text-slate-600 mb-4">{{ item.asset.asset_name }}</div>
-      <div class="inline-block p-3 border rounded-2xl bg-white">
+    <div class="bg-white rounded-3xl shadow-sm border border-outline-variant/10 p-4 text-center break-inside-avoid print-card">
+      <div class="inline-block p-2 border rounded-2xl bg-white mb-3">
         <img src="{{ item.qr_url }}" alt="QR" class="w-44 h-44 mx-auto">
       </div>
-      <div class="mt-4 text-xs text-slate-700 space-y-1">
-        <div>{{ item.asset.asset_type or '—' }}</div>
-        <div>{{ item.asset.department or '—' }}</div>
-        <div>{{ item.asset.location or '—' }}</div>
-      </div>
+      <div class="text-sm font-extrabold text-slate-900 tracking-tight">{{ item.asset.asset_code }}</div>
     </div>
     {% endfor %}
   </div>
@@ -28,6 +21,7 @@
 <style>
 .break-inside-avoid { break-inside: avoid; page-break-inside: avoid; }
 @media print {
+  @page { size: auto; margin: 8mm; }
   .no-print, header, aside, nav { display:none !important; }
   body { background:white !important; }
   .print-card { box-shadow:none !important; }

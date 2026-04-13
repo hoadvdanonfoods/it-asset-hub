@@ -7,25 +7,27 @@
     <button onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-primary text-white font-bold text-sm">In QR</button>
   </div>
 
-  <div class="bg-white rounded-3xl shadow-sm border border-outline-variant/10 p-10 text-center print-card">
-    <div class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">QR Thiết bị</div>
-    <div class="text-2xl font-extrabold text-slate-900 mb-2">{{ asset.asset_code }}</div>
-    <div class="text-sm text-slate-600 mb-6">{{ asset.asset_name }}</div>
-    <div class="inline-block p-4 border rounded-2xl bg-white">
-      <img src="{{ qr_url }}" alt="QR" class="w-64 h-64">
+  <div class="bg-white rounded-3xl shadow-sm border border-outline-variant/10 p-8 text-center print-card mx-auto" style="max-width: 320px;">
+    <div class="inline-block p-3 border rounded-2xl bg-white mb-4">
+      <img src="{{ qr_url }}" alt="QR" class="w-56 h-56">
     </div>
-    <div class="mt-6 text-sm text-slate-700 space-y-1">
-      <div><strong>Loại:</strong> {{ asset.asset_type or '—' }}</div>
-      <div><strong>Phòng ban:</strong> {{ asset.department or '—' }}</div>
-      <div><strong>Vị trí:</strong> {{ asset.location or '—' }}</div>
-    </div>
+    <div class="text-xl font-extrabold text-slate-900 tracking-tight">{{ asset.asset_code }}</div>
   </div>
 </div>
 <style>
 @media print {
+  @page { size: auto; margin: 0; }
   .no-print, header, aside, nav { display:none !important; }
   body { background:white !important; }
-  .print-card { box-shadow:none !important; border:none !important; }
+  main, .max-w-2xl { max-width:none !important; margin:0 !important; padding:0 !important; }
+  .print-card {
+    box-shadow:none !important;
+    border:none !important;
+    margin: 0 auto !important;
+    padding: 8mm 6mm !important;
+    width: 70mm !important;
+    max-width: 70mm !important;
+  }
 }
 </style>
 {% endblock %}
