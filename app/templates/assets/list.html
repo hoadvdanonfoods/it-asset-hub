@@ -177,6 +177,9 @@
   </div>
   <div class="h-8 w-px bg-white/10"></div>
   <div class="flex items-center gap-3">
+    <button type="button" id="openBulkPrintQr" class="flex items-center gap-2 bg-sky-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-sky-500 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="qr-code" class="w-4 h-4"></i> In QR
+    </button>
     <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
       <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa
     </button>
@@ -204,6 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const selectedCountBar = document.getElementById('selectedCountBar');
   const selectionStatusSummary = document.getElementById('selectionStatusSummary');
   const cancelSelection = document.getElementById('cancelSelection');
+  const openBulkPrintQr = document.getElementById('openBulkPrintQr');
   const openBulkEdit = document.getElementById('openBulkEdit');
   
   const statusLabels = {
@@ -327,6 +331,15 @@ document.addEventListener('DOMContentLoaded', function() {
     bulkEditModal.classList.remove('hidden');
     setTimeout(() => initIcons(), 100);
   });
+
+  if (openBulkPrintQr) {
+    openBulkPrintQr.addEventListener('click', function() {
+      const meta = getSelectionMeta();
+      if (!meta.total) return;
+      const url = `/qr/assets/print?asset_ids=${encodeURIComponent(meta.ids.join(','))}`;
+      window.open(url, '_blank');
+    });
+  }
 
   openBulkArchive.addEventListener('click', function() {
     const meta = getSelectionMeta();

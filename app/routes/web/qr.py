@@ -1,9 +1,11 @@
 import io
+from typing import List
 
 import qrcode
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import require_permission, require_module_access
@@ -58,4 +60,41 @@ def asset_qr_page(asset_id: int, request: Request, db: Session = Depends(get_db)
     return templates.TemplateResponse(
         'qr/asset.html',
         {'request': request, 'asset': asset, 'qr_url': qr_url, 'qr_text': qr_text, 'current_user': current_user},
+    )
+
+
+@router.get('/asset/{asset_id}/print', response_class=HTMLResponse)
+@require_permission('can_edit_assets')
+def asset_qr_print_page(asset_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
+    from app.auth import has_permission
+    if not has_permission(current_user, 'can_edit_assets'):
+        return RedirectResponse(url='/assets/', status_code=303)
+    asset = db.get(Asset, asset_id)
+    if not asset:
+        return RedirectResponse(url='/assets/', status_code=303)
+    qr_url = f'/qr/asset/{asset_id}.png'
+    return templates.TemplateResponse(
+        'qr/print_single.html',
+        {'request': request, 'asset': asset, 'qr_url': qr_url, 'current_user': current_user},
+    )
+
+
+@router.get('/assets/print', response_class=HTMLResponse)
+@require_permission('can_edit_assets')
+def asset_qr_bulk_print_page(request: Request, asset_ids: str = '', db: Session = Depends(get_db), current_user=None):
+    from app.auth import has_permission
+    if not has_permission(current_user, 'can_edit_assets'):
+        return RedirectResponse(url='/assets/', status_code=303)
+
+    ids: List[int] = []
+    for token in (asset_ids or '').split(','):
+        token = token.strip()
+        if token.isdigit():
+            ids.append(int(token))
+
+    assets = db.scalars(select(Asset).where(Asset.id.in_(ids)).order_by(Asset.id.asc())).all() if ids else []
+    items = [{'asset': asset, 'qr_url': f'/qr/asset/{asset.id}.png'} for asset in assets]
+    return templates.TemplateResponse(
+        'qr/print_bulk.html',
+        {'request': request, 'items': items, 'current_user': current_user},
     )

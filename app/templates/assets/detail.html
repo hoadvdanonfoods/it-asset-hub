@@ -270,10 +270,10 @@
           </p>
           
           <div class="grid grid-cols-2 gap-3">
-            <button onclick="window.print()" class="flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-container-low text-on-surface/60 font-bold hover:bg-surface-container-highest transition-all">
+            <a href="/qr/asset/{{ asset.id }}/print" target="_blank" class="flex items-center justify-center gap-2 py-3 rounded-xl bg-surface-container-low text-on-surface/60 font-bold hover:bg-surface-container-highest transition-all">
               <i data-lucide="printer" class="w-4 h-4"></i>
               <span>In mã</span>
-            </button>
+            </a>
             <a href="/qr/asset/{{ asset.id }}.png" download="QR_{{ asset.asset_code }}.png" class="flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-500/10 text-indigo-600 font-bold hover:bg-indigo-500/20 transition-all">
               <i data-lucide="download" class="w-4 h-4"></i>
               <span>Tải về</span>
