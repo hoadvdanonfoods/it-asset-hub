@@ -264,18 +264,7 @@ async def bulk_edit_model(request: Request, model_name: str, current_user=None, 
     config = _get_config(model_name)
     if not config:
         return RedirectResponse('/', status_code=303)
-    items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
-    return templates.TemplateResponse(
-        'master_data/bulk_edit.html',
-        {
-            'request': request,
-            'current_user': current_user,
-            'model_name': model_name,
-            'config': config,
-            'items': items,
-            'p': '/master-data/' + model_name,
-        },
-    )
+    return RedirectResponse(f'/master-data/{model_name}', status_code=303)
 
 
 @router.post('/{model_name}/create')
