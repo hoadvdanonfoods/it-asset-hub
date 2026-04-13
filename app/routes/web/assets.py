@@ -851,28 +851,31 @@ def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session
     if not ids:
         return RedirectResponse(url='/assets/', status_code=303)
 
+    restorable_statuses = {'retired', 'disposed', 'lost'}
     updated_count = 0
     for asset_id in ids:
         asset = db.get(Asset, asset_id)
         if not asset:
             continue
-        if asset.status in ('retired', 'disposed', 'lost', 'repairing', 'assigned', 'borrowed', 'in_stock'):
-            previous_status = asset.status
-            try:
-                _old_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, 'Cập nhật hàng loạt: khôi phục asset')
-            except ValueError:
-                continue
-            _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: {previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
-            log_audit(
-                db,
-                actor=current_user.username if current_user else None,
-                module='assets',
-                action='bulk_restore',
-                entity_type='asset',
-                entity_id=asset.id,
-                metadata={'from_status': previous_status, 'to_status': 'in_stock'},
-            )
-            updated_count += 1
+        normalized_status = _normalize_status(asset.status)
+        if normalized_status not in restorable_statuses:
+            continue
+        previous_status = normalized_status
+        try:
+            _old_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, 'Cập nhật hàng loạt: khôi phục asset')
+        except ValueError:
+            continue
+        _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: {previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
+        log_audit(
+            db,
+            actor=current_user.username if current_user else None,
+            module='assets',
+            action='bulk_restore',
+            entity_type='asset',
+            entity_id=asset.id,
+            metadata={'from_status': previous_status, 'to_status': 'in_stock'},
+        )
+        updated_count += 1
 
     db.commit()
     return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
