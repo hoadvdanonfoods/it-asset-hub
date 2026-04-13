@@ -494,7 +494,15 @@ def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, act
             asset_type_value, category_id = _resolve_asset_type_value(db, dto.asset_type)
             requested_status = 'assigned' if dto.assigned_user and _normalize_status(dto.status) == 'in_stock' else dto.status
             status_value, status_id = _resolve_status_value(db, requested_status)
-            asset = Asset(**asdict(dto), asset_type=asset_type_value, category_id=category_id, department_id=_resolve_department_id(db, dto.department), location_id=_resolve_location_id(db, dto.location), status=status_value, status_id=status_id, assigned_at=now_str)
+            asset_data = asdict(dto)
+            asset_data['asset_type'] = asset_type_value
+            asset_data['category_id'] = category_id
+            asset_data['department_id'] = _resolve_department_id(db, dto.department)
+            asset_data['location_id'] = _resolve_location_id(db, dto.location)
+            asset_data['status'] = status_value
+            asset_data['status_id'] = status_id
+            asset_data['assigned_at'] = now_str
+            asset = Asset(**asset_data)
             db.add(asset)
             db.flush()
             _log_event(db, asset.id, 'asset_imported', 'Import asset mới', f'Import từ Excel: {asset.asset_code}', actor)
