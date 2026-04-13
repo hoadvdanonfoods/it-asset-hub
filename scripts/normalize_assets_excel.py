@@ -10,7 +10,7 @@ from openpyxl import Workbook
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SOURCE_XLSX = Path('/mnt/c/Users/Administrator/Desktop/New folder (2)/assets_export (6).xlsx')
-OUTPUT_XLSX = REPO_ROOT / 'state' / 'assets_clean_for_import.xlsx'
+OUTPUT_XLSX = REPO_ROOT / 'it-asset-hub' / 'state' / 'assets_clean_for_import.xlsx' if REPO_ROOT.name != 'it-asset-hub' else REPO_ROOT / 'state' / 'assets_clean_for_import.xlsx'
 
 IMPORT_HEADERS = [
     'Mã thiết bị', 'Tên thiết bị', 'Loại thiết bị', 'Model', 'Serial', 'IP',
