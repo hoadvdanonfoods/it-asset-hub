@@ -316,25 +316,40 @@ async def bulk_edit_model_submit(request: Request, model_name: str, current_user
         return RedirectResponse('/', status_code=303)
 
     form = await request.form()
-    items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
+    item_ids_raw = (form.get('item_ids') or '').strip()
+    if not item_ids_raw:
+        return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+
+    item_ids = []
+    for token in item_ids_raw.split(','):
+        token = token.strip()
+        if token.isdigit():
+            item_ids.append(int(token))
+
+    items = db.scalars(select(config['model']).where(config['model'].id.in_(item_ids))).all() if item_ids else []
+
+    updates = {}
+    for field in config['columns']:
+        key = field['key']
+        raw = form.get(key)
+        if field['type'] == 'boolean':
+            if raw in (None, ''):
+                continue
+            updates[key] = str(raw).strip().lower() == 'true'
+            continue
+
+        value = raw.strip() if isinstance(raw, str) else raw
+        if value in (None, ''):
+            continue
+        if field['type'] == 'number':
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                continue
+        updates[key] = value
 
     for item in items:
-        prefix = f'items[{item.id}]'
-        for field in config['columns']:
-            key = field['key']
-            form_key = f'{prefix}[{key}]'
-            if field['type'] == 'boolean':
-                value = form.get(form_key) == 'true'
-            else:
-                raw = form.get(form_key)
-                value = raw.strip() if isinstance(raw, str) else raw
-                if value == '':
-                    value = None
-                if field['type'] == 'number' and value is not None:
-                    try:
-                        value = int(value)
-                    except (TypeError, ValueError):
-                        value = None
+        for key, value in updates.items():
             setattr(item, key, value)
 
     db.commit()

@@ -12,9 +12,6 @@
     <p class="text-on-surface/60 mt-1">{{ config.description }}</p>
   </div>
   <div class="flex flex-wrap items-center gap-3">
-    <a href="/master-data/{{ model_name }}/bulk-edit" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
-      <i data-lucide="table-properties" class="w-4 h-4"></i> Edit hàng loạt
-    </a>
     <a href="/master-data/{{ model_name }}/export" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
       <i data-lucide="download" class="w-4 h-4"></i> Export Excel
     </a>
@@ -39,6 +36,7 @@
     <table class="w-full text-left text-sm text-on-surface">
       <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
         <tr>
+          <th class="px-6 py-5 w-12 text-center"><input type="checkbox" id="selectAllRows" class="rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer"></th>
           <th class="px-6 py-5 w-16 text-center">STT</th>
           {% for col_key in config.table_columns %}
           {% set field = (config.columns | selectattr('key', 'equalto', col_key) | list | first) %}
@@ -50,6 +48,9 @@
       <tbody class="divide-y divide-outline-variant/5">
         {% for item in items %}
         <tr class="hover:bg-primary/5 transition-all duration-200 group">
+          <td class="px-6 py-5 text-center">
+            <input type="checkbox" value="{{ item.id }}" class="row-checkbox rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer">
+          </td>
           <td class="px-6 py-5 text-center">
             <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
               {{ loop.index }}
@@ -92,6 +93,73 @@
     <p>Chưa có dữ liệu cho danh mục này.</p>
   </div>
   {% endif %}
+</div>
+
+<div id="bulkActionBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 transform translate-y-32 opacity-0 flex items-center gap-6 bg-on-surface px-8 py-4 rounded-2xl shadow-2xl border border-white/10 z-50 transition-all duration-500 pointer-events-none">
+  <div class="flex flex-col">
+    <span class="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">Đã chọn</span>
+    <span class="text-white text-xl font-extrabold headline leading-none"><span id="selectedCountBar">0</span> <span class="text-xs font-medium opacity-60 ml-1">mục</span></span>
+  </div>
+  <div class="h-8 w-px bg-white/10"></div>
+  <div class="flex flex-col gap-1 min-w-[220px]">
+    <div class="text-[10px] text-white/40 font-bold uppercase tracking-widest">Chế độ tác động</div>
+    <div class="text-xs text-white/80 font-medium">Chỉ field bạn nhập mới được cập nhật</div>
+  </div>
+  <div class="h-8 w-px bg-white/10"></div>
+  <div class="flex items-center gap-3">
+    <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa
+    </button>
+    <button type="button" id="cancelSelection" class="text-white/60 hover:text-white px-4 py-2 text-sm font-bold transition-colors cursor-pointer">Hủy chọn</button>
+  </div>
+</div>
+
+<div id="bulkEditModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-outline-variant/10">
+      <form action="/master-data/{{ model_name }}/bulk-edit" method="POST" id="bulkEditForm">
+        <input type="hidden" name="item_ids" id="bulkItemIds">
+
+        <div class="bg-primary/5 px-6 py-4 border-b border-outline-variant/10">
+          <h3 class="text-lg font-bold text-primary headline">Chỉnh sửa hàng loạt</h3>
+          <p class="text-xs text-on-surface/60">Cập nhật thông tin cho <span id="selectedCountDisplay" class="font-bold text-indigo-600">0</span> bản ghi đã chọn</p>
+        </div>
+
+        <div class="px-6 py-6 space-y-4">
+          <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+            <p class="text-[11px] text-amber-700 leading-relaxed font-medium">
+              <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+              Chỉ những trường bạn nhập nội dung mới được cập nhật. Những trường để trống sẽ giữ nguyên giá trị cũ.
+            </p>
+          </div>
+
+          {% for field in config.columns %}
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">{{ field.label }}</label>
+            {% if field.type == 'textarea' %}
+              <textarea name="{{ field.key }}" rows="2" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all"></textarea>
+            {% elif field.type == 'boolean' %}
+              <select name="{{ field.key }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+                <option value="">-- Không thay đổi --</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            {% else %}
+              <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="{{ field.key }}" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg shadow-primary/20 cursor-pointer">Cập nhật tất cả</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <dialog id="createModal" class="p-0 rounded-3xl shadow-2xl w-full max-w-3xl backdrop:bg-black/50 bg-transparent">
@@ -221,4 +289,78 @@
     </form>
   </div>
 </dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('selectAllRows');
+  const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+  const bulkActionBar = document.getElementById('bulkActionBar');
+  const selectedCountDisplay = document.getElementById('selectedCountDisplay');
+  const selectedCountBar = document.getElementById('selectedCountBar');
+  const cancelSelection = document.getElementById('cancelSelection');
+  const openBulkEdit = document.getElementById('openBulkEdit');
+  const bulkEditModal = document.getElementById('bulkEditModal');
+  const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
+  const closeBulkModal = document.getElementById('closeBulkModal');
+  const bulkItemIdsInput = document.getElementById('bulkItemIds');
+
+  function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+  }
+
+  function updateBulkBar() {
+    const ids = getSelectedIds();
+    const count = ids.length;
+    if (count > 0) {
+      selectedCountBar.textContent = count;
+      selectedCountDisplay.textContent = count;
+      bulkActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+    } else {
+      bulkActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
+    }
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      rowCheckboxes.forEach(cb => cb.checked = selectAll.checked);
+      updateBulkBar();
+    });
+  }
+
+  rowCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (selectAll) {
+        selectAll.checked = Array.from(rowCheckboxes).every(c => c.checked);
+      }
+      updateBulkBar();
+    });
+  });
+
+  if (cancelSelection) {
+    cancelSelection.addEventListener('click', function() {
+      rowCheckboxes.forEach(cb => cb.checked = false);
+      if (selectAll) selectAll.checked = false;
+      updateBulkBar();
+    });
+  }
+
+  if (openBulkEdit) {
+    openBulkEdit.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      bulkItemIdsInput.value = ids.join(',');
+      bulkEditModal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
+  function closeModal() {
+    bulkEditModal.classList.add('hidden');
+  }
+
+  if (closeBulkModal) closeBulkModal.addEventListener('click', closeModal);
+  if (bulkModalBackdrop) bulkModalBackdrop.addEventListener('click', closeModal);
+});
+</script>
 {% endblock %}
