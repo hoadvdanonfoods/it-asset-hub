@@ -31,3 +31,26 @@ PYTHONPATH=. uvicorn app.main:app --reload
 ```
 
 Mở: <http://127.0.0.1:8000>
+
+## Reset DB test local
+Dùng khi muốn dọn dữ liệu test và khởi tạo lại database sạch trước khi test/import lại.
+
+```bash
+source .venv/bin/activate
+python scripts/reset_test_db.py
+```
+
+Tùy chọn:
+
+```bash
+# không backup DB cũ
+python scripts/reset_test_db.py --no-backup
+
+# dọn luôn uploads và camera checklist test
+python scripts/reset_test_db.py --clear-uploads --clear-camera-checklists
+```
+
+Script sẽ:
+- backup file DB hiện tại vào `data/backups/` (mặc định)
+- xóa DB SQLite test hiện tại
+- khởi tạo lại schema sạch theo code hiện tại
