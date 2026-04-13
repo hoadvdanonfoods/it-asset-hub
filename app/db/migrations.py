@@ -1,4 +1,5 @@
 import re
+import unicodedata
 
 from sqlalchemy import text
 
@@ -373,7 +374,9 @@ def _normalize_lookup_value(table_name: str, raw_value: str | None) -> str | Non
         }
         return aliases.get(normalized.lower(), normalized.upper())
     if table_name in {'departments', 'locations'}:
-        return re.sub(r'\s+', ' ', normalized).strip().upper()
+        folded = ''.join(c for c in unicodedata.normalize('NFKD', normalized) if not unicodedata.combining(c))
+        folded = folded.replace('đ', 'd').replace('Đ', 'D')
+        return re.sub(r'[^A-Za-z0-9]+', '', folded).upper()
     return re.sub(r'\s+', ' ', normalized).strip()
 
 
@@ -410,6 +413,35 @@ def _print_unmatched_summary(unmatched_tracker: dict) -> None:
         preview = ', '.join(f'{value} ({count})' for value, count in top_values)
         suffix = ' ...' if unique > len(top_values) else ''
         print(f"[backfill] unmatched {table_name}.{column_name}: {total} rows, {unique} unique -> {preview}{suffix}")
+
+
+def _dedupe_master_rows(conn, table_name: str, code_column: str, name_column: str, ref_updates: list[tuple[str, str]], extra_updates: list[str] | None = None) -> None:
+    rows = conn.execute(text(f"SELECT id, {code_column}, {name_column} FROM {table_name} ORDER BY id ASC")).fetchall()
+    grouped: dict[str, list] = {}
+    for row in rows:
+        normalized_name = _normalize_lookup_value(table_name, row[2])
+        if not normalized_name:
+            continue
+        grouped.setdefault(normalized_name, []).append(row)
+
+    for duplicates in grouped.values():
+        if len(duplicates) <= 1:
+            continue
+        canonical = duplicates[0]
+        for duplicate in duplicates[1:]:
+            for ref_table, ref_column in ref_updates:
+                conn.execute(
+                    text(f"UPDATE {ref_table} SET {ref_column} = :target_id WHERE {ref_column} = :source_id"),
+                    {'target_id': canonical[0], 'source_id': duplicate[0]},
+                )
+            for sql in extra_updates or []:
+                conn.execute(text(sql), {'target_id': canonical[0], 'source_id': duplicate[0]})
+            conn.execute(text(f"DELETE FROM {table_name} WHERE id = :source_id"), {'source_id': duplicate[0]})
+
+
+def dedupe_master_data(conn) -> None:
+    _dedupe_master_rows(conn, 'departments', 'code', 'name', [('assets', 'department_id'), ('incidents', 'department_id'), ('employees', 'department_id')])
+    _dedupe_master_rows(conn, 'locations', 'code', 'name', [('assets', 'location_id')])
 
 
 def backfill_master_data(conn) -> None:
@@ -644,3 +676,4 @@ def ensure_schema() -> None:
         except Exception:
             pass
         backfill_master_data(conn)
+        dedupe_master_data(conn)
