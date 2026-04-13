@@ -3,8 +3,13 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import sys
 from datetime import datetime
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from app.config import DATA_DIR, DATABASE_URL
 
@@ -24,7 +29,7 @@ def main() -> int:
     parser.add_argument('--clear-camera-checklists', action='store_true', help='Also remove generated camera checklist files')
     args = parser.parse_args()
 
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = REPO_ROOT
     db_path = sqlite_db_path()
     if not db_path.is_absolute():
         db_path = (repo_root / db_path).resolve()
@@ -59,7 +64,15 @@ def main() -> int:
         checklist_dir.mkdir(parents=True, exist_ok=True)
         print(f'Cleared camera checklists: {checklist_dir}')
 
-    from app.main import app  # noqa: F401
+    from app.db.base import Base
+    from app.db.session import engine
+    import app.db.models  # noqa: F401
+    from app.db.migrations import ensure_schema
+    from app.main import ensure_default_admin
+
+    Base.metadata.create_all(bind=engine)
+    ensure_schema()
+    ensure_default_admin()
     print('Reinitialized schema successfully.')
     print(f'Fresh DB ready at: {db_path}')
     print('Default local login should follow current app bootstrap rules.')
