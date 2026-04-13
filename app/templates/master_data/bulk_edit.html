@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Bulk Edit {{ config.label }} - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-2 text-primary/70 text-xs font-bold uppercase tracking-widest mb-2">
+      <i data-lucide="table-properties" class="w-4 h-4"></i>
+      <span>Bulk Edit</span>
+    </div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Chỉnh sửa hàng loạt {{ config.label | lower }}</h1>
+    <p class="text-on-surface/60 mt-1">Cập nhật nhiều dòng trực tiếp trong app rồi lưu một lần.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-3">
+    <a href="/master-data/{{ model_name }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại danh sách
+    </a>
+  </div>
+</div>
+
+<form method="POST" action="/master-data/{{ model_name }}/bulk-edit" class="space-y-5">
+  <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+    <div class="px-6 py-4 border-b border-outline-variant/10 bg-surface-container-low/30 flex items-center justify-between gap-4">
+      <div class="text-sm text-on-surface/60 font-medium">
+        Tổng cộng <span class="font-bold text-on-surface">{{ items|length }}</span> bản ghi
+      </div>
+      <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all">Lưu tất cả thay đổi</button>
+    </div>
+
+    <div class="overflow-x-auto custom-scrollbar">
+      <table class="w-full text-left text-sm text-on-surface min-w-[1100px]">
+        <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
+          <tr>
+            <th class="px-4 py-4 w-16 text-center">ID</th>
+            {% for field in config.columns %}
+            <th class="px-4 py-4 min-w-[180px]">{{ field.label }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/5">
+          {% for item in items %}
+          <tr class="align-top hover:bg-primary/5 transition-all duration-200">
+            <td class="px-4 py-4 text-center font-bold text-on-surface/60">{{ item.id }}</td>
+            {% for field in config.columns %}
+            {% set value = item|attr(field.key) %}
+            <td class="px-4 py-3">
+              {% if field.type == 'textarea' %}
+                <textarea name="items[{{ item.id }}][{{ field.key }}]" rows="2" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/30 transition-all">{{ value or '' }}</textarea>
+              {% elif field.type == 'boolean' %}
+                <select name="items[{{ item.id }}][{{ field.key }}]" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+                  <option value="true" {% if value %}selected{% endif %}>Active</option>
+                  <option value="false" {% if not value %}selected{% endif %}>Inactive</option>
+                </select>
+              {% else %}
+                <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="items[{{ item.id }}][{{ field.key }}]" value="{{ value if value is not none else '' }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface placeholder:text-on-surface/30 transition-all">
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="flex justify-end">
+    <button type="submit" class="px-6 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all shadow-lg">Lưu tất cả thay đổi</button>
+  </div>
+</form>
+{% endblock %}

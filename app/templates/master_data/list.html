@@ -12,6 +12,9 @@
     <p class="text-on-surface/60 mt-1">{{ config.description }}</p>
   </div>
   <div class="flex flex-wrap items-center gap-3">
+    <a href="/master-data/{{ model_name }}/bulk-edit" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+      <i data-lucide="table-properties" class="w-4 h-4"></i> Edit hàng loạt
+    </a>
     <a href="/master-data/{{ model_name }}/export" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
       <i data-lucide="download" class="w-4 h-4"></i> Export Excel
     </a>

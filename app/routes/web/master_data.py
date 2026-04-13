@@ -258,6 +258,26 @@ async def list_model(request: Request, model_name: str, current_user=None, db: S
     )
 
 
+@router.get('/{model_name}/bulk-edit', response_class=HTMLResponse)
+@require_permission('can_manage_system')
+async def bulk_edit_model(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+    items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
+    return templates.TemplateResponse(
+        'master_data/bulk_edit.html',
+        {
+            'request': request,
+            'current_user': current_user,
+            'model_name': model_name,
+            'config': config,
+            'items': items,
+            'p': '/master-data/' + model_name,
+        },
+    )
+
+
 @router.post('/{model_name}/create')
 @require_permission('can_manage_system')
 async def create_model(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
@@ -284,6 +304,39 @@ async def edit_model(request: Request, model_name: str, item_id: int, current_us
     data = _parse_form_data(form, config)
     for key, value in data.items():
         setattr(item, key, value)
+    db.commit()
+    return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+
+
+@router.post('/{model_name}/bulk-edit')
+@require_permission('can_manage_system')
+async def bulk_edit_model_submit(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+
+    form = await request.form()
+    items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
+
+    for item in items:
+        prefix = f'items[{item.id}]'
+        for field in config['columns']:
+            key = field['key']
+            form_key = f'{prefix}[{key}]'
+            if field['type'] == 'boolean':
+                value = form.get(form_key) == 'true'
+            else:
+                raw = form.get(form_key)
+                value = raw.strip() if isinstance(raw, str) else raw
+                if value == '':
+                    value = None
+                if field['type'] == 'number' and value is not None:
+                    try:
+                        value = int(value)
+                    except (TypeError, ValueError):
+                        value = None
+            setattr(item, key, value)
+
     db.commit()
     return RedirectResponse(f'/master-data/{model_name}', status_code=303)
 
