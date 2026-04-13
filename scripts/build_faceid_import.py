@@ -5,7 +5,7 @@ from pathlib import Path
 from openpyxl import Workbook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-OUTPUT_XLSX = REPO_ROOT / 'state' / 'faceid_devices_import.xlsx'
+OUTPUT_XLSX = REPO_ROOT / 'it-asset-hub' / 'state' / 'faceid_devices_import.xlsx' if REPO_ROOT.name != 'it-asset-hub' else REPO_ROOT / 'state' / 'faceid_devices_import.xlsx'
 DESKTOP_XLSX = Path('/mnt/c/Users/Administrator/Desktop/faceid_devices_import.xlsx')
 
 HEADERS = [
