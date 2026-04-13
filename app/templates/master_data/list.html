@@ -110,6 +110,9 @@
     <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
       <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa
     </button>
+    <button type="button" id="openBulkArchive" class="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="archive-x" class="w-4 h-4"></i> Inactive
+    </button>
     <button type="button" id="cancelSelection" class="text-white/60 hover:text-white px-4 py-2 text-sm font-bold transition-colors cursor-pointer">Hủy chọn</button>
   </div>
 </div>
@@ -156,6 +159,42 @@
         <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
           <button type="button" id="closeBulkModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
           <button type="submit" class="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg shadow-primary/20 cursor-pointer">Cập nhật tất cả</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkArchiveModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-rose-500/20">
+      <form action="/master-data/{{ model_name }}/bulk-archive" method="POST" id="bulkArchiveForm">
+        <input type="hidden" name="item_ids" id="bulkArchiveItemIds">
+
+        <div class="bg-rose-500/5 px-6 py-4 border-b border-rose-500/10">
+          <h3 class="text-lg font-bold text-rose-600 headline">Inactive hàng loạt</h3>
+          <p class="text-xs text-on-surface/60">Đưa <span id="archiveCountDisplay" class="font-bold text-rose-600">0</span> bản ghi đã chọn về trạng thái inactive</p>
+        </div>
+
+        <div class="px-6 py-6 space-y-4">
+          <div class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
+            <p class="text-[11px] text-rose-700 leading-relaxed font-medium">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline mr-1"></i>
+              Hành động này sẽ cập nhật các bản ghi đã chọn thành inactive (`is_active = false`).
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ lớn</label>
+            <input type="text" name="confirm_text" placeholder="Nhập chữ ARCHIVE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-rose-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface transition-all">
+          </div>
+        </div>
+
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkArchiveModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">Đồng ý Inactive</button>
         </div>
       </form>
     </div>
@@ -301,10 +340,16 @@ document.addEventListener('DOMContentLoaded', function() {
   const selectedCountBar = document.getElementById('selectedCountBar');
   const cancelSelection = document.getElementById('cancelSelection');
   const openBulkEdit = document.getElementById('openBulkEdit');
+  const openBulkArchive = document.getElementById('openBulkArchive');
   const bulkEditModal = document.getElementById('bulkEditModal');
   const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
   const closeBulkModal = document.getElementById('closeBulkModal');
   const bulkItemIdsInput = document.getElementById('bulkItemIds');
+  const bulkArchiveModal = document.getElementById('bulkArchiveModal');
+  const bulkArchiveModalBackdrop = document.getElementById('bulkArchiveModalBackdrop');
+  const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
+  const bulkArchiveItemIds = document.getElementById('bulkArchiveItemIds');
+  const archiveCountDisplay = document.getElementById('archiveCountDisplay');
 
   function getSelectedIds() {
     return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
@@ -355,12 +400,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  if (openBulkArchive) {
+    openBulkArchive.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      bulkArchiveItemIds.value = ids.join(',');
+      archiveCountDisplay.textContent = ids.length;
+      bulkArchiveModal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
   function closeModal() {
     bulkEditModal.classList.add('hidden');
+    bulkArchiveModal.classList.add('hidden');
   }
 
   if (closeBulkModal) closeBulkModal.addEventListener('click', closeModal);
   if (bulkModalBackdrop) bulkModalBackdrop.addEventListener('click', closeModal);
+  if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModal);
+  if (bulkArchiveModalBackdrop) bulkArchiveModalBackdrop.addEventListener('click', closeModal);
 });
 </script>
 {% endblock %}

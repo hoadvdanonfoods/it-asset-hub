@@ -345,6 +345,35 @@ async def bulk_edit_model_submit(request: Request, model_name: str, current_user
     return RedirectResponse(f'/master-data/{model_name}', status_code=303)
 
 
+@router.post('/{model_name}/bulk-archive')
+@require_permission('can_manage_system')
+async def bulk_archive_model_submit(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+
+    form = await request.form()
+    item_ids_raw = (form.get('item_ids') or '').strip()
+    confirm_text = (form.get('confirm_text') or '').strip().upper()
+    if not item_ids_raw or confirm_text != 'ARCHIVE':
+        return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+
+    item_ids = []
+    for token in item_ids_raw.split(','):
+        token = token.strip()
+        if token.isdigit():
+            item_ids.append(int(token))
+
+    if item_ids:
+        items = db.scalars(select(config['model']).where(config['model'].id.in_(item_ids))).all()
+        for item in items:
+            if hasattr(item, 'is_active'):
+                setattr(item, 'is_active', False)
+
+    db.commit()
+    return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+
+
 @router.post('/{model_name}/import')
 @require_permission('can_manage_system')
 async def import_model(request: Request, model_name: str, current_user=None, file: UploadFile = File(...), db: Session = Depends(get_db)):
