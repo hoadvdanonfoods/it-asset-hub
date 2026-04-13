@@ -41,7 +41,7 @@ DEPT_MAP = {
     'P.Bảo Trì': 'P.Bảo Trì', 'P.Bao Trì': 'P.Bảo Trì',
     'P.QC': 'P.QC', 'P.QC-01': 'P.QC',
     'P.LAB': 'LAB', 'LAB': 'LAB',
-    'Lễ Tân': 'Hành Chính', 'Office': 'Hành Chính',
+    'Lễ Tân': 'Hành Chính',
     'PR Assistant': 'PR', 'PR': 'PR',
     'Y Tế': 'Y Tế', 'Y Te': 'Y Tế',
     'QA office': 'QA',
@@ -50,7 +50,10 @@ DEPT_MAP = {
 }
 
 LOCATION_ONLY_DEPTS = {
-    'Planning Room', 'Meeting Room', 'Show Room', 'Showroom', 'New York Room', 'Canada Room', 'Free Room', 'Office', 'Salon', 'Trạm Bình Phước'
+    'Planning Room', 'Meeting Room', 'Show Room', 'Showroom', 'New York Room', 'Canada Room', 'Free Room', 'Office', 'Salon', 'Trạm Bình Phước',
+    'P2 R&D', 'P2 Server', 'P2.Sorting', 'P2 Sorting', 'P2 Y Tế', 'P.Kính', 'F&B', 'Automation Room', 'EP01-Y Tế', 'EP01-Bảo trì',
+    'EP01-Trợ Lý', 'EPF01-Thư Ký', 'EP01-HR', 'HR-EPF', 'EP01-QC', 'EP01-Packing', 'EP01-Mixing', 'Lầu Canteen', 'Tranning Room',
+    'Cookies'
 }
 
 SHARED_USER_VALUES = {
@@ -89,6 +92,8 @@ def normalize_location(site: str, raw_department: str, raw_location: str) -> str
     location = clean_text(raw_location)
     location = '' if location.lower() == 'none' else location
 
+    if not location:
+        return ''
     if dept in {'P.QC-01'}:
         area = 'QC-01'
     elif dept in {'P2 Candy Room'}:
@@ -121,6 +126,8 @@ def normalize_location(site: str, raw_department: str, raw_location: str) -> str
 def normalize_department(raw_department: str) -> str:
     dept = clean_text(raw_department)
     if not dept:
+        return ''
+    if dept in LOCATION_ONLY_DEPTS:
         return ''
     return DEPT_MAP.get(dept, dept)
 
@@ -211,8 +218,8 @@ def main() -> int:
         ])
 
         needs_review = (
-            not department or not location or dept_raw in LOCATION_ONLY_DEPTS or location_raw.strip().lower() == 'none'
-            or user_raw in SHARED_USER_VALUES or dept_raw not in DEPT_MAP and bool(dept_raw)
+            (location_raw.strip().lower() == 'none' or not location)
+            or (dept_raw not in DEPT_MAP and dept_raw not in LOCATION_ONLY_DEPTS and bool(dept_raw))
         )
         if needs_review:
             review_ws.append([
