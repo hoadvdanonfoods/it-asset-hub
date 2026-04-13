@@ -10,8 +10,6 @@ import openpyxl
 from openpyxl import Workbook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-if REPO_ROOT.name != 'it-asset-hub':
-    REPO_ROOT = REPO_ROOT / 'it-asset-hub'
 
 SOURCE_XLSX = Path('/mnt/c/Users/Administrator/Desktop/DS nhân viên.xlsx')
 STATE_DIR = REPO_ROOT / 'state'
