@@ -68,14 +68,15 @@
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-on-surface/30 group-focus-within:text-indigo-600 transition-colors">
               <i data-lucide="layers" class="w-5 h-5"></i>
             </div>
-            <input list="asset-type-options" type="text" name="asset_type" value="{{ asset.display_asset_type if asset else '' }}" required
-              class="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/10 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none font-bold text-on-surface"
-              placeholder="PC, Printer, Laptop...">
-            <datalist id="asset-type-options">
+            <select name="asset_type" required class="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-surface-container-low border border-outline-variant/10 focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all outline-none font-bold text-on-surface appearance-none">
+              <option value="">-- Chọn loại thiết bị --</option>
               {% for item in asset_type_options %}
-              <option value="{{ item.name }}">{{ item.code }}</option>
+              <option value="{{ item.name }}" {% if (asset.display_asset_type if asset else '') == item.name or (asset.asset_type if asset else '') == item.name %}selected{% endif %}>{{ item.name }}{% if item.code %} ({{ item.code }}){% endif %}</option>
               {% endfor %}
-            </datalist>
+            </select>
+            <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-on-surface/30">
+              <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </div>
           </div>
         </div>
 
@@ -145,31 +146,30 @@
         <div class="space-y-4">
           <div class="space-y-2">
             <label class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest ml-1">Bộ phận</label>
-            <input list="department-options" type="text" name="department" value="{{ asset.display_department if asset else '' }}"
-              class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"
-              placeholder="e.g. Kế Toán">
-            <datalist id="department-options">
+            <select name="department" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium appearance-none">
+              <option value="">-- Chọn phòng ban --</option>
               {% for item in department_options %}
-              <option value="{{ item.name }}">{{ item.code }}</option>
+              <option value="{{ item.name }}" {% if (asset.display_department if asset else '') == item.name or (asset.department if asset else '') == item.name %}selected{% endif %}>{{ item.name }}{% if item.code %} ({{ item.code }}){% endif %}</option>
               {% endfor %}
-            </datalist>
+            </select>
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest ml-1">Người sử dụng</label>
-            <input type="text" name="assigned_user" value="{{ asset.assigned_user if asset else '' }}"
-              class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"
-              placeholder="Tên nhân viên">
+            <select name="assigned_user" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium appearance-none">
+              <option value="">-- Chọn nhân viên / để trống cho tài sản dùng chung --</option>
+              {% for item in employee_options %}
+              <option value="{{ item.full_name }}" {% if (asset.assigned_user if asset else '') == item.full_name %}selected{% endif %}>{{ item.full_name }}{% if item.employee_code %} ({{ item.employee_code }}){% endif %}</option>
+              {% endfor %}
+            </select>
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-black text-on-surface/40 uppercase tracking-widest ml-1">Vị trí thực tế</label>
-            <input list="location-options" type="text" name="location" value="{{ asset.display_location if asset else '' }}"
-              class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium"
-              placeholder="e.g. Tầng 3, Phòng Server">
-            <datalist id="location-options">
+            <select name="location" class="w-full px-4 py-3 rounded-xl bg-surface-container-low border border-outline-variant/5 focus:border-indigo-500 focus:bg-white transition-all outline-none text-sm font-medium appearance-none">
+              <option value="">-- Chọn vị trí --</option>
               {% for item in location_options %}
-              <option value="{{ item.name }}">{{ item.code }}</option>
+              <option value="{{ item.name }}" {% if (asset.display_location if asset else '') == item.name or (asset.location if asset else '') == item.name %}selected{% endif %}>{{ item.name }}{% if item.code %} ({{ item.code }}){% endif %}</option>
               {% endfor %}
-            </datalist>
+            </select>
           </div>
         </div>
       </div>

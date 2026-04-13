@@ -120,11 +120,13 @@ def _display_status(asset: Asset | None) -> str:
 def _master_data_context(db: Session):
     asset_type_rows = db.scalars(select(AssetType).where(AssetType.is_active == True).order_by(AssetType.name.asc())).all()
     department_rows = db.scalars(select(Department).where(Department.is_active == True).order_by(Department.name.asc())).all()
+    employee_rows = db.scalars(select(Employee).where(Employee.is_active == True).order_by(Employee.full_name.asc())).all()
     location_rows = db.scalars(select(Location).where(Location.is_active == True).order_by(Location.name.asc())).all()
     status_rows = db.scalars(select(AssetStatus).where(AssetStatus.is_active == True).order_by(AssetStatus.sort_order.asc(), AssetStatus.name.asc())).all()
     return {
         'asset_type_options': asset_type_rows,
         'department_options': department_rows,
+        'employee_options': employee_rows,
         'location_options': location_rows,
         'status_options': status_rows,
     }
@@ -1122,4 +1124,3 @@ def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), a
     _log_event(db, asset.id, 'asset_updated', 'Cập nhật asset', f'Cập nhật thông tin thiết bị {asset.asset_code}', current_user.username)
     db.commit()
     return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
-
