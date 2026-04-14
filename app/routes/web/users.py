@@ -114,6 +114,13 @@ def _build_bulk_feedback(*, success: int = 0, blocked: int = 0, restored: int = 
 
 @router.get('/', response_class=HTMLResponse)
 @require_permission('can_manage_users')
+def list_users(request: Request, db: Session = Depends(get_db), current_user=None):
+    users = db.scalars(select(User).order_by(User.id.desc())).all()
+    return templates.TemplateResponse('users/list.html', {
+        'request': request,
+        'users': users,
+        'current_user': current_user,
+    })
 
 
 def _parse_user_ids(raw: str | None) -> list[int]:
