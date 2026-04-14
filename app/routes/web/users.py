@@ -1,3 +1,4 @@
+from datetime import datetime
 from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, Form, Query, Request
@@ -6,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth import require_login, require_permission
+from app.auth import clear_session_cookie, invalidate_user_sessions, require_login, require_permission
 from app.db.models import User
 from app.db.session import get_db
 from app.security import hash_password, verify_password
@@ -233,6 +234,8 @@ def user_update(request: Request, user_id: int, password: str = Form(default='')
             return _render_user_form(request, current_user, user_obj=form_user, error=f'Mật khẩu phải có ít nhất {MIN_PASSWORD_LENGTH} ký tự')
         user_obj.password_hash = hash_password(password)
         user_obj.password = '[hashed]'
+        user_obj.password_changed_at = datetime.utcnow()
+        invalidate_user_sessions(user_obj)
     db.commit()
     log_audit(db, actor=current_user.username if current_user else None, module='users', action='update', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username, 'role': user_obj.role, 'is_active': user_obj.is_active})
     db.commit()
@@ -356,5 +359,9 @@ def change_password_submit(request: Request, old_password: str = Form(...), new_
         return templates.TemplateResponse('users/change_password.html', {'request': request, 'current_user': current_user, 'error': 'Mật khẩu mới phải khác mật khẩu cũ', 'force_change': force_change})
     user_obj.password_hash = hash_password(new_password)
     user_obj.password = '[hashed]'
+    user_obj.password_changed_at = datetime.utcnow()
+    invalidate_user_sessions(user_obj)
+    log_audit(db, actor=current_user.username if current_user else None, module='users', action='change_password', entity_type='user', entity_id=user_obj.id, metadata={'forced_change': force_change})
     db.commit()
-    return RedirectResponse('/', status_code=303)
+    response = RedirectResponse('/login?message=password_changed', status_code=303)
+    return clear_session_cookie(response)

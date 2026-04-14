@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, String
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -34,3 +36,5 @@ class User(Base):
     can_manage_resources: Mapped[bool] = mapped_column(Boolean, default=False)
     can_view_documents: Mapped[bool] = mapped_column(Boolean, default=False)
     can_manage_documents: Mapped[bool] = mapped_column(Boolean, default=False)
+    session_version: Mapped[int] = mapped_column(default=1)
+    password_changed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

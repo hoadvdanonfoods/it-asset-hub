@@ -33,12 +33,13 @@ def get_current_user(request: Request):
     try:
         data = serializer.loads(cookie, max_age=SESSION_MAX_AGE_SECONDS)
         username = data.get('username')
+        session_version = int(data.get('session_version', 1))
     except Exception:
         return None
     db = SessionLocal()
     try:
         user = db.scalar(select(User).where(User.username == username))
-        if user and not user.is_active:
+        if user and (not user.is_active or (user.session_version or 1) != session_version):
             return None
         return user
     finally:
@@ -46,7 +47,7 @@ def get_current_user(request: Request):
 
 
 def build_session_token(user: User) -> str:
-    return serializer.dumps({'username': user.username, 'issued_at': int(time.time())})
+    return serializer.dumps({'username': user.username, 'issued_at': int(time.time()), 'session_version': user.session_version or 1})
 
 
 def clear_session_cookie(response: RedirectResponse) -> RedirectResponse:
@@ -65,6 +66,10 @@ def get_session_username(request: Request) -> str | None:
         return data.get('username')
     except Exception:
         return None
+
+
+def invalidate_user_sessions(user: User) -> None:
+    user.session_version = (user.session_version or 1) + 1
 
 
 def _must_force_password_change(user: User) -> bool:

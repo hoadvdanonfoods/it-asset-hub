@@ -39,3 +39,6 @@ ZALO_NOTIFICATION_TARGET = os.getenv('ZALO_NOTIFICATION_TARGET', '')
 
 if IS_PRODUCTION and SECRET_KEY == 'it-asset-hub-local-secret':
     raise RuntimeError('SECRET_KEY must be set in production and must not use the local default secret')
+
+if IS_PRODUCTION and not SESSION_COOKIE_SECURE:
+    raise RuntimeError('SESSION_COOKIE_SECURE must be true in production')

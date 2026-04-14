@@ -59,7 +59,9 @@ def _clear_failed_logins(request: Request, username: str) -> None:
 
 @router.get('/login', response_class=HTMLResponse)
 def login_page(request: Request):
-    return templates.TemplateResponse('auth/login.html', {'request': request, 'error': None, 'warning': None})
+    message = request.query_params.get('message')
+    warning = 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập lại.' if message == 'password_changed' else None
+    return templates.TemplateResponse('auth/login.html', {'request': request, 'error': None, 'warning': warning})
 
 
 @router.post('/login')
