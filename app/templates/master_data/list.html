@@ -6,6 +6,12 @@
 {% set bulk_success = request.query_params.get('bulk_success') %}
 {% set bulk_blocked = request.query_params.get('bulk_blocked') %}
 {% set bulk_details = request.query_params.get('bulk_details') %}
+{% set bulk_tone = request.query_params.get('bulk_tone', 'info') %}
+{% set tone_classes = {
+  'success': 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700',
+  'warning': 'bg-amber-500/10 border-amber-500/20 text-amber-700',
+  'info': 'bg-sky-500/10 border-sky-500/20 text-sky-700'
+} %}
 
 <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
   <div>
@@ -30,17 +36,20 @@
 </div>
 
 {% if bulk_message or bulk_success or bulk_blocked %}
-<div class="mb-6 bg-sky-500/10 border border-sky-500/20 text-sky-700 px-6 py-4 rounded-2xl font-medium shadow-sm">
+<div class="mb-6 {{ tone_classes.get(bulk_tone, tone_classes['info']) }} border px-6 py-4 rounded-2xl font-medium shadow-sm">
   <div class="flex items-start gap-3">
     <i data-lucide="info" class="w-5 h-5 mt-0.5"></i>
     <div>
       <div class="font-bold">{{ bulk_message or 'Kết quả xử lý hàng loạt' }}</div>
-      <div class="text-sm mt-1">
-        {% if bulk_success %}<span class="mr-3">Thành công: <strong>{{ bulk_success }}</strong></span>{% endif %}
-        {% if bulk_blocked %}<span>Bị chặn: <strong>{{ bulk_blocked }}</strong></span>{% endif %}
+      <div class="text-sm mt-1 flex flex-wrap gap-x-4 gap-y-1">
+        {% if bulk_success %}<span>Thành công: <strong>{{ bulk_success }}</strong></span>{% endif %}
+        {% if bulk_blocked %}<span>Bị chặn để giữ an toàn dữ liệu: <strong>{{ bulk_blocked }}</strong></span>{% endif %}
       </div>
       {% if bulk_details %}
-      <div class="text-xs mt-2 text-sky-800/80 leading-5">{{ bulk_details.replace(' || ', ' • ') }}</div>
+      <div class="mt-3 rounded-xl bg-white/40 px-4 py-3 text-xs leading-5">
+        <div class="font-bold uppercase tracking-widest text-[10px] mb-1 opacity-70">Chi tiết các bản ghi bị chặn</div>
+        <div>{{ bulk_details.replace(' || ', ' • ') }}</div>
+      </div>
       {% endif %}
     </div>
   </div>

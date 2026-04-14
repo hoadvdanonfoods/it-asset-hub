@@ -97,10 +97,8 @@ def _render_user_form(request: Request, current_user, *, user_obj=None, error: s
     return templates.TemplateResponse('users/form.html', {'request': request, 'user_obj': user_obj, 'current_user': current_user, 'error': error})
 
 
-@router.get('/', response_class=HTMLResponse)
-@require_permission('can_manage_users')
-def _build_bulk_feedback(request: Request, *, success: int = 0, blocked: int = 0, restored: int = 0, message: str | None = None, details: list[str] | None = None):
-    payload = {}
+def _build_bulk_feedback(*, success: int = 0, blocked: int = 0, restored: int = 0, message: str | None = None, details: list[str] | None = None, tone: str = 'info'):
+    payload = {'bulk_tone': tone}
     if success:
         payload['bulk_success'] = success
     if blocked:
@@ -112,6 +110,10 @@ def _build_bulk_feedback(request: Request, *, success: int = 0, blocked: int = 0
     if details:
         payload['bulk_details'] = ' || '.join(details[:12])
     return payload
+
+
+@router.get('/', response_class=HTMLResponse)
+@require_permission('can_manage_users')
 
 
 def _parse_user_ids(raw: str | None) -> list[int]:
@@ -295,7 +297,8 @@ def user_bulk_archive(request: Request, user_ids: str = Form(default=''), confir
         log_audit(db, actor=current_user.username if current_user else None, module='users', action='bulk_archive', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username})
 
     db.commit()
-    params = _build_bulk_feedback(request, success=success, blocked=blocked, message='Đã xử lý archive hàng loạt tài khoản', details=details)
+    tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
+    params = _build_bulk_feedback(success=success, blocked=blocked, message='Đã xử lý archive hàng loạt tài khoản', details=details, tone=tone)
     query = '&'.join(f'{k}={v}' for k, v in params.items())
     return RedirectResponse(f"/users/{'?' + query if query else ''}", status_code=303)
 
@@ -319,7 +322,8 @@ def user_bulk_restore(request: Request, user_ids: str = Form(default=''), db: Se
         log_audit(db, actor=current_user.username if current_user else None, module='users', action='bulk_restore', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username})
 
     db.commit()
-    params = _build_bulk_feedback(request, restored=restored, blocked=blocked, message='Đã khôi phục hàng loạt tài khoản', details=details)
+    tone = 'success' if restored and not blocked else 'warning' if blocked else 'info'
+    params = _build_bulk_feedback(restored=restored, blocked=blocked, message='Đã khôi phục hàng loạt tài khoản', details=details, tone=tone)
     query = '&'.join(f'{k}={v}' for k, v in params.items())
     return RedirectResponse(f"/users/{'?' + query if query else ''}", status_code=303)
 

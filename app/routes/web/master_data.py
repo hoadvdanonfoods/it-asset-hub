@@ -347,8 +347,8 @@ async def bulk_edit_model_submit(request: Request, model_name: str, current_user
     return RedirectResponse(f'/master-data/{model_name}', status_code=303)
 
 
-def _redirect_with_bulk_feedback(model_name: str, *, message: str | None = None, success: int = 0, blocked: int = 0, details: list[str] | None = None):
-    params = []
+def _redirect_with_bulk_feedback(model_name: str, *, message: str | None = None, success: int = 0, blocked: int = 0, details: list[str] | None = None, tone: str = 'info'):
+    params = [f'bulk_tone={tone}']
     if message:
         params.append(f'bulk_message={message}')
     if success:
@@ -410,7 +410,9 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
                         blocking_assets.append(asset.asset_code)
                 if blocking_assets:
                     blocked += 1
-                    details.append(f'{item.full_name}: còn giữ tài sản {", ".join(blocking_assets[:3])}')
+                    preview = ', '.join(blocking_assets[:3])
+                    suffix = '' if len(blocking_assets) <= 3 else f' và {len(blocking_assets) - 3} tài sản khác'
+                    details.append(f'{item.full_name} ({item.employee_code}): còn giữ {len(blocking_assets)} tài sản, gồm {preview}{suffix}')
                     log_audit(db, actor=current_user.username if current_user else None, module='master_data', action='bulk_archive', entity_type='employee', entity_id=item.id, result='skipped', reason='active_assets', metadata={'employee_code': item.employee_code, 'assets': blocking_assets[:10]})
                     continue
 
@@ -424,7 +426,8 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
             log_audit(db, actor=current_user.username if current_user else None, module='master_data', action='bulk_archive', entity_type=model_name.rstrip('s'), entity_id=item.id, metadata={'model': model_name, 'title': getattr(item, config['title_field'], None)})
 
     db.commit()
-    return _redirect_with_bulk_feedback(model_name, message='Đã xử lý inactive hàng loạt', success=success, blocked=blocked, details=details)
+    tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
+    return _redirect_with_bulk_feedback(model_name, message='Đã xử lý inactive hàng loạt', success=success, blocked=blocked, details=details, tone=tone)
 
 
 @router.post('/{model_name}/import')
