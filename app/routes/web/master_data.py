@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_permission
+from app.db.models import Asset, AssetAssignment
 from app.db.models.master_data import AssetType, Department, Employee, Location
 from app.db.models.master_reference import AssetCategory, AssetStatus, Vendor, IncidentCategory, Priority, MaintenanceType
 from app.db.session import get_db
+from app.services.audit import log_audit
 
 import io
 import openpyxl
@@ -345,6 +347,20 @@ async def bulk_edit_model_submit(request: Request, model_name: str, current_user
     return RedirectResponse(f'/master-data/{model_name}', status_code=303)
 
 
+def _redirect_with_bulk_feedback(model_name: str, *, message: str | None = None, success: int = 0, blocked: int = 0, details: list[str] | None = None):
+    params = []
+    if message:
+        params.append(f'bulk_message={message}')
+    if success:
+        params.append(f'bulk_success={success}')
+    if blocked:
+        params.append(f'bulk_blocked={blocked}')
+    if details:
+        params.append(f"bulk_details={' || '.join(details[:12])}")
+    query = '&'.join(params)
+    return RedirectResponse(f"/master-data/{model_name}{'?' + query if query else ''}", status_code=303)
+
+
 @router.post('/{model_name}/bulk-archive')
 @require_permission('can_manage_system')
 async def bulk_archive_model_submit(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
@@ -356,7 +372,7 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
     item_ids_raw = (form.get('item_ids') or '').strip()
     confirm_text = (form.get('confirm_text') or '').strip().upper()
     if not item_ids_raw or confirm_text != 'ARCHIVE':
-        return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+        return _redirect_with_bulk_feedback(model_name, message='Xác nhận không hợp lệ')
 
     item_ids = []
     for token in item_ids_raw.split(','):
@@ -364,14 +380,51 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
         if token.isdigit():
             item_ids.append(int(token))
 
+    success = 0
+    blocked = 0
+    details: list[str] = []
+
     if item_ids:
         items = db.scalars(select(config['model']).where(config['model'].id.in_(item_ids))).all()
         for item in items:
-            if hasattr(item, 'is_active'):
-                setattr(item, 'is_active', False)
+            if not hasattr(item, 'is_active'):
+                blocked += 1
+                continue
+
+            if model_name == 'employees':
+                active_assets = db.scalars(
+                    select(Asset).where(
+                        or_(Asset.current_assignment_id.is_not(None), Asset.assigned_user == item.full_name)
+                    )
+                ).all()
+                blocking_assets = []
+                for asset in active_assets:
+                    active_assignment = db.scalar(
+                        select(AssetAssignment).where(
+                            AssetAssignment.asset_id == asset.id,
+                            AssetAssignment.unassigned_at.is_(None),
+                            AssetAssignment.employee_id == item.id,
+                        ).order_by(AssetAssignment.assigned_at.desc())
+                    )
+                    if active_assignment or (asset.assigned_user and asset.assigned_user == item.full_name):
+                        blocking_assets.append(asset.asset_code)
+                if blocking_assets:
+                    blocked += 1
+                    details.append(f'{item.full_name}: còn giữ tài sản {", ".join(blocking_assets[:3])}')
+                    log_audit(db, actor=current_user.username if current_user else None, module='master_data', action='bulk_archive', entity_type='employee', entity_id=item.id, result='skipped', reason='active_assets', metadata={'employee_code': item.employee_code, 'assets': blocking_assets[:10]})
+                    continue
+
+            if getattr(item, 'is_active', None) is False:
+                blocked += 1
+                details.append(f'{getattr(item, config["title_field"], item.id)}: đã inactive')
+                continue
+
+            setattr(item, 'is_active', False)
+            success += 1
+            log_audit(db, actor=current_user.username if current_user else None, module='master_data', action='bulk_archive', entity_type=model_name.rstrip('s'), entity_id=item.id, metadata={'model': model_name, 'title': getattr(item, config['title_field'], None)})
 
     db.commit()
-    return RedirectResponse(f'/master-data/{model_name}', status_code=303)
+    return _redirect_with_bulk_feedback(model_name, message='Đã xử lý inactive hàng loạt', success=success, blocked=blocked, details=details)
 
 
 @router.post('/{model_name}/import')

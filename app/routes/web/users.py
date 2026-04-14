@@ -10,6 +10,7 @@ from app.auth import require_login, require_permission
 from app.db.models import User
 from app.db.session import get_db
 from app.security import hash_password, verify_password
+from app.services.audit import log_audit
 
 router = APIRouter(prefix='/users', tags=['users'])
 templates = Jinja2Templates(directory='app/templates')
@@ -98,6 +99,34 @@ def _render_user_form(request: Request, current_user, *, user_obj=None, error: s
 
 @router.get('/', response_class=HTMLResponse)
 @require_permission('can_manage_users')
+def _build_bulk_feedback(request: Request, *, success: int = 0, blocked: int = 0, restored: int = 0, message: str | None = None, details: list[str] | None = None):
+    payload = {}
+    if success:
+        payload['bulk_success'] = success
+    if blocked:
+        payload['bulk_blocked'] = blocked
+    if restored:
+        payload['bulk_restored'] = restored
+    if message:
+        payload['bulk_message'] = message
+    if details:
+        payload['bulk_details'] = ' || '.join(details[:12])
+    return payload
+
+
+def _parse_user_ids(raw: str | None) -> list[int]:
+    ids: list[int] = []
+    for token in (raw or '').split(','):
+        token = token.strip()
+        if token.isdigit():
+            ids.append(int(token))
+    return list(dict.fromkeys(ids))
+
+
+def _active_admin_count(db: Session) -> int:
+    return len(db.scalars(select(User).where(User.role == 'admin', User.is_active == True)).all())  # noqa: E712
+
+
 def user_list(request: Request, db: Session = Depends(get_db), current_user=None):
     users = db.scalars(select(User).order_by(User.username.asc())).all()
     return templates.TemplateResponse('users/list.html', {'request': request, 'users': users, 'current_user': current_user})
@@ -138,6 +167,8 @@ def user_create(request: Request, username: str = Form(...), password: str = For
         return _render_user_form(request, current_user, user_obj=form_user, error=f'Mật khẩu phải có ít nhất {MIN_PASSWORD_LENGTH} ký tự')
     user = User(username=username.strip(), password='[hashed]', password_hash=hash_password(password), role=role, full_name=full_name.strip() or None, is_active=True, **module_flags, **action_flags)
     db.add(user)
+    db.commit()
+    log_audit(db, actor=current_user.username if current_user else None, module='users', action='create', entity_type='user', entity_id=user.id, metadata={'username': user.username, 'role': user.role})
     db.commit()
     return RedirectResponse('/users/', status_code=303)
 
@@ -194,6 +225,8 @@ def user_update(request: Request, user_id: int, password: str = Form(default='')
         user_obj.password_hash = hash_password(password)
         user_obj.password = '[hashed]'
     db.commit()
+    log_audit(db, actor=current_user.username if current_user else None, module='users', action='update', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username, 'role': user_obj.role, 'is_active': user_obj.is_active})
+    db.commit()
     return RedirectResponse('/users/', status_code=303)
 
 
@@ -205,7 +238,11 @@ def user_archive(user_id: int, request: Request, db: Session = Depends(get_db), 
         return RedirectResponse('/users/', status_code=303)
     if current_user and current_user.id == user_obj.id:
         return RedirectResponse('/users/', status_code=303)
+    if user_obj.role == 'admin' and _active_admin_count(db) <= 1:
+        return RedirectResponse('/users/?bulk_message=Không thể archive admin cuối cùng', status_code=303)
     user_obj.is_active = False
+    db.commit()
+    log_audit(db, actor=current_user.username if current_user else None, module='users', action='archive', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username})
     db.commit()
     return RedirectResponse('/users/', status_code=303)
 
@@ -218,7 +255,73 @@ def user_restore(user_id: int, request: Request, db: Session = Depends(get_db), 
         return RedirectResponse('/users/', status_code=303)
     user_obj.is_active = True
     db.commit()
+    log_audit(db, actor=current_user.username if current_user else None, module='users', action='restore', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username})
+    db.commit()
     return RedirectResponse('/users/', status_code=303)
+
+
+@router.post('/bulk-archive')
+@require_permission('can_manage_users')
+def user_bulk_archive(request: Request, user_ids: str = Form(default=''), confirm_text: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    if confirm_text.strip().upper() != 'ARCHIVE':
+        return RedirectResponse('/users/?bulk_message=Xác nhận không hợp lệ', status_code=303)
+
+    ids = _parse_user_ids(user_ids)
+    items = db.scalars(select(User).where(User.id.in_(ids))).all() if ids else []
+    active_admins_remaining = _active_admin_count(db)
+    success = 0
+    blocked = 0
+    details: list[str] = []
+
+    for user_obj in items:
+        if not user_obj.is_active:
+            blocked += 1
+            details.append(f'{user_obj.username}: đã archive trước đó')
+            continue
+        if current_user and current_user.id == user_obj.id:
+            blocked += 1
+            details.append(f'{user_obj.username}: không thể tự archive tài khoản đang đăng nhập')
+            log_audit(db, actor=current_user.username if current_user else None, module='users', action='bulk_archive', entity_type='user', entity_id=user_obj.id, result='skipped', reason='self_archive_blocked', metadata={'username': user_obj.username})
+            continue
+        if user_obj.role == 'admin' and active_admins_remaining <= 1:
+            blocked += 1
+            details.append(f'{user_obj.username}: không thể archive admin cuối cùng')
+            log_audit(db, actor=current_user.username if current_user else None, module='users', action='bulk_archive', entity_type='user', entity_id=user_obj.id, result='skipped', reason='last_admin_blocked', metadata={'username': user_obj.username})
+            continue
+        user_obj.is_active = False
+        success += 1
+        if user_obj.role == 'admin':
+            active_admins_remaining -= 1
+        log_audit(db, actor=current_user.username if current_user else None, module='users', action='bulk_archive', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username})
+
+    db.commit()
+    params = _build_bulk_feedback(request, success=success, blocked=blocked, message='Đã xử lý archive hàng loạt tài khoản', details=details)
+    query = '&'.join(f'{k}={v}' for k, v in params.items())
+    return RedirectResponse(f"/users/{'?' + query if query else ''}", status_code=303)
+
+
+@router.post('/bulk-restore')
+@require_permission('can_manage_users')
+def user_bulk_restore(request: Request, user_ids: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+    ids = _parse_user_ids(user_ids)
+    items = db.scalars(select(User).where(User.id.in_(ids))).all() if ids else []
+    restored = 0
+    blocked = 0
+    details: list[str] = []
+
+    for user_obj in items:
+        if user_obj.is_active:
+            blocked += 1
+            details.append(f'{user_obj.username}: đang active')
+            continue
+        user_obj.is_active = True
+        restored += 1
+        log_audit(db, actor=current_user.username if current_user else None, module='users', action='bulk_restore', entity_type='user', entity_id=user_obj.id, metadata={'username': user_obj.username})
+
+    db.commit()
+    params = _build_bulk_feedback(request, restored=restored, blocked=blocked, message='Đã khôi phục hàng loạt tài khoản', details=details)
+    query = '&'.join(f'{k}={v}' for k, v in params.items())
+    return RedirectResponse(f"/users/{'?' + query if query else ''}", status_code=303)
 
 
 @router.get('/change-password', response_class=HTMLResponse)

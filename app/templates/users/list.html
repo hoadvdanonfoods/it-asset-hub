@@ -12,11 +12,37 @@
   </a>
 </div>
 
+{% set bulk_message = request.query_params.get('bulk_message') %}
+{% set bulk_success = request.query_params.get('bulk_success') %}
+{% set bulk_restored = request.query_params.get('bulk_restored') %}
+{% set bulk_blocked = request.query_params.get('bulk_blocked') %}
+{% set bulk_details = request.query_params.get('bulk_details') %}
+
+{% if bulk_message or bulk_success or bulk_restored or bulk_blocked %}
+<div class="mb-6 bg-sky-500/10 border border-sky-500/20 text-sky-700 px-6 py-4 rounded-2xl font-medium shadow-sm">
+  <div class="flex items-start gap-3">
+    <i data-lucide="info" class="w-5 h-5 mt-0.5"></i>
+    <div>
+      <div class="font-bold">{{ bulk_message or 'Kết quả xử lý hàng loạt' }}</div>
+      <div class="text-sm mt-1">
+        {% if bulk_success %}<span class="mr-3">Archive: <strong>{{ bulk_success }}</strong></span>{% endif %}
+        {% if bulk_restored %}<span class="mr-3">Khôi phục: <strong>{{ bulk_restored }}</strong></span>{% endif %}
+        {% if bulk_blocked %}<span>Bị chặn: <strong>{{ bulk_blocked }}</strong></span>{% endif %}
+      </div>
+      {% if bulk_details %}
+      <div class="text-xs mt-2 text-sky-800/80 leading-5">{{ bulk_details.replace(' || ', ' • ') }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
 <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
   <div class="overflow-x-auto custom-scrollbar">
     <table class="w-full text-left text-sm text-on-surface">
       <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
         <tr>
+          <th class="px-6 py-5 w-12 text-center"><input type="checkbox" id="selectAllRows" class="rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer"></th>
           <th class="px-6 py-5 w-16 text-center">STT</th>
           <th class="px-6 py-5 min-w-[180px]">Tài khoản</th>
           <th class="px-6 py-5 min-w-[200px]">Họ tên</th>
@@ -29,6 +55,9 @@
       <tbody class="divide-y divide-outline-variant/5">
         {% for u in users %}
         <tr class="hover:bg-purple-500/5 transition-all duration-200 group">
+          <td class="px-6 py-5 text-center">
+            <input type="checkbox" value="{{ u.id }}" class="row-checkbox rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer">
+          </td>
           <td class="px-6 py-5 text-center">
             <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-purple-500/10 group-hover:text-purple-600 transition-colors">
               {{ loop.index }}
@@ -104,4 +133,172 @@
   </div>
   {% endif %}
 </div>
+
+<div id="bulkActionBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 transform translate-y-32 opacity-0 flex items-center gap-6 bg-on-surface px-8 py-4 rounded-2xl shadow-2xl border border-white/10 z-50 transition-all duration-500 pointer-events-none">
+  <div class="flex flex-col">
+    <span class="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">Đã chọn</span>
+    <span class="text-white text-xl font-extrabold headline leading-none"><span id="selectedCountBar">0</span> <span class="text-xs font-medium opacity-60 ml-1">user</span></span>
+  </div>
+  <div class="h-8 w-px bg-white/10"></div>
+  <div class="flex flex-col gap-1 min-w-[220px]">
+    <div class="text-[10px] text-white/40 font-bold uppercase tracking-widest">Thao tác nhanh</div>
+    <div class="text-xs text-white/80 font-medium">Archive hoặc khôi phục hàng loạt theo quyền hiện tại</div>
+  </div>
+  <div class="h-8 w-px bg-white/10"></div>
+  <div class="flex items-center gap-3">
+    <button type="button" id="openBulkArchive" class="flex items-center gap-2 bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-amber-500 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="archive" class="w-4 h-4"></i> Archive
+    </button>
+    <button type="button" id="openBulkRestore" class="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-emerald-500 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="refresh-cw" class="w-4 h-4"></i> Restore
+    </button>
+    <button type="button" id="cancelSelection" class="text-white/60 hover:text-white px-4 py-2 text-sm font-bold transition-colors cursor-pointer">Hủy chọn</button>
+  </div>
+</div>
+
+<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkArchiveModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-amber-500/20">
+      <form action="/users/bulk-archive" method="POST" id="bulkArchiveForm">
+        <input type="hidden" name="user_ids" id="bulkArchiveUserIds">
+        <div class="bg-amber-500/5 px-6 py-4 border-b border-amber-500/10">
+          <h3 class="text-lg font-bold text-amber-600 headline">Archive hàng loạt tài khoản</h3>
+          <p class="text-xs text-on-surface/60">Đưa <span id="archiveCountDisplay" class="font-bold text-amber-600">0</span> tài khoản đã chọn về trạng thái archived</p>
+        </div>
+        <div class="px-6 py-6 space-y-4">
+          <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+            <p class="text-[11px] text-amber-700 leading-relaxed font-medium">
+              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline mr-1"></i>
+              Hệ thống sẽ tự chặn archive chính bạn và chặn archive admin cuối cùng để tránh khóa hệ thống.
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ lớn</label>
+            <input type="text" name="confirm_text" placeholder="Nhập chữ ARCHIVE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-amber-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 text-on-surface transition-all">
+          </div>
+        </div>
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkArchiveModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-amber-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-amber-500 transition-all shadow-lg cursor-pointer">Đồng ý Archive</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="bulkRestoreModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkRestoreModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-emerald-500/20">
+      <form action="/users/bulk-restore" method="POST" id="bulkRestoreForm">
+        <input type="hidden" name="user_ids" id="bulkRestoreUserIds">
+        <div class="bg-emerald-500/5 px-6 py-4 border-b border-emerald-500/10">
+          <h3 class="text-lg font-bold text-emerald-600 headline">Khôi phục hàng loạt tài khoản</h3>
+          <p class="text-xs text-on-surface/60">Khôi phục <span id="restoreCountDisplay" class="font-bold text-emerald-600">0</span> tài khoản đã chọn về trạng thái active</p>
+        </div>
+        <div class="px-6 py-6 space-y-4">
+          <p class="text-sm text-on-surface font-medium">Bạn có chắc chắn muốn kích hoạt lại các tài khoản đã chọn không?</p>
+        </div>
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkRestoreModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-emerald-500 transition-all shadow-lg cursor-pointer">Khôi phục</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const selectAll = document.getElementById('selectAllRows');
+  const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+  const bulkActionBar = document.getElementById('bulkActionBar');
+  const selectedCountBar = document.getElementById('selectedCountBar');
+  const cancelSelection = document.getElementById('cancelSelection');
+  const openBulkArchive = document.getElementById('openBulkArchive');
+  const openBulkRestore = document.getElementById('openBulkRestore');
+  const bulkArchiveModal = document.getElementById('bulkArchiveModal');
+  const bulkRestoreModal = document.getElementById('bulkRestoreModal');
+  const bulkArchiveBackdrop = document.getElementById('bulkArchiveModalBackdrop');
+  const bulkRestoreBackdrop = document.getElementById('bulkRestoreModalBackdrop');
+  const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
+  const closeBulkRestoreModal = document.getElementById('closeBulkRestoreModal');
+  const bulkArchiveUserIds = document.getElementById('bulkArchiveUserIds');
+  const bulkRestoreUserIds = document.getElementById('bulkRestoreUserIds');
+  const archiveCountDisplay = document.getElementById('archiveCountDisplay');
+  const restoreCountDisplay = document.getElementById('restoreCountDisplay');
+
+  function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+  }
+
+  function updateBulkBar() {
+    const ids = getSelectedIds();
+    const count = ids.length;
+    if (count > 0) {
+      selectedCountBar.textContent = count;
+      bulkActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+    } else {
+      bulkActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
+    }
+  }
+
+  function closeModals() {
+    bulkArchiveModal.classList.add('hidden');
+    bulkRestoreModal.classList.add('hidden');
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('change', function() {
+      rowCheckboxes.forEach(cb => cb.checked = selectAll.checked);
+      updateBulkBar();
+    });
+  }
+
+  rowCheckboxes.forEach(cb => {
+    cb.addEventListener('change', function() {
+      if (selectAll) selectAll.checked = Array.from(rowCheckboxes).every(c => c.checked);
+      updateBulkBar();
+    });
+  });
+
+  if (cancelSelection) {
+    cancelSelection.addEventListener('click', function() {
+      rowCheckboxes.forEach(cb => cb.checked = false);
+      if (selectAll) selectAll.checked = false;
+      updateBulkBar();
+    });
+  }
+
+  if (openBulkArchive) {
+    openBulkArchive.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      bulkArchiveUserIds.value = ids.join(',');
+      archiveCountDisplay.textContent = ids.length;
+      bulkArchiveModal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
+  if (openBulkRestore) {
+    openBulkRestore.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      bulkRestoreUserIds.value = ids.join(',');
+      restoreCountDisplay.textContent = ids.length;
+      bulkRestoreModal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
+  if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModals);
+  if (closeBulkRestoreModal) closeBulkRestoreModal.addEventListener('click', closeModals);
+  if (bulkArchiveBackdrop) bulkArchiveBackdrop.addEventListener('click', closeModals);
+  if (bulkRestoreBackdrop) bulkRestoreBackdrop.addEventListener('click', closeModals);
+});
+</script>
 {% endblock %}

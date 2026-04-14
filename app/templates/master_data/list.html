@@ -2,6 +2,11 @@
 {% block title %}{{ config.label }} - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
 
 {% block content %}
+{% set bulk_message = request.query_params.get('bulk_message') %}
+{% set bulk_success = request.query_params.get('bulk_success') %}
+{% set bulk_blocked = request.query_params.get('bulk_blocked') %}
+{% set bulk_details = request.query_params.get('bulk_details') %}
+
 <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
   <div>
     <div class="flex items-center gap-2 text-primary/70 text-xs font-bold uppercase tracking-widest mb-2">
@@ -23,6 +28,24 @@
     </button>
   </div>
 </div>
+
+{% if bulk_message or bulk_success or bulk_blocked %}
+<div class="mb-6 bg-sky-500/10 border border-sky-500/20 text-sky-700 px-6 py-4 rounded-2xl font-medium shadow-sm">
+  <div class="flex items-start gap-3">
+    <i data-lucide="info" class="w-5 h-5 mt-0.5"></i>
+    <div>
+      <div class="font-bold">{{ bulk_message or 'Kết quả xử lý hàng loạt' }}</div>
+      <div class="text-sm mt-1">
+        {% if bulk_success %}<span class="mr-3">Thành công: <strong>{{ bulk_success }}</strong></span>{% endif %}
+        {% if bulk_blocked %}<span>Bị chặn: <strong>{{ bulk_blocked }}</strong></span>{% endif %}
+      </div>
+      {% if bulk_details %}
+      <div class="text-xs mt-2 text-sky-800/80 leading-5">{{ bulk_details.replace(' || ', ' • ') }}</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
   <div class="px-6 py-4 border-b border-outline-variant/10 bg-surface-container-low/30 flex items-center justify-between gap-4">
@@ -103,7 +126,7 @@
   <div class="h-8 w-px bg-white/10"></div>
   <div class="flex flex-col gap-1 min-w-[220px]">
     <div class="text-[10px] text-white/40 font-bold uppercase tracking-widest">Chế độ tác động</div>
-    <div class="text-xs text-white/80 font-medium">Chỉ field bạn nhập mới được cập nhật</div>
+    <div class="text-xs text-white/80 font-medium">{% if model_name == 'employees' %}Inactive hàng loạt sẽ tự chặn nhân sự còn giữ tài sản{% else %}Chỉ field bạn nhập mới được cập nhật{% endif %}</div>
   </div>
   <div class="h-8 w-px bg-white/10"></div>
   <div class="flex items-center gap-3">
@@ -182,7 +205,7 @@
           <div class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
             <p class="text-[11px] text-rose-700 leading-relaxed font-medium">
               <i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline mr-1"></i>
-              Hành động này sẽ cập nhật các bản ghi đã chọn thành inactive (`is_active = false`).
+              {% if model_name == 'employees' %}Hành động này sẽ chuyển nhân sự sang inactive, nhưng hệ thống sẽ chặn những người còn đang giữ tài sản để tránh làm sai dữ liệu bàn giao.{% else %}Hành động này sẽ cập nhật các bản ghi đã chọn thành inactive (`is_active = false`).{% endif %}
             </p>
           </div>
 
