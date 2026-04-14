@@ -15,6 +15,7 @@ DEFAULT_DATABASE_URL = f'sqlite:///{DEFAULT_DB_PATH}'
 
 APP_NAME = os.getenv('APP_NAME', 'IT Asset Hub')
 APP_VERSION = os.getenv('APP_VERSION', 'V2')
+IS_PRODUCTION = os.getenv('IS_PRODUCTION', 'false').lower() == 'true'
 SECRET_KEY = os.getenv('SECRET_KEY', 'it-asset-hub-local-secret')
 APP_HOST = os.getenv('APP_HOST', '127.0.0.1')
 APP_PORT = int(os.getenv('APP_PORT', '8010'))
@@ -23,7 +24,9 @@ DATABASE_URL = os.getenv('DATABASE_URL', DEFAULT_DATABASE_URL)
 SESSION_COOKIE_NAME = os.getenv('SESSION_COOKIE_NAME', 'session')
 SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE_SECURE', 'false').lower() == 'true'
 SESSION_COOKIE_SAMESITE = os.getenv('SESSION_COOKIE_SAMESITE', 'lax')
-IS_PRODUCTION = os.getenv('IS_PRODUCTION', 'false').lower() == 'true'
+SESSION_MAX_AGE_SECONDS = int(os.getenv('SESSION_MAX_AGE_SECONDS', '28800'))
+LOGIN_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv('LOGIN_RATE_LIMIT_WINDOW_SECONDS', '900'))
+LOGIN_RATE_LIMIT_MAX_ATTEMPTS = int(os.getenv('LOGIN_RATE_LIMIT_MAX_ATTEMPTS', '5'))
 DEFAULT_ADMIN_USERNAME = os.getenv('DEFAULT_ADMIN_USERNAME', 'admin')
 DEFAULT_ADMIN_PASSWORD = os.getenv('DEFAULT_ADMIN_PASSWORD', 'admin123')
 AUTO_CREATE_DEFAULT_ADMIN = os.getenv('AUTO_CREATE_DEFAULT_ADMIN', 'true').lower() == 'true'
@@ -33,3 +36,6 @@ AUTO_BACKFILL_ASSET_EVENTS = os.getenv('AUTO_BACKFILL_ASSET_EVENTS', 'true').low
 ZALO_BOT_URL = os.getenv('ZALO_BOT_URL', '')
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '')
 ZALO_NOTIFICATION_TARGET = os.getenv('ZALO_NOTIFICATION_TARGET', '')
+
+if IS_PRODUCTION and SECRET_KEY == 'it-asset-hub-local-secret':
+    raise RuntimeError('SECRET_KEY must be set in production and must not use the local default secret')

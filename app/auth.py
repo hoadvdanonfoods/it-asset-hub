@@ -1,18 +1,19 @@
 import asyncio
+import time
 from functools import wraps
 from typing import Callable
 
 from fastapi import Request
 from fastapi.responses import RedirectResponse
-from itsdangerous import URLSafeSerializer
+from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import select
 
-from app.config import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, SESSION_COOKIE_NAME, SECRET_KEY
+from app.config import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, SESSION_COOKIE_NAME, SECRET_KEY, SESSION_MAX_AGE_SECONDS
 from app.db.models import User
 from app.db.session import SessionLocal
 from app.security import verify_password
 
-serializer = URLSafeSerializer(SECRET_KEY, salt='session')
+serializer = URLSafeTimedSerializer(SECRET_KEY, salt='session')
 PERMISSION_FIELD_BY_MODULE = {
     'dashboard': 'can_view_dashboard',
     'assets': 'can_view_assets',
@@ -30,7 +31,7 @@ def get_current_user(request: Request):
     if not cookie:
         return None
     try:
-        data = serializer.loads(cookie)
+        data = serializer.loads(cookie, max_age=SESSION_MAX_AGE_SECONDS)
         username = data.get('username')
     except Exception:
         return None
@@ -42,6 +43,28 @@ def get_current_user(request: Request):
         return user
     finally:
         db.close()
+
+
+def build_session_token(user: User) -> str:
+    return serializer.dumps({'username': user.username, 'issued_at': int(time.time())})
+
+
+def clear_session_cookie(response: RedirectResponse) -> RedirectResponse:
+    response.delete_cookie(SESSION_COOKIE_NAME)
+    return response
+
+
+def get_session_username(request: Request) -> str | None:
+    if request is None:
+        return None
+    cookie = request.cookies.get(SESSION_COOKIE_NAME)
+    if not cookie:
+        return None
+    try:
+        data = serializer.loads(cookie, max_age=SESSION_MAX_AGE_SECONDS)
+        return data.get('username')
+    except Exception:
+        return None
 
 
 def _must_force_password_change(user: User) -> bool:
