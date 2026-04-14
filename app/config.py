@@ -42,3 +42,9 @@ if IS_PRODUCTION and SECRET_KEY == 'it-asset-hub-local-secret':
 
 if IS_PRODUCTION and not SESSION_COOKIE_SECURE:
     raise RuntimeError('SESSION_COOKIE_SECURE must be true in production')
+
+if IS_PRODUCTION and DEFAULT_ADMIN_PASSWORD == 'admin123':
+    raise RuntimeError('DEFAULT_ADMIN_PASSWORD must not use the default value in production')
+
+if IS_PRODUCTION and AUTO_CREATE_DEFAULT_ADMIN:
+    raise RuntimeError('AUTO_CREATE_DEFAULT_ADMIN must be false in production')

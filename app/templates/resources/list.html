@@ -197,11 +197,11 @@
                 
                 {% if item._decrypted_password and item._decrypted_password.strip() %}
                 <div class="flex items-center gap-1.5">
-                  <button type="button" data-password="{{ item._decrypted_password|e }}" onclick="togglePassword('pwd-{{ item.id }}', this)"
+                  <button type="button" data-resource-id="{{ item.id }}" onclick="togglePassword('pwd-{{ item.id }}', this)"
                     class="p-2 rounded-xl bg-surface-container-high/80 hover:bg-emerald-600 hover:text-white text-on-surface/40 transition-all border border-outline-variant/10 shadow-sm" title="Hiện mật khẩu">
                     <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                   </button>
-                  <button type="button" data-password="{{ item._decrypted_password|e }}" onclick="copyPassword(this)"
+                  <button type="button" data-resource-id="{{ item.id }}" onclick="copyPassword(this)"
                     class="p-2 rounded-xl bg-surface-container-high/80 hover:bg-emerald-600 hover:text-white text-on-surface/40 transition-all border border-outline-variant/10 shadow-sm" title="Sao chép mật khẩu">
                     <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                   </button>
@@ -274,29 +274,49 @@
 {% endif %}
 
 <script>
-function togglePassword(targetId, btn) {
+async function fetchResourcePassword(resourceId) {
+  const response = await fetch(`/resources/${resourceId}/password`, {
+    credentials: 'same-origin',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+  });
+  if (!response.ok) {
+    throw new Error('Không thể lấy mật khẩu');
+  }
+  const data = await response.json();
+  return data.password || '';
+}
+
+async function togglePassword(targetId, btn) {
   const el = document.getElementById(targetId);
   const hidden = '••••••••';
-  const value = btn.getAttribute('data-password') || '';
   const isCurrentlyHidden = el.textContent.trim() === hidden;
-  
-  if (isCurrentlyHidden) { 
-    el.textContent = value; 
-    btn.innerHTML = '<i data-lucide="eye-off" class="w-3.5 h-3.5"></i>'; 
-    el.classList.add('text-emerald-700', 'bg-emerald-50', 'border-emerald-500/20');
-    el.classList.remove('text-on-surface/40', 'bg-surface-container-high/50');
-  } else { 
-    el.textContent = hidden; 
-    btn.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5"></i>'; 
+
+  if (isCurrentlyHidden) {
+    try {
+      const value = await fetchResourcePassword(btn.getAttribute('data-resource-id'));
+      el.textContent = value || '-';
+      btn.innerHTML = '<i data-lucide="eye-off" class="w-3.5 h-3.5"></i>';
+      el.classList.add('text-emerald-700', 'bg-emerald-50', 'border-emerald-500/20');
+      el.classList.remove('text-on-surface/40', 'bg-surface-container-high/50');
+    } catch (error) {
+      alert('Không thể lấy mật khẩu lúc này');
+    }
+  } else {
+    el.textContent = hidden;
+    btn.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5"></i>';
     el.classList.remove('text-emerald-700', 'bg-emerald-50', 'border-emerald-500/20');
     el.classList.add('text-on-surface/40', 'bg-surface-container-high/50');
   }
   lucide.createIcons();
 }
-function copyPassword(btn) {
-  const value = btn.getAttribute('data-password') || '';
-  if (!value) return;
-  copyToClipboard(value, btn);
+async function copyPassword(btn) {
+  try {
+    const value = await fetchResourcePassword(btn.getAttribute('data-resource-id'));
+    if (!value) return;
+    copyToClipboard(value, btn);
+  } catch (error) {
+    alert('Không thể sao chép mật khẩu lúc này');
+  }
 }
 function copyToClipboard(text, btn) {
   navigator.clipboard.writeText(text).then(() => {

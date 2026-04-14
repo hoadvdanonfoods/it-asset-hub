@@ -30,6 +30,13 @@ def _render_import_page(request: Request, current_user, *, error: str | None = N
     return templates.TemplateResponse('resources/import.html', {'request': request, 'current_user': current_user, 'error': error, 'summary': summary})
 
 
+def _client_ip(request: Request) -> str:
+    forwarded_for = request.headers.get('x-forwarded-for', '').split(',')[0].strip()
+    if forwarded_for:
+        return forwarded_for
+    return request.client.host if request.client else 'unknown'
+
+
 def _normalize_ip(value) -> str | None:
     if value is None:
         return None
@@ -216,6 +223,8 @@ def resource_list(request: Request, q: str | None = Query(default=None), categor
 @router.get('/export')
 @require_permission('can_manage_resources')
 def resource_export(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    log_audit(db, actor=current_user.username if current_user else None, module='resources', action='export', entity_type='resource', entity_id=None, metadata={'q': q or None, 'category': category or None, 'ip': _client_ip(request)})
+    db.commit()
     items = _filtered_resources(db, q=q, category=category)
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -307,6 +316,18 @@ def resource_update(resource_id: int, request: Request, title: str = Form(...), 
     item.is_active = is_active == 'true'
     db.commit()
     return RedirectResponse('/resources/', status_code=303)
+
+
+@router.get('/{resource_id}/password')
+@require_permission('can_manage_resources')
+def resource_password(resource_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
+    item = db.get(Resource, resource_id)
+    if not item or not item.is_active:
+        return Response(status_code=404)
+    password_value = decrypt_resource_password(item.password_hint)
+    log_audit(db, actor=current_user.username if current_user else None, module='resources', action='view_password', entity_type='resource', entity_id=item.id, metadata={'title': item.title, 'ip': _client_ip(request)})
+    db.commit()
+    return Response(content=json.dumps({'password': password_value or ''}, ensure_ascii=False), media_type='application/json')
 
 
 @router.post('/{resource_id}/archive')
