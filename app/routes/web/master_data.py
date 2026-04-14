@@ -44,7 +44,7 @@ MODEL_CONFIG = {
         'columns': [
             {'key': 'employee_code', 'label': 'Mã nhân viên', 'type': 'text', 'required': True, 'placeholder': 'VD: NV001'},
             {'key': 'full_name', 'label': 'Họ và tên', 'type': 'text', 'required': True, 'placeholder': 'Nguyễn Văn A'},
-            {'key': 'department_id', 'label': 'ID phòng ban', 'type': 'number', 'placeholder': 'VD: 1'},
+            {'key': 'department_id', 'label': 'Phòng ban', 'type': 'select', 'placeholder': 'Chọn phòng ban', 'options_source': 'departments', 'option_value': 'id', 'option_label': 'name'},
             {'key': 'title', 'label': 'Chức danh', 'type': 'text', 'placeholder': 'VD: IT Support'},
             {'key': 'email', 'label': 'Email', 'type': 'email', 'placeholder': 'name@company.com'},
             {'key': 'phone', 'label': 'Số điện thoại', 'type': 'text', 'placeholder': '090xxxxxxx'},
@@ -52,6 +52,7 @@ MODEL_CONFIG = {
             {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['employee_code', 'full_name', 'department_id', 'title', 'email', 'phone', 'is_active'],
+        'table_display': {'department_id': 'department_name'},
         'unique_field': 'employee_code',
     },
     'asset_types': {
@@ -197,6 +198,27 @@ def _get_config(model_name: str):
     return MODEL_CONFIG.get(model_name)
 
 
+def _get_form_options(db: Session, config):
+    options = {}
+    sources = {
+        'departments': db.scalars(select(Department).where(Department.is_active == True).order_by(Department.name.asc())).all(),  # noqa: E712
+        'employees': db.scalars(select(Employee).where(Employee.is_active == True).order_by(Employee.full_name.asc())).all(),  # noqa: E712
+        'locations': db.scalars(select(Location).where(Location.is_active == True).order_by(Location.name.asc())).all(),  # noqa: E712
+        'asset_types': db.scalars(select(AssetType).where(AssetType.is_active == True).order_by(AssetType.name.asc())).all(),  # noqa: E712
+        'asset_categories': db.scalars(select(AssetCategory).where(AssetCategory.is_active == True).order_by(AssetCategory.name.asc())).all(),  # noqa: E712
+        'asset_statuses': db.scalars(select(AssetStatus).where(AssetStatus.is_active == True).order_by(AssetStatus.sort_order.asc(), AssetStatus.name.asc())).all(),  # noqa: E712
+        'vendors': db.scalars(select(Vendor).where(Vendor.is_active == True).order_by(Vendor.name.asc())).all(),  # noqa: E712
+        'priorities': db.scalars(select(Priority).where(Priority.is_active == True).order_by(Priority.sort_order.asc(), Priority.name.asc())).all(),  # noqa: E712
+        'incident_categories': db.scalars(select(IncidentCategory).where(IncidentCategory.is_active == True).order_by(IncidentCategory.name.asc())).all(),  # noqa: E712
+        'maintenance_types': db.scalars(select(MaintenanceType).where(MaintenanceType.is_active == True).order_by(MaintenanceType.name.asc())).all(),  # noqa: E712
+    }
+    for field in config['columns']:
+        source_name = field.get('options_source')
+        if source_name:
+            options[field['key']] = sources.get(source_name, [])
+    return options
+
+
 def _parse_form_data(request_form, config):
     data = {}
     for field in config['columns']:
@@ -247,6 +269,10 @@ async def list_model(request: Request, model_name: str, current_user=None, db: S
     if not config:
         return RedirectResponse('/', status_code=303)
     items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
+    if model_name == 'employees':
+        department_lookup = {dept.id: dept.name for dept in db.scalars(select(Department)).all()}
+        for item in items:
+            item.department_name = department_lookup.get(getattr(item, 'department_id', None), '')
     return templates.TemplateResponse(
         'master_data/list.html',
         {
@@ -255,6 +281,7 @@ async def list_model(request: Request, model_name: str, current_user=None, db: S
             'model_name': model_name,
             'config': config,
             'items': items,
+            'field_options': _get_form_options(db, config),
             'p': '/master-data/' + model_name,
         },
     )

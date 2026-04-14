@@ -101,6 +101,8 @@
                 <i data-lucide="archive" class="w-3 h-3"></i>Inactive
               </span>
               {% endif %}
+            {% elif config.table_display and config.table_display.get(col_key) and item|attr(config.table_display.get(col_key)) %}
+              <span class="{% if loop.first %}font-bold text-on-surface{% else %}text-on-surface/70{% endif %}">{{ item|attr(config.table_display.get(col_key)) }}</span>
             {% elif value %}
               <span class="{% if loop.first %}font-bold text-on-surface{% else %}text-on-surface/70{% endif %}">{{ value }}</span>
             {% else %}
@@ -180,6 +182,13 @@
                 <option value="">-- Không thay đổi --</option>
                 <option value="true">Active</option>
                 <option value="false">Inactive</option>
+              </select>
+            {% elif field.type == 'select' %}
+              <select name="{{ field.key }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+                <option value="">-- Không thay đổi --</option>
+                {% for option in field_options.get(field.key, []) %}
+                <option value="{{ option|attr(field.option_value or 'id') }}">{{ option|attr(field.option_label or 'name') }}{% if option.code is defined and option.code %} ({{ option.code }}){% endif %}</option>
+                {% endfor %}
               </select>
             {% else %}
               <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="{{ field.key }}" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
@@ -262,6 +271,16 @@
               </div>
             </label>
           </div>
+          {% elif field.type == 'select' %}
+          <div>
+            <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}{% if field.required %} <span class="text-rose-500">*</span>{% endif %}</label>
+            <select name="{{ field.key }}" {% if field.required %}required{% endif %} class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+              <option value="">-- {{ field.placeholder or ('Chọn ' ~ field.label|lower) }} --</option>
+              {% for option in field_options.get(field.key, []) %}
+              <option value="{{ option|attr(field.option_value or 'id') }}">{{ option|attr(field.option_label or 'name') }}{% if option.code is defined and option.code %} ({{ option.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
           {% else %}
           <div>
             <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}{% if field.required %} <span class="text-rose-500">*</span>{% endif %}</label>
@@ -308,6 +327,16 @@
                 <div class="text-xs text-on-surface/40">Bật/tắt trạng thái hiển thị của bản ghi.</div>
               </div>
             </label>
+          </div>
+          {% elif field.type == 'select' %}
+          <div>
+            <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">{{ field.label }}{% if field.required %} <span class="text-rose-500">*</span>{% endif %}</label>
+            <select name="{{ field.key }}" {% if field.required %}required{% endif %} class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+              <option value="">-- {{ field.placeholder or ('Chọn ' ~ field.label|lower) }} --</option>
+              {% for option in field_options.get(field.key, []) %}
+              <option value="{{ option|attr(field.option_value or 'id') }}" {% if value == option|attr(field.option_value or 'id') %}selected{% endif %}>{{ option|attr(field.option_label or 'name') }}{% if option.code is defined and option.code %} ({{ option.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
           </div>
           {% else %}
           <div>
