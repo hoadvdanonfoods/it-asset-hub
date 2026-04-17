@@ -46,6 +46,19 @@
 </div>
 {% endif %}
 
+<div class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10 mb-4">
+  <form method="get" class="flex gap-3">
+    <div class="relative flex-1">
+      <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
+      <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên đăng nhập hoặc họ tên..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-on-surface placeholder:text-on-surface/40">
+    </div>
+    <button type="submit" class="bg-on-surface text-surface-container-lowest font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-on-surface/80 transition-colors shadow-sm cursor-pointer">Tìm</button>
+    {% if q %}
+    <a href="/users/" class="flex items-center px-3.5 bg-surface-container-highest text-on-surface/60 rounded-xl hover:bg-outline-variant/30 transition-colors border border-outline-variant/20" title="Xóa bộ lọc"><i data-lucide="x" class="w-4 h-4"></i></a>
+    {% endif %}
+  </form>
+</div>
+
 <div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
   <div class="overflow-x-auto custom-scrollbar">
     <table class="w-full text-left text-sm text-on-surface">

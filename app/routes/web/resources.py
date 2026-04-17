@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import openpyxl
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_module_access, require_permission
@@ -187,14 +187,17 @@ def _import_resource_rows(db: Session, rows: list[dict]):
 
 
 
-def _filtered_resources(db: Session, q: str | None = None, category: str | None = None):
+def _resource_base_stmt(q: str | None = None, category: str | None = None):
     stmt = select(Resource).where(Resource.is_active == True)  # noqa: E712
     if q:
         like = f'%{q.strip()}%'
-        stmt = stmt.where(or_(Resource.title.ilike(like), Resource.url.ilike(like), Resource.note.ilike(like), Resource.username_hint.ilike(like), Resource.password_hint.ilike(like)))
+        stmt = stmt.where(or_(Resource.title.ilike(like), Resource.url.ilike(like), Resource.note.ilike(like), Resource.username_hint.ilike(like)))
     if category:
         stmt = stmt.where(Resource.category == category)
-    items = db.scalars(stmt.order_by(Resource.category.asc(), Resource.title.asc())).all()
+    return stmt.order_by(Resource.category.asc(), Resource.title.asc())
+
+
+def _decrypt_page(db: Session, items):
     dirty = False
     for item in items:
         if item.password_hint and not item.password_hint.startswith('aes:'):
@@ -206,18 +209,23 @@ def _filtered_resources(db: Session, q: str | None = None, category: str | None 
     return items
 
 
+def _filtered_resources(db: Session, q: str | None = None, category: str | None = None):
+    """Load all matching resources — dùng cho export."""
+    items = db.scalars(_resource_base_stmt(q, category)).all()
+    return _decrypt_page(db, items)
+
+
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('resources')
-def resource_list(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), page: int = Query(default=1), db: Session = Depends(get_db), current_user=None):
-    all_items = _filtered_resources(db, q=q, category=category)
-    total_items = len(all_items)
+def resource_list(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), page: int = Query(default=1), success: str | None = Query(default=None), skipped: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    base = _resource_base_stmt(q, category)
+    total_items = db.scalar(select(func.count()).select_from(base.subquery())) or 0
     total_pages = max(1, math.ceil(total_items / PAGE_SIZE))
     page = max(1, min(page, total_pages))
-    start = (page - 1) * PAGE_SIZE
-    end = start + PAGE_SIZE
-    items = all_items[start:end]
+    items = db.scalars(base.limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE)).all()
+    _decrypt_page(db, items)
     categories = db.scalars(select(Resource.category).where(Resource.category.is_not(None)).distinct().order_by(Resource.category.asc())).all()
-    return templates.TemplateResponse('resources/list.html', {'request': request, 'items': items, 'categories': categories, 'q': q or '', 'category': category or '', 'current_user': current_user, 'page': page, 'total_pages': total_pages, 'total_items': total_items})
+    return templates.TemplateResponse('resources/list.html', {'request': request, 'items': items, 'categories': categories, 'q': q or '', 'category': category or '', 'current_user': current_user, 'page': page, 'total_pages': total_pages, 'total_items': total_items, 'success': success, 'skipped': skipped})
 
 
 @router.get('/export')

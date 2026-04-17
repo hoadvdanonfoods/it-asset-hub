@@ -69,24 +69,36 @@ def _maintenance_master_context(db: Session):
     }
 
 
-def _filtered_maintenance(db: Session, technician: str | None = None, asset_code: str | None = None):
-    stmt = select(Maintenance).join(Asset, isouter=True).order_by(Maintenance.maintenance_date.desc())
+def _filtered_maintenance(db: Session, technician: str | None = None, asset_code: str | None = None, maintenance_type: str | None = None, due_state: str | None = None):
+    stmt = select(Maintenance).join(Asset, isouter=True)
     if technician:
         stmt = stmt.where(Maintenance.technician.ilike(f"%{technician.strip()}%"))
     if asset_code:
         stmt = stmt.where(Asset.asset_code.ilike(f"%{asset_code.strip()}%"))
-    return db.scalars(stmt).all()
+    if maintenance_type:
+        stmt = stmt.join(MaintenanceType, Maintenance.maintenance_type_id == MaintenanceType.id, isouter=True)
+        stmt = stmt.where(MaintenanceType.name.ilike(f'%{maintenance_type.strip()}%'))
+    if due_state:
+        today = date.today()
+        upcoming = today + timedelta(days=7)
+        if due_state == 'overdue':
+            stmt = stmt.where(Maintenance.next_maintenance_date.is_not(None), Maintenance.next_maintenance_date < today)
+        elif due_state == 'upcoming':
+            stmt = stmt.where(Maintenance.next_maintenance_date.between(today, upcoming))
+        elif due_state == 'scheduled':
+            stmt = stmt.where(Maintenance.next_maintenance_date > upcoming)
+        elif due_state == 'unscheduled':
+            stmt = stmt.where(Maintenance.next_maintenance_date.is_(None))
+    return db.scalars(stmt.order_by(Maintenance.maintenance_date.desc())).all()
 
 
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('maintenance')
 def maintenance_list(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), maintenance_type: str | None = Query(default=None), due_state: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
-    items = [_maintenance_view_model(item) for item in _filtered_maintenance(db, technician=technician, asset_code=asset_code)]
-    if maintenance_type:
-        items = [item for item in items if (item.display_maintenance_type or '').strip().lower() == maintenance_type.strip().lower()]
-    if due_state:
-        items = [item for item in items if getattr(item, 'due_state', 'unscheduled') == due_state]
-    techs = sorted({i.technician for i in db.scalars(select(Maintenance)).all() if i.technician})
+    items = [_maintenance_view_model(item) for item in _filtered_maintenance(db, technician=technician, asset_code=asset_code, maintenance_type=maintenance_type, due_state=due_state)]
+    techs = sorted(db.scalars(
+        select(Maintenance.technician).where(Maintenance.technician.is_not(None), Maintenance.technician != '').distinct()
+    ).all())
     
     # Add first_day_of_month and today for the filter/reporting modal
     today_dt = datetime.now()
@@ -115,12 +127,8 @@ def maintenance_export(request: Request, start_date: str = Query(None), end_date
         ctx = _get_maintenance_report_context(db, start_date, end_date, technician)
         items = ctx["items"]
     else:
-        items = _filtered_maintenance(db, technician=technician, asset_code=asset_code)
+        items = _filtered_maintenance(db, technician=technician, asset_code=asset_code, maintenance_type=maintenance_type, due_state=due_state)
     items = [_maintenance_view_model(item) for item in items]
-    if maintenance_type:
-        items = [item for item in items if (item.display_maintenance_type or '').strip().lower() == maintenance_type.strip().lower()]
-    if due_state:
-        items = [item for item in items if getattr(item, 'due_state', 'unscheduled') == due_state]
         
     wb = openpyxl.Workbook()
     ws = wb.active

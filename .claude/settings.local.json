@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs wc *)",
+      "Bash(git -C /c/Users/Administrator/Desktop/it-asset-hub-test-app_source_clean_2026-03-31_v2_resources_export_import_fix log --oneline)",
+      "Bash(.venv/Scripts/python -m uvicorn app.main:app --host 127.0.0.1 --port 8011 --reload)",
+      "Bash(venv/Scripts/python --version)",
+      "Bash(venv/Scripts/python -c \"import uvicorn; print\\('uvicorn ok'\\)\")"
+    ]
+  }
+}

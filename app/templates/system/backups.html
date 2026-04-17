@@ -3,20 +3,26 @@
 
 {% block content %}
 {% if not is_sqlite %}
-<div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-4 shadow-sm">
-  <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0">
-    <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-600"></i>
+<div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl flex items-start gap-4 shadow-sm">
+  <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+    <i data-lucide="database" class="w-6 h-6 text-blue-600"></i>
   </div>
   <div>
-    <h3 class="font-bold text-amber-900">Tính năng này bị giới hạn</h3>
-    <p class="text-sm text-amber-800/80 leading-relaxed">
-      Hệ thống hiện đang sử dụng <strong>PostgreSQL</strong>. Tính năng Backup tự động qua giao diện web chỉ hỗ trợ <strong>SQLite</strong>. 
-      Vui lòng sử dụng các công cụ quản lý database chuyên dụng (như <code>pg_dump</code>) để sao lưu dữ liệu an toàn.
+    <h3 class="font-bold text-blue-900">PostgreSQL — 2 kiểu backup</h3>
+    <p class="text-sm text-blue-800/80 leading-relaxed mt-1">
+      <strong>JSON</strong>: backup thuần Python, không cần cài thêm gì, chỉ restore được trong app này.<br>
+      <strong>SQL</strong>: dùng <code>pg_dump</code>, cần cài PostgreSQL client tools, nhưng có thể restore ở bất kỳ đâu.
     </p>
   </div>
 </div>
 {% endif %}
 
+{% if success %}
+<div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-800">
+  <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0"></i>
+  <span class="text-sm font-medium">{% if success == 'restore_done' %}Restore thành công!{% else %}Backup tạo thành công!{% endif %}</span>
+</div>
+{% endif %}
 {% if error %}
 <div class="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-800">
   <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0"></i>
@@ -29,12 +35,19 @@
     <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Danh sách backup</h1>
     <p class="text-on-surface/60 mt-1">Các bản sao database đã được tạo</p>
   </div>
-  <div class="flex gap-3">
-    <form method="post" action="/system/backup" {% if not is_sqlite %}class="hidden"{% endif %}>
+  <div class="flex gap-3 flex-wrap">
+    <form method="post" action="/system/backup">
       <button type="submit" class="flex items-center gap-2 bg-primary hover:bg-primary-container shadow-lg hover:-translate-y-0.5 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
-        <i data-lucide="save" class="w-4 h-4"></i> Backup DB ngay
+        <i data-lucide="save" class="w-4 h-4"></i> {% if is_sqlite %}Backup DB ngay{% else %}Backup JSON{% endif %}
       </button>
     </form>
+    {% if not is_sqlite %}
+    <form method="post" action="/system/backup-sql">
+      <button type="submit" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 shadow-lg hover:-translate-y-0.5 text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer">
+        <i data-lucide="file-code" class="w-4 h-4"></i> Backup SQL (pg_dump)
+      </button>
+    </form>
+    {% endif %}
     <a href="/system/" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
       <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
     </a>
@@ -62,8 +75,9 @@
         <tr class="hover:bg-primary/5 transition-colors group">
           <td class="px-6 py-4">
             <div class="flex items-center gap-2 font-medium text-on-surface">
-              <i data-lucide="file-archive" class="w-4 h-4 text-primary opacity-60"></i>
+              <i data-lucide="{% if item.format == 'SQL' %}file-code{% elif item.format == 'JSON' %}file-json{% else %}file-archive{% endif %}" class="w-4 h-4 {% if item.format == 'SQL' %}text-indigo-500{% elif item.format == 'JSON' %}text-emerald-500{% else %}text-primary{% endif %} opacity-70"></i>
               {{ item.name }}
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded {% if item.format == 'SQL' %}bg-indigo-100 text-indigo-700{% elif item.format == 'JSON' %}bg-emerald-100 text-emerald-700{% else %}bg-primary/10 text-primary{% endif %}">{{ item.format }}</span>
             </div>
           </td>
           <td class="px-6 py-4 text-on-surface/60 text-xs">{{ "{:,}".format(item.size) }} bytes</td>
@@ -85,12 +99,8 @@
     <div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-4">
         <i data-lucide="{% if is_sqlite %}archive{% else %}database-zap{% endif %}" class="w-8 h-8 opacity-50"></i>
     </div>
-    {% if is_sqlite %}
     <p class="font-bold">Chưa có bản backup nào.</p>
-    {% else %}
-    <h3 class="text-on-surface font-bold mb-2">Quản trị PostgreSQL</h3>
-    <p class="text-sm text-center max-w-md px-6">Hệ thống đang chạy PostgreSQL. Các bản sao lưu nên được quản lý trực tiếp bằng công cụ của máy chủ hoặc lệnh <code>pg_dump</code>.</p>
-    {% endif %}
+    <p class="text-sm mt-1">Nhấn "{% if is_sqlite %}Backup DB ngay{% else %}Backup JSON hoặc Backup SQL{% endif %}" để tạo bản sao đầu tiên.</p>
   </div>
   {% endif %}
 </div>

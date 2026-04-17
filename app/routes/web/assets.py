@@ -1,6 +1,6 @@
 from dataclasses import asdict, dataclass
 from typing import Any
-from datetime import datetime
+from datetime import datetime, timedelta
 import base64
 import io
 import json
@@ -320,7 +320,6 @@ def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None =
     if asset_type:
         stmt = stmt.where(Asset.asset_type == asset_type)
     else:
-        # Tách biệt hoàn toàn: Loại bỏ Camera khỏi module Tài sản (quản lý riêng bên menu Checklist)
         stmt = stmt.where(Asset.asset_type != "Camera")
     if department:
         stmt = stmt.where(Asset.department == department)
@@ -328,14 +327,16 @@ def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None =
         stmt = stmt.where(Asset.status == status)
     if filter == 'missing_info':
         stmt = stmt.where(or_(Asset.serial_number.is_(None), Asset.serial_number == "", Asset.location.is_(None), Asset.location == ""))
-    assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
-    if warranty == 'expired':
-        assets = [a for a in assets if (_days_to_warranty(a) is not None and _days_to_warranty(a) < 0)]
-    elif warranty == 'expiring_30':
-        assets = [a for a in assets if (_days_to_warranty(a) is not None and 0 <= _days_to_warranty(a) <= 30)]
-    elif warranty == 'expiring_90':
-        assets = [a for a in assets if (_days_to_warranty(a) is not None and 0 <= _days_to_warranty(a) <= 90)]
-    return assets
+    if warranty:
+        today_str = datetime.utcnow().date().isoformat()
+        stmt = stmt.where(Asset.warranty_expiry.is_not(None), Asset.warranty_expiry != '')
+        if warranty == 'expired':
+            stmt = stmt.where(Asset.warranty_expiry < today_str)
+        elif warranty == 'expiring_30':
+            stmt = stmt.where(Asset.warranty_expiry.between(today_str, (datetime.utcnow().date() + timedelta(days=30)).isoformat()))
+        elif warranty == 'expiring_90':
+            stmt = stmt.where(Asset.warranty_expiry.between(today_str, (datetime.utcnow().date() + timedelta(days=90)).isoformat()))
+    return db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
 
 
 def _load_import_rows(file_bytes: bytes):
@@ -578,9 +579,13 @@ def asset_api_list(request: Request, db: Session = Depends(get_db), current_user
 @require_module_access('assets')
 def asset_list(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), filter: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     assets = [_asset_view_model(asset) for asset in _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)]
-    asset_types = sorted({asset.display_asset_type or asset.asset_type for asset in assets if (asset.display_asset_type or asset.asset_type) and (asset.display_asset_type or asset.asset_type) != 'Camera'})
-    departments = sorted({asset.display_department or asset.department for asset in assets if asset.display_department or asset.department})
-    statuses = [item for item in ASSET_STATUSES if item in {a.display_status or a.status for a in assets} or item == status or item == 'in_stock']
+    asset_types = sorted(r for r in db.scalars(
+        select(Asset.asset_type).where(Asset.asset_type.is_not(None), Asset.asset_type != '', Asset.asset_type != 'Camera').distinct()
+    ).all() if r)
+    departments = sorted(r for r in db.scalars(
+        select(Asset.department).where(Asset.department.is_not(None), Asset.department != '').distinct()
+    ).all() if r)
+    statuses = ASSET_STATUSES
     return templates.TemplateResponse('assets/list.html', {
         'request': request, 
         'assets': assets, 

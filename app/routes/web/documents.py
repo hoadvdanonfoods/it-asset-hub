@@ -29,7 +29,7 @@ def _render_form(request: Request, current_user, *, item=None, error: str | None
 
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('documents')
-def document_list(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+def document_list(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), success: str | None = Query(default=None), skipped: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     stmt = select(Document).where(Document.is_active == True)  # noqa: E712
     if q:
         like = f'%{q.strip()}%'
@@ -38,7 +38,7 @@ def document_list(request: Request, q: str | None = Query(default=None), categor
         stmt = stmt.where(Document.category == category)
     items = db.scalars(stmt.order_by(Document.created_at.desc(), Document.title.asc())).all()
     categories = db.scalars(select(Document.category).where(Document.category.is_not(None)).distinct().order_by(Document.category.asc())).all()
-    return templates.TemplateResponse('documents/list.html', {'request': request, 'current_user': current_user, 'items': items, 'q': q or '', 'category': category or '', 'categories': categories})
+    return templates.TemplateResponse('documents/list.html', {'request': request, 'current_user': current_user, 'items': items, 'q': q or '', 'category': category or '', 'categories': categories, 'success': success, 'skipped': skipped})
 
 
 @router.get('/new', response_class=HTMLResponse)

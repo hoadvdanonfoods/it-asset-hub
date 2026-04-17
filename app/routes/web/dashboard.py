@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -66,43 +66,91 @@ def dashboard(request: Request, db: Session = Depends(get_db), current_user=None
     dept_rows = [list(row) for row in db.execute(select(Asset.department, func.count()).where(Asset.department.is_not(None)).group_by(Asset.department).order_by(func.count().desc())).all()]
     status_rows = [list(row) for row in db.execute(select(Incident.status, func.count()).group_by(Incident.status).order_by(func.count().desc())).all()]
 
-    assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    open_incident_items = db.scalars(select(Incident).where(Incident.status.in_(INCIDENT_OPEN_STATUSES)).order_by(Incident.reported_at.asc())).all()
-    maintenance_items = db.scalars(select(Maintenance).where(Maintenance.next_maintenance_date.is_not(None)).order_by(Maintenance.next_maintenance_date.asc())).all()
-
     today = datetime.utcnow().date()
-    warranty_expiring = []
-    missing_assignment = []
-    missing_core_info = []
+    now = datetime.utcnow()
+    alert_date = today + timedelta(days=ALERT_WARRANTY_DAYS)
 
-    for asset in assets:
-        expiry = _parse_asset_date(asset.warranty_expiry)
-        if expiry:
-            days = (expiry - today).days
-            if 0 <= days <= ALERT_WARRANTY_DAYS:
-                warranty_expiring.append({'asset': asset, 'days': days})
-        if asset.status in ('assigned', 'borrowed') and not (asset.assigned_user or '').strip():
-            missing_assignment.append(asset)
-        if not (asset.serial_number or '').strip() or not (asset.location or '').strip():
-            missing_core_info.append(asset)
+    warranty_expiring_assets = db.scalars(
+        select(Asset)
+        .where(Asset.warranty_expiry.is_not(None), Asset.warranty_expiry != '')
+        .where(Asset.warranty_expiry >= str(today))
+        .where(Asset.warranty_expiry <= str(alert_date))
+        .order_by(Asset.warranty_expiry.asc())
+        .limit(10)
+    ).all()
+    warranty_expiring = [
+        {'asset': a, 'days': (_parse_asset_date(a.warranty_expiry) - today).days}
+        for a in warranty_expiring_assets
+        if _parse_asset_date(a.warranty_expiry)
+    ]
 
-    overdue_maintenance = [item for item in maintenance_items if _maintenance_due_state(item) == 'overdue' and item.asset and item.asset.status not in ('retired', 'disposed')]
-    upcoming_maintenance = [item for item in maintenance_items if _maintenance_due_state(item) == 'upcoming' and item.asset and item.asset.status not in ('retired', 'disposed')]
+    missing_assignment = db.scalars(
+        select(Asset)
+        .where(Asset.status.in_(['assigned', 'borrowed']))
+        .where(or_(Asset.assigned_user.is_(None), Asset.assigned_user == ''))
+        .limit(10)
+    ).all()
 
-    overdue_incidents = []
-    for item in open_incident_items:
-        due_at = _incident_due_at(item)
-        if not due_at:
-            continue
-        if datetime.utcnow() > due_at:
-            overdue_incidents.append({'incident': item, 'due_at': due_at, 'priority': _normalize_priority(item.priority)})
+    missing_core_info = db.scalars(
+        select(Asset)
+        .where(or_(
+            Asset.serial_number.is_(None), Asset.serial_number == '',
+            Asset.location.is_(None), Asset.location == '',
+        ))
+        .limit(10)
+    ).all()
+
+    overdue_maintenance = db.scalars(
+        select(Maintenance)
+        .join(Asset)
+        .where(Maintenance.next_maintenance_date.is_not(None))
+        .where(Maintenance.next_maintenance_date < today)
+        .where(~Asset.status.in_(['retired', 'disposed']))
+        .order_by(Maintenance.next_maintenance_date.asc())
+        .limit(10)
+    ).all()
+
+    upcoming_maintenance = db.scalars(
+        select(Maintenance)
+        .join(Asset)
+        .where(Maintenance.next_maintenance_date.is_not(None))
+        .where(Maintenance.next_maintenance_date.between(today, today + timedelta(days=7)))
+        .where(~Asset.status.in_(['retired', 'disposed']))
+        .order_by(Maintenance.next_maintenance_date.asc())
+        .limit(10)
+    ).all()
+
+    overdue_incidents_raw = db.scalars(
+        select(Incident)
+        .where(Incident.status.in_(INCIDENT_OPEN_STATUSES))
+        .where(Incident.reported_at.is_not(None))
+        .where(or_(
+            and_(Incident.priority == 'high',   Incident.reported_at < now - timedelta(hours=INCIDENT_SLA_HOURS['high'])),
+            and_(Incident.priority == 'medium',  Incident.reported_at < now - timedelta(hours=INCIDENT_SLA_HOURS['medium'])),
+            and_(Incident.priority == 'low',     Incident.reported_at < now - timedelta(hours=INCIDENT_SLA_HOURS['low'])),
+            and_(~Incident.priority.in_(['high', 'medium', 'low']), Incident.reported_at < now - timedelta(hours=INCIDENT_SLA_HOURS['medium'])),
+        ))
+        .order_by(Incident.reported_at.asc())
+        .limit(10)
+    ).all()
+    overdue_incidents = [
+        {'incident': item, 'due_at': _incident_due_at(item), 'priority': _normalize_priority(item.priority)}
+        for item in overdue_incidents_raw
+    ]
 
     return templates.TemplateResponse('dashboard.html', {
-        'request': request, 
-        'stats': {'total_assets': total_assets, 'open_incidents': open_incidents, 'total_maintenances': total_maintenances, 'active_assets': active_assets}, 
-        'asset_types': type_rows, 
-        'departments': dept_rows[:8], 
-        'incident_statuses': status_rows, 
-        'alerts': {'warranty_expiring': warranty_expiring[:10], 'overdue_maintenance': overdue_maintenance[:10], 'upcoming_maintenance': upcoming_maintenance[:10], 'overdue_incidents': overdue_incidents[:10], 'missing_assignment': missing_assignment[:10], 'missing_core_info': missing_core_info[:10]}, 
+        'request': request,
+        'stats': {'total_assets': total_assets, 'open_incidents': open_incidents, 'total_maintenances': total_maintenances, 'active_assets': active_assets},
+        'asset_types': type_rows,
+        'departments': dept_rows[:8],
+        'incident_statuses': status_rows,
+        'alerts': {
+            'warranty_expiring': warranty_expiring,
+            'overdue_maintenance': overdue_maintenance,
+            'upcoming_maintenance': upcoming_maintenance,
+            'overdue_incidents': overdue_incidents,
+            'missing_assignment': missing_assignment,
+            'missing_core_info': missing_core_info,
+        },
         'current_user': current_user
     })

@@ -115,12 +115,17 @@ def _build_bulk_feedback(*, success: int = 0, blocked: int = 0, restored: int = 
 
 @router.get('/', response_class=HTMLResponse)
 @require_permission('can_manage_users')
-def list_users(request: Request, db: Session = Depends(get_db), current_user=None):
-    users = db.scalars(select(User).order_by(User.id.desc())).all()
+def list_users(request: Request, q: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    stmt = select(User).order_by(User.id.desc())
+    if q:
+        like = f'%{q.strip()}%'
+        stmt = stmt.where(User.username.ilike(like) | User.full_name.ilike(like))
+    users = db.scalars(stmt).all()
     return templates.TemplateResponse('users/list.html', {
         'request': request,
         'users': users,
         'current_user': current_user,
+        'q': q or '',
     })
 
 

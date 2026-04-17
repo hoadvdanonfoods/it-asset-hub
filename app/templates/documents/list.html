@@ -40,20 +40,12 @@
   </form>
 </div>
 
-<!-- Status Message for success/skipped -->
-<script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const successVal = urlParams.get('success');
-    const skippedVal = urlParams.get('skipped');
-    if (successVal !== null) {
-        let msg = `Thực hiện thành công trên ${successVal} tài liệu.`;
-        if (skippedVal && parseInt(skippedVal) > 0) msg += ` (Bỏ qua ${skippedVal} tài liệu do có ràng buộc).`;
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'bg-sky-500/10 border border-sky-500/20 text-sky-700 px-6 py-4 rounded-2xl mb-6 font-medium shadow-sm flex items-center justify-between animate-in fade-in slide-in-from-top-4';
-        alertDiv.innerHTML = `<span><i data-lucide="check-circle" class="inline w-5 h-5 mr-2"></i>${msg}</span><button onclick="this.parentElement.remove()" class="p-1 hover:bg-sky-500/20 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>`;
-        document.querySelector('form.mb-0').parentNode.parentNode.insertBefore(alertDiv, document.querySelector('form.mb-0').parentNode.nextSibling);
-    }
-</script>
+{% if success is not none %}
+<div class="bg-sky-500/10 border border-sky-500/20 text-sky-700 px-6 py-4 rounded-2xl mb-6 font-medium shadow-sm flex items-center justify-between">
+  <span><i data-lucide="check-circle" class="inline w-5 h-5 mr-2"></i>Thực hiện thành công trên {{ success }} tài liệu.{% if skipped and skipped|int > 0 %} (Bỏ qua {{ skipped }} tài liệu do có ràng buộc).{% endif %}</span>
+  <button onclick="this.parentElement.remove()" class="p-1 hover:bg-sky-500/20 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>
+</div>
+{% endif %}
 
 <!-- Bulk Action Bar -->
 <div id="bulkActionBar" class="hidden mb-6 bg-surface-container-high rounded-2xl border border-primary/20 shadow-lg p-3 flex flex-wrap items-center justify-between gap-4 animate-in slide-in-from-top-4 fade-in sticky top-4 z-50">
