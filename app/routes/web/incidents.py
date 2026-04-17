@@ -322,17 +322,14 @@ def incident_create(request: Request, background_tasks: BackgroundTasks, asset_i
     db.flush()
     _log_incident_event(db, item.id, 'incident_created', 'Báo cáo sự cố', f'Ticket được tạo với trạng thái {status_label(item.status)}', current_user.username if current_user else None)
     db.commit()
-    
-    # Tạm ẩn tính năng gửi Zalo theo yêu cầu
-    # background_tasks.add_task(
-    #     send_zalo_notification,
-    #     title=f"SỰ CỐ MỚI (Mã ID: {item.id})",
-    #     description=issue_description.strip(),
-    #     Mức_độ=priority_label(item.priority),
-    #     Người_báo=effective_reported_by or "Không xác định",
-    #     Phòng_ban=requester_department.strip() or "Không xác định"
-    # )
-    
+    background_tasks.add_task(
+        send_zalo_notification,
+        title=f"SỰ CỐ MỚI #{item.id}",
+        description=issue_description.strip(),
+        Mức_độ=priority_label(item.priority),
+        Người_báo=effective_reported_by or "Không xác định",
+        Phòng_ban=requester_department.strip() or "Không xác định",
+    )
     return RedirectResponse(url='/incidents/', status_code=303)
 
 
@@ -428,17 +425,13 @@ def incident_update(request: Request, incident_id: int, background_tasks: Backgr
         _log_incident_event(db, item.id, 'source_updated', 'Cập nhật nguồn sự cố', f'{source_label(old_source)} -> {source_label(item.source)}', current_user.username if current_user else None)
 
     db.commit()
-    
-    # Gửi thông báo Zalo nếu trạng thái chuyển sang Đã giải quyết (hoặc closed)
-    # Tạm ẩn tính năng Zalo
-    # if item.status in ['resolved', 'closed'] and old_status not in ['resolved', 'closed']:
-    #      background_tasks.add_task(
-    #         send_zalo_notification,
-    #         title=f"SỰ CỐ ĐÃ XỬ LÝ XONG (Mã ID: {item.id})",
-    #         description=f"Hướng xử lý: {item.resolution or 'Không có thông tin'}",
-    #         Trạng_thái=status_label(item.status),
-    #         Mức_độ=priority_label(item.priority),
-    #         Người_báo=item.reported_by or "Không rõ"
-    #     )
-         
+    if item.status in FINAL_INCIDENT_STATUSES and old_status not in FINAL_INCIDENT_STATUSES:
+        background_tasks.add_task(
+            send_zalo_notification,
+            title=f"SỰ CỐ ĐÃ XỬ LÝ #{item.id}",
+            description=f"Hướng xử lý: {item.resolution or 'Không có thông tin'}",
+            Trạng_thái=status_label(item.status),
+            Mức_độ=priority_label(item.priority),
+            Người_báo=item.reported_by or "Không rõ",
+        )
     return RedirectResponse(url=f'/incidents/{incident_id}', status_code=303)

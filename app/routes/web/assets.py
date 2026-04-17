@@ -1,96 +1,52 @@
-from dataclasses import asdict, dataclass
 from typing import Any
-from datetime import datetime, timedelta
-import base64
+from datetime import datetime
 import io
-import json
 
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 import openpyxl
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import has_permission, require_module_access, require_permission
-from app.db.models import Asset, AssetAssignment, AssetEvent, AssetStatusHistory, User, Department, Employee, AssetType, Location, AssetStatus
+from app.db.models import Asset, AssetAssignment, AssetType, Department, Employee, Location, AssetStatus
 from app.db.session import get_db
 from app.services.audit import log_audit
+from app.services.asset_service import (
+    ASSET_STATUSES,
+    STATUS_LABELS,
+    IMPORT_HEADERS,
+    REQUIRED_IMPORT_HEADERS,
+    normalize_asset_status as _normalize_status,
+    days_to_warranty as _days_to_warranty,
+    log_asset_event as _log_event,
+    resolve_department_id as _resolve_department_id,
+    resolve_asset_type_value as _resolve_asset_type_value,
+    resolve_location_id as _resolve_location_id,
+    resolve_status_value as _resolve_status_value,
+    resolve_employee_id as _resolve_employee_id,
+    set_asset_status as _set_asset_status,
+    allowed_transitions_for as _allowed_transitions_for,
+    get_active_assignment as _get_active_assignment,
+    close_active_assignment as _close_active_assignment,
+    create_assignment as _create_assignment,
+    apply_assignment_change as _apply_assignment_change,
+    filtered_assets as _filtered_assets,
+    load_import_rows as _load_import_rows,
+    rows_from_preview_token as _rows_from_preview_token,
+    build_import_preview as _build_import_preview,
+    commit_import_rows as _commit_import_rows,
+)
+from app.services.zalo import send_zalo_notification
 
 router = APIRouter(prefix='/assets', tags=['assets'])
 templates = Jinja2Templates(directory='app/templates')
-DATE_FMT = '%Y-%m-%d'
-ASSET_STATUSES = ['in_stock', 'assigned', 'borrowed', 'repairing', 'retired', 'disposed', 'lost']
-ASSET_STATUS_TRANSITIONS = {
-    'in_stock': {'in_stock', 'assigned', 'borrowed', 'repairing', 'retired', 'disposed', 'lost'},
-    'assigned': {'assigned', 'repairing', 'in_stock', 'retired', 'disposed', 'lost', 'borrowed'},
-    'borrowed': {'borrowed', 'in_stock', 'repairing', 'retired', 'disposed', 'lost', 'assigned'},
-    'repairing': {'repairing', 'in_stock', 'retired', 'disposed', 'lost', 'assigned'},
-    'retired': {'retired', 'in_stock'},
-    'disposed': {'disposed', 'in_stock'},
-    'lost': {'lost', 'in_stock'},
-}
-STATUS_LABELS = {
-    'in_stock': 'In Stock',
-    'assigned': 'Assigned',
-    'borrowed': 'Borrowed',
-    'repairing': 'Repairing',
-    'retired': 'Retired',
-    'disposed': 'Disposed',
-    'lost': 'Lost',
-}
-IMPORT_HEADERS = [
-    'Mã thiết bị',
-    'Tên thiết bị',
-    'Loại thiết bị',
-    'Model',
-    'Serial',
-    'IP',
-    'Bộ phận',
-    'Người dùng',
-    'Vị trí',
-    'Ngày mua',
-    'Hết bảo hành',
-    'Trạng thái',
-    'Ghi chú',
-]
-REQUIRED_IMPORT_HEADERS = ['Mã thiết bị', 'Tên thiết bị', 'Loại thiết bị']
 
 
-@dataclass
-class AssetImportDTO:
-    asset_code: str
-    asset_name: str
-    asset_type: str
-    model: str | None = None
-    serial_number: str | None = None
-    ip_address: str | None = None
-    department: str | None = None
-    assigned_user: str | None = None
-    location: str | None = None
-    purchase_date: str | None = None
-    warranty_expiry: str | None = None
-    status: str = 'active'
-    notes: str | None = None
-
-    @classmethod
-    def from_row(cls, row_map: dict[str, str]):
-        return cls(
-            asset_code=row_map.get('Mã thiết bị', '').strip(),
-            asset_name=row_map.get('Tên thiết bị', '').strip(),
-            asset_type=row_map.get('Loại thiết bị', '').strip(),
-            model=row_map.get('Model', '').strip() or None,
-            serial_number=row_map.get('Serial', '').strip() or None,
-            ip_address=row_map.get('IP', '').strip() or None,
-            department=row_map.get('Bộ phận', '').strip() or None,
-            assigned_user=row_map.get('Người dùng', '').strip() or None,
-            location=row_map.get('Vị trí', '').strip() or None,
-            purchase_date=row_map.get('Ngày mua', '').strip() or None,
-            warranty_expiry=row_map.get('Hết bảo hành', '').strip() or None,
-            status=_normalize_status(row_map.get('Trạng thái', '').strip() or 'in_stock'),
-            notes=row_map.get('Ghi chú', '').strip() or None,
-        )
-
+# ---------------------------------------------------------------------------
+# Presentation helpers (view/template concerns only)
+# ---------------------------------------------------------------------------
 
 def _display_asset_type(asset: Asset | None) -> str:
     if not asset:
@@ -130,64 +86,6 @@ def _master_data_context(db: Session):
         'location_options': location_rows,
         'status_options': status_rows,
     }
-
-
-def _resolve_department_id(db: Session, value: str | None):
-    raw = (value or '').strip()
-    if not raw:
-        return None
-    return db.scalar(select(Department.id).where(or_(Department.name == raw, Department.code == raw)).limit(1))
-
-
-def _resolve_asset_type_value(db: Session, value: str | None):
-    raw = (value or '').strip()
-    if not raw:
-        return '', None
-    row = db.execute(select(AssetType.id, AssetType.name).where(or_(AssetType.name == raw, AssetType.code == raw)).limit(1)).first()
-    if row:
-        return row[1], row[0]
-    return raw, None
-
-
-def _resolve_location_id(db: Session, value: str | None):
-    raw = (value or '').strip()
-    if not raw:
-        return None
-    return db.scalar(select(Location.id).where(or_(Location.name == raw, Location.code == raw)).limit(1))
-
-
-def _resolve_status_value(db: Session, value: str | None):
-    normalized = _normalize_status(value)
-    row = db.execute(select(AssetStatus.id, AssetStatus.code).where(or_(AssetStatus.code == normalized, AssetStatus.code == normalized.upper(), AssetStatus.name == value)).limit(1)).first()
-    return normalized, (row[0] if row else None)
-
-
-def _set_asset_status(db: Session, asset: Asset, target_status: str | None, actor: str | None, note: str | None = None):
-    old_status = asset.status
-    old_status_id = asset.status_id
-    normalized_status, status_id = _resolve_status_value(db, target_status)
-    _assert_valid_status_transition(old_status, normalized_status)
-
-    if normalized_status in {'retired', 'disposed', 'lost', 'in_stock'} and getattr(asset, 'assigned_user', None):
-        close_status = 'returned' if normalized_status == 'in_stock' else 'retired'
-        _close_active_assignment(db, asset, actor, note or f'Đổi trạng thái sang {normalized_status}', close_status=close_status)
-
-    asset.status = normalized_status
-    asset.status_id = status_id
-    _record_status_history(db, asset, old_status, old_status_id, normalized_status, status_id, actor, note)
-    return old_status, normalized_status
-
-
-def _resolve_employee_id(db: Session, value: str | None):
-    raw = (value or '').strip()
-    if not raw:
-        return None
-    return db.scalar(select(Employee.id).where(or_(Employee.full_name == raw, Employee.employee_code == raw)).limit(1))
-
-
-def _allowed_transitions_for(asset: Asset | None) -> set[str]:
-    current = _normalize_status(getattr(asset, 'status', None) if asset else None)
-    return ASSET_STATUS_TRANSITIONS.get(current, {current})
 
 
 def _asset_action_flags(asset: Asset | None, active_assignment: AssetAssignment | None = None) -> dict[str, bool]:
@@ -238,341 +136,35 @@ def _render_import_page(request: Request, *, error: str | None = None, summary: 
     )
 
 
-def _parse_date(value: str | None):
-    value = (value or '').strip()
-    if not value:
-        return None
-    try:
-        return datetime.strptime(value, DATE_FMT).date()
-    except ValueError:
-        return None
-
-
-def _days_to_warranty(asset: Asset):
-    expiry = _parse_date(asset.warranty_expiry)
-    if not expiry:
-        return None
-    return (expiry - datetime.utcnow().date()).days
-
-
-def _log_event(db: Session, asset_id: int, event_type: str, title: str, description: str | None = None, actor: str | None = None):
-    db.add(AssetEvent(asset_id=asset_id, event_type=event_type, title=title, description=description, actor=actor))
-
-
-def _assert_valid_status_transition(old_status: str | None, new_status: str | None):
-    current = _normalize_status(old_status)
-    target = _normalize_status(new_status)
-    allowed = ASSET_STATUS_TRANSITIONS.get(current, {current})
-    if target not in allowed:
-        raise ValueError(f'Không cho phép chuyển trạng thái từ {current} sang {target}.')
-
-
-def _record_status_history(db: Session, asset: Asset, old_status: str | None, old_status_id: int | None, new_status: str | None, new_status_id: int | None, actor: str | None, note: str | None = None):
-    normalized_old = _normalize_status(old_status)
-    normalized_new = _normalize_status(new_status)
-    if normalized_old == normalized_new and old_status_id == new_status_id:
-        return
-    db.add(
-        AssetStatusHistory(
-            asset_id=asset.id,
-            old_status_id=old_status_id,
-            new_status_id=new_status_id,
-            old_status_code=normalized_old,
-            new_status_code=normalized_new,
-            changed_by=actor,
-            note=note,
-        )
-    )
-
-
-def _normalize_text(value):
-    if value is None:
-        return ''
-    if isinstance(value, datetime):
-        return value.strftime(DATE_FMT)
-    return str(value).strip()
-
-
-def _normalize_status(value: str | None) -> str:
-    raw = (value or '').strip().lower()
-    aliases = {
-        'active': 'assigned',
-        'inactive': 'in_stock',
-        'in_repair': 'repairing',
-        'repair': 'repairing',
-        'in-repair': 'repairing',
-        'in repair': 'repairing',
-        'broken': 'repairing',
-        'archive': 'retired',
-        'archived': 'retired',
-        'instock': 'in_stock',
-        'in stock': 'in_stock',
-    }
-    normalized = aliases.get(raw, raw or 'in_stock')
-    return normalized if normalized in ASSET_STATUSES else 'in_stock'
-
-
-def _filtered_assets(db: Session, q: str | None = None, asset_type: str | None = None, department: str | None = None, status: str | None = None, warranty: str | None = None, filter: str | None = None):
-    stmt = select(Asset)
-    if q:
-        like = f'%{q.strip()}%'
-        stmt = stmt.where(or_(Asset.asset_code.ilike(like), Asset.asset_name.ilike(like), Asset.ip_address.ilike(like), Asset.assigned_user.ilike(like), Asset.serial_number.ilike(like)))
-    if asset_type:
-        stmt = stmt.where(Asset.asset_type == asset_type)
-    else:
-        stmt = stmt.where(Asset.asset_type != "Camera")
-    if department:
-        stmt = stmt.where(Asset.department == department)
-    if status:
-        stmt = stmt.where(Asset.status == status)
-    if filter == 'missing_info':
-        stmt = stmt.where(or_(Asset.serial_number.is_(None), Asset.serial_number == "", Asset.location.is_(None), Asset.location == ""))
-    if warranty:
-        today_str = datetime.utcnow().date().isoformat()
-        stmt = stmt.where(Asset.warranty_expiry.is_not(None), Asset.warranty_expiry != '')
-        if warranty == 'expired':
-            stmt = stmt.where(Asset.warranty_expiry < today_str)
-        elif warranty == 'expiring_30':
-            stmt = stmt.where(Asset.warranty_expiry.between(today_str, (datetime.utcnow().date() + timedelta(days=30)).isoformat()))
-        elif warranty == 'expiring_90':
-            stmt = stmt.where(Asset.warranty_expiry.between(today_str, (datetime.utcnow().date() + timedelta(days=90)).isoformat()))
-    return db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
-
-
-def _load_import_rows(file_bytes: bytes):
-    wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
-    ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
-    if not rows:
-        raise ValueError('File import đang rỗng.')
-
-    headers = [_normalize_text(value) for value in rows[0]]
-    missing_headers = [name for name in REQUIRED_IMPORT_HEADERS if name not in headers]
-    if missing_headers:
-        raise ValueError(f'Thiếu cột bắt buộc: {", ".join(missing_headers)}')
-
-    dtos = []
-    for index, row in enumerate(rows[1:], start=2):
-        row_map = {}
-        has_data = False
-        for header, cell in zip(headers, row):
-            if not header:
-                continue
-            value = _normalize_text(cell)
-            if value:
-                has_data = True
-            row_map[header] = value
-        if not has_data:
-            continue
-        dtos.append((index, AssetImportDTO.from_row(row_map)))
-    return dtos
-
-
-def _preview_token_from_rows(rows: list[tuple[int, AssetImportDTO]], filename: str):
-    payload = {'filename': filename, 'rows': [(idx, asdict(dto)) for idx, dto in rows]}
-    return base64.urlsafe_b64encode(json.dumps(payload, ensure_ascii=False).encode('utf-8')).decode('ascii')
-
-
-def _rows_from_preview_token(token: str):
-    decoded = base64.urlsafe_b64decode(token.encode('ascii'))
-    payload = json.loads(decoded.decode('utf-8'))
-    return [(int(item[0]), AssetImportDTO(**item[1])) for item in payload['rows']], payload.get('filename', 'import.xlsx')
-
-
-def _build_import_preview(rows: list[tuple[int, AssetImportDTO]], db: Session, filename: str):
-    created = 0
-    updated = 0
-    skipped: list[str] = []
-    sample_rows = []
-    for row_number, dto in rows:
-        if not dto.asset_code or not dto.asset_name or not dto.asset_type:
-            skipped.append(f'Dòng {row_number}: thiếu Mã thiết bị / Tên thiết bị / Loại thiết bị')
-            sample_rows.append({'row_number': row_number, 'asset_code': dto.asset_code, 'asset_name': dto.asset_name, 'asset_type': dto.asset_type, 'action': 'skip'})
-            continue
-        asset = db.scalar(select(Asset).where(Asset.asset_code == dto.asset_code))
-        action = 'update' if asset else 'create'
-        if action == 'create':
-            created += 1
-        else:
-            updated += 1
-        if len(sample_rows) < 20:
-            sample_rows.append({'row_number': row_number, 'asset_code': dto.asset_code, 'asset_name': dto.asset_name, 'asset_type': dto.asset_type, 'action': action})
-    return {
-        'filename': filename,
-        'created': created,
-        'updated': updated,
-        'skipped': skipped[:30],
-        'total_rows': len(rows),
-        'sample_rows': sample_rows,
-        'token': _preview_token_from_rows(rows, filename),
-    }
-
-
-def _get_active_assignment(db: Session, asset: Asset):
-    return db.scalar(
-        select(AssetAssignment)
-        .where(AssetAssignment.asset_id == asset.id, AssetAssignment.status.in_(['assigned', 'borrowed']))
-        .order_by(AssetAssignment.assigned_at.desc())
-    )
-
-
-def _close_active_assignment(db: Session, asset: Asset, actor: str | None, source: str, close_status: str = 'returned'):
-    now_dt = datetime.utcnow()
-    now_str = now_dt.strftime('%Y-%m-%d %H:%M')
-    current_assignment = _get_active_assignment(db, asset)
-    previous_user = asset.assigned_user
-    if current_assignment:
-        current_assignment.status = close_status
-        current_assignment.unassigned_at = now_dt
-        current_assignment.returned_by = actor
-    elif previous_user:
-        fallback_assignment = AssetAssignment(
-            asset_id=asset.id,
-            employee_id=_resolve_employee_id(db, previous_user),
-            assigned_user=previous_user,
-            assigned_by=actor,
-            assigned_at=now_dt,
-            unassigned_at=now_dt,
-            returned_by=actor,
-            note=f'{source} (đóng cấp phát lệch dữ liệu)',
-            status=close_status,
-        )
-        db.add(fallback_assignment)
-    if previous_user:
-        title = 'Thu hồi asset' if close_status == 'returned' else 'Kết thúc mượn asset'
-        event_type = 'returned' if close_status == 'returned' else 'borrow_returned'
-        _log_event(db, asset.id, event_type, title, f'Thu hồi từ {previous_user} ({source})', actor)
-    asset.current_assignment_id = None
-    asset.assigned_user = None
-    asset.unassigned_at = now_str
-    return previous_user
-
-
-def _create_assignment(db: Session, asset: Asset, new_user: str, actor: str | None, source: str, assignment_status: str = 'assigned'):
-    now_dt = datetime.utcnow()
-    now_str = now_dt.strftime('%Y-%m-%d %H:%M')
-    assignment = AssetAssignment(
-        asset_id=asset.id,
-        employee_id=_resolve_employee_id(db, new_user),
-        assigned_user=new_user,
-        assigned_by=actor,
-        assigned_at=now_dt,
-        note=source,
-        status=assignment_status,
-    )
-    db.add(assignment)
-    db.flush()
-    asset.current_assignment_id = assignment.id
-    asset.assigned_user = new_user
-    asset.assigned_at = now_str
-    asset.unassigned_at = None
-    title = 'Cấp phát asset' if assignment_status == 'assigned' else 'Cho mượn asset'
-    event_type = 'assigned' if assignment_status == 'assigned' else 'borrowed'
-    _log_event(db, asset.id, event_type, title, f'Gán cho {new_user} ({source})', actor)
-    return assignment
-
-
-def _apply_assignment_change(db: Session, asset: Asset, new_user: str | None, actor: str | None, source: str):
-    previous_user = asset.assigned_user
-    if previous_user == new_user:
-        return
-    if previous_user:
-        _close_active_assignment(db, asset, actor, source, close_status='returned')
-    if new_user:
-        _create_assignment(db, asset, new_user, actor, source, assignment_status='assigned')
-
-
-def _commit_import_rows(rows: list[tuple[int, AssetImportDTO]], db: Session, actor: str):
-    created = 0
-    updated = 0
-    skipped: list[str] = []
-    for row_number, dto in rows:
-        if not dto.asset_code or not dto.asset_name or not dto.asset_type:
-            skipped.append(f'Dòng {row_number}: thiếu Mã thiết bị / Tên thiết bị / Loại thiết bị')
-            continue
-
-        asset = db.scalar(select(Asset).where(Asset.asset_code == dto.asset_code))
-        if not asset:
-            now_str = datetime.utcnow().strftime('%Y-%m-%d %H:%M') if dto.assigned_user else None
-            asset_type_value, category_id = _resolve_asset_type_value(db, dto.asset_type)
-            requested_status = 'assigned' if dto.assigned_user and _normalize_status(dto.status) == 'in_stock' else dto.status
-            status_value, status_id = _resolve_status_value(db, requested_status)
-            asset_data = asdict(dto)
-            asset_data['asset_type'] = asset_type_value
-            asset_data['category_id'] = category_id
-            asset_data['department_id'] = _resolve_department_id(db, dto.department)
-            asset_data['location_id'] = _resolve_location_id(db, dto.location)
-            asset_data['status'] = status_value
-            asset_data['status_id'] = status_id
-            asset_data['assigned_at'] = now_str
-            asset = Asset(**asset_data)
-            db.add(asset)
-            db.flush()
-            _log_event(db, asset.id, 'asset_imported', 'Import asset mới', f'Import từ Excel: {asset.asset_code}', actor)
-            if dto.assigned_user:
-                assignment = AssetAssignment(asset_id=asset.id, employee_id=_resolve_employee_id(db, dto.assigned_user), assigned_user=dto.assigned_user, assigned_by=actor, note='Import từ Excel')
-                db.add(assignment)
-                db.flush()
-                asset.current_assignment_id = assignment.id
-                _log_event(db, asset.id, 'assigned', 'Cấp phát asset', f'Gán cho {dto.assigned_user} (import Excel)', actor)
-            created += 1
-            continue
-
-        previous_user = asset.assigned_user
-        asset.asset_name = dto.asset_name
-        asset.asset_type, asset.category_id = _resolve_asset_type_value(db, dto.asset_type)
-        asset.model = dto.model
-        asset.serial_number = dto.serial_number
-        asset.ip_address = dto.ip_address
-        asset.department = dto.department
-        asset.department_id = _resolve_department_id(db, dto.department)
-        asset.location = dto.location
-        asset.location_id = _resolve_location_id(db, dto.location)
-        asset.purchase_date = dto.purchase_date
-        asset.warranty_expiry = dto.warranty_expiry
-        requested_status = 'assigned' if dto.assigned_user and _normalize_status(dto.status) == 'in_stock' else dto.status
-        previous_status, current_status = _set_asset_status(db, asset, requested_status, actor, 'Import từ Excel')
-        asset.notes = dto.notes
-        _apply_assignment_change(db, asset, dto.assigned_user, actor, 'Import từ Excel')
-        if previous_user == dto.assigned_user:
-            asset.assigned_user = dto.assigned_user
-        if previous_status != current_status:
-            _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', actor)
-        _log_event(db, asset.id, 'asset_imported', 'Cập nhật asset từ import', f'Cập nhật từ Excel: {asset.asset_code}', actor)
-        updated += 1
-    db.commit()
-    return {'created': created, 'updated': updated, 'skipped': skipped, 'total_rows': len(rows)}
-
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
 
 @router.get('/api/list')
 @require_module_access('assets')
 def asset_api_list(request: Request, db: Session = Depends(get_db), current_user: Any = None, status: str | None = Query(None)):
     try:
         stmt = select(Asset)
-        
-        # Exclude Cameras from general asset list if they are managed elsewhere
         stmt = stmt.where(Asset.asset_type != 'Camera')
-        
         if status:
             raw_status = status.strip().lower()
             stmt = stmt.where(Asset.status == raw_status)
         else:
             stmt = stmt.where(Asset.status.in_(['assigned', 'in_stock']))
-        
         assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
         return {
-            "items": [
+            'items': [
                 {
-                    "id": a.id, 
-                    "asset_code": a.asset_code, 
-                    "asset_name": a.asset_name, 
-                    "asset_type": a.asset_type,
-                    "department": a.department or "Chưa phân loại"
+                    'id': a.id,
+                    'asset_code': a.asset_code,
+                    'asset_name': a.asset_name,
+                    'asset_type': a.asset_type,
+                    'department': a.department or 'Chưa phân loại',
                 } for a in assets
             ]
         }
     except Exception as e:
-        return {"items": [], "error": str(e)}
+        return {'items': [], 'error': str(e)}
 
 
 @router.get('/', response_class=HTMLResponse)
@@ -587,20 +179,20 @@ def asset_list(request: Request, q: str | None = Query(default=None), asset_type
     ).all() if r)
     statuses = ASSET_STATUSES
     return templates.TemplateResponse('assets/list.html', {
-        'request': request, 
-        'assets': assets, 
-        'q': q or '', 
-        'asset_type': asset_type or '', 
-        'department': department or '', 
-        'status': status or '', 
-        'warranty': warranty or '', 
+        'request': request,
+        'assets': assets,
+        'q': q or '',
+        'asset_type': asset_type or '',
+        'department': department or '',
+        'status': status or '',
+        'warranty': warranty or '',
         'filter': filter or '',
-        'asset_types': asset_types, 
-        'departments': departments, 
-        'statuses': statuses, 
+        'asset_types': asset_types,
+        'departments': departments,
+        'statuses': statuses,
         'status_labels': STATUS_LABELS,
-        'current_user': current_user, 
-        'days_to_warranty': _days_to_warranty
+        'current_user': current_user,
+        'days_to_warranty': _days_to_warranty,
     })
 
 
@@ -626,7 +218,7 @@ def asset_export(request: Request, q: str | None = Query(default=None), asset_ty
             asset.purchase_date or '',
             asset.warranty_expiry or '',
             asset.status,
-            asset.notes or ''
+            asset.notes or '',
         ])
     stream = io.BytesIO()
     wb.save(stream)
@@ -636,8 +228,8 @@ def asset_export(request: Request, q: str | None = Query(default=None), asset_ty
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={
             'Content-Disposition': 'attachment; filename="assets_export.xlsx"',
-            'Content-Length': str(len(content))
-        }
+            'Content-Length': str(len(content)),
+        },
     )
 
 
@@ -660,8 +252,8 @@ def asset_import_template(request: Request, current_user=None):
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={
             'Content-Disposition': 'attachment; filename="asset_import_template.xlsx"',
-            'Content-Length': str(len(content))
-        }
+            'Content-Length': str(len(content)),
+        },
     )
 
 
@@ -750,7 +342,6 @@ def asset_create(request: Request, asset_code: str = Form(...), asset_name: str 
 @router.get('/bulk-update/')
 @require_permission('can_edit_assets')
 def asset_bulk_update_get(request: Request, current_user=None):
-    """Handle accidental GET requests to bulk-update by redirecting to list."""
     return RedirectResponse(url='/assets/', status_code=303)
 
 
@@ -761,7 +352,6 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
     ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
     if not ids:
         return RedirectResponse(url='/assets/', status_code=303)
-
     updates = {}
     if department and department.strip():
         updates['department'] = department.strip()
@@ -773,19 +363,14 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
     if location and location.strip():
         updates['location'] = location.strip()
         updates['location_id'] = _resolve_location_id(db, location)
-
     if not updates:
         return RedirectResponse(url='/assets/', status_code=303)
-
     updated_count = 0
     for asset_id in ids:
         asset = db.get(Asset, asset_id)
         if not asset:
             continue
-        
         changed = False
-        old_status = asset.status
-        
         if 'department' in updates and asset.department != updates['department']:
             asset.department = updates['department']
             asset.department_id = updates.get('department_id')
@@ -801,26 +386,15 @@ def asset_bulk_update(request: Request, asset_ids: str = Form(...), department: 
             asset.location = updates['location']
             asset.location_id = updates.get('location_id')
             changed = True
-        
         if 'assigned_user' in updates:
             new_user = updates['assigned_user']
             if asset.assigned_user != new_user:
                 _apply_assignment_change(db, asset, new_user, current_user.username, 'Cập nhật hàng loạt (Bulk edit)')
                 changed = True
-        
         if changed:
             _log_event(db, asset.id, 'asset_updated', 'Cập nhật hàng loạt', 'Cập nhật thông tin qua Bulk Edit', current_user.username)
-            log_audit(
-                db,
-                actor=current_user.username if current_user else None,
-                module='assets',
-                action='bulk_update',
-                entity_type='asset',
-                entity_id=asset.id,
-                metadata={'updates': updates},
-            )
+            log_audit(db, actor=current_user.username if current_user else None, module='assets', action='bulk_update', entity_type='asset', entity_id=asset.id, metadata={'updates': updates})
             updated_count += 1
-
     db.commit()
     return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
 
@@ -838,11 +412,9 @@ def asset_bulk_archive_get(request: Request, current_user=None):
 def asset_bulk_archive(request: Request, asset_ids: str = Form(...), confirm_text: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     if confirm_text != 'ARCHIVE':
         return RedirectResponse(url='/assets/', status_code=303)
-
     ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
     if not ids:
         return RedirectResponse(url='/assets/', status_code=303)
-
     updated_count = 0
     for asset_id in ids:
         asset = db.get(Asset, asset_id)
@@ -854,17 +426,8 @@ def asset_bulk_archive(request: Request, asset_ids: str = Form(...), confirm_tex
             except ValueError:
                 continue
             _log_event(db, asset.id, 'asset_retired', 'Ngừng sử dụng asset', f'Cập nhật hàng loạt: {previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
-            log_audit(
-                db,
-                actor=current_user.username if current_user else None,
-                module='assets',
-                action='bulk_archive',
-                entity_type='asset',
-                entity_id=asset.id,
-                metadata={'from_status': 'not_retired', 'to_status': 'retired'},
-            )
+            log_audit(db, actor=current_user.username if current_user else None, module='assets', action='bulk_archive', entity_type='asset', entity_id=asset.id, metadata={'from_status': 'not_retired', 'to_status': 'retired'})
             updated_count += 1
-
     db.commit()
     return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
 
@@ -883,7 +446,6 @@ def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session
     ids = [int(i.strip()) for i in asset_ids.split(',') if i.strip()]
     if not ids:
         return RedirectResponse(url='/assets/', status_code=303)
-
     restorable_statuses = {'retired', 'disposed', 'lost'}
     updated_count = 0
     for asset_id in ids:
@@ -899,20 +461,10 @@ def asset_bulk_restore(request: Request, asset_ids: str = Form(...), db: Session
         except ValueError:
             continue
         _log_event(db, asset.id, 'asset_restored', 'Khôi phục asset', f'Cập nhật hàng loạt: {previous_status} -> {current_status} cho {asset.asset_code}', current_user.username)
-        log_audit(
-            db,
-            actor=current_user.username if current_user else None,
-            module='assets',
-            action='bulk_restore',
-            entity_type='asset',
-            entity_id=asset.id,
-            metadata={'from_status': previous_status, 'to_status': 'in_stock'},
-        )
+        log_audit(db, actor=current_user.username if current_user else None, module='assets', action='bulk_restore', entity_type='asset', entity_id=asset.id, metadata={'from_status': previous_status, 'to_status': 'in_stock'})
         updated_count += 1
-
     db.commit()
     return RedirectResponse(url=f'/assets/?success={updated_count}', status_code=303)
-
 
 
 @router.get('/{asset_id}', response_class=HTMLResponse)
@@ -921,7 +473,6 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
     asset = db.get(Asset, asset_id)
     if not asset:
         return RedirectResponse(url='/assets/', status_code=303)
-    
     can_edit = has_permission(current_user, 'can_edit_assets')
     alerts = []
     active_assignment = _get_active_assignment(db, asset)
@@ -940,9 +491,9 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
         _asset_view_model(asset)
     action_flags = _asset_action_flags(asset, active_assignment)
     return templates.TemplateResponse('assets/detail.html', {
-        'request': request, 
-        'asset': asset, 
-        'alerts': alerts, 
+        'request': request,
+        'asset': asset,
+        'alerts': alerts,
         'current_user': current_user,
         'can_edit': can_edit,
         'active_assignment': active_assignment,
@@ -954,7 +505,7 @@ def asset_detail(asset_id: int, request: Request, db: Session = Depends(get_db),
 
 @router.post('/{asset_id}/assign')
 @require_permission('can_edit_assets')
-def asset_assign(asset_id: int, request: Request, assigned_user: str = Form(...), department: str = Form(default=''), note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def asset_assign(asset_id: int, request: Request, background_tasks: BackgroundTasks, assigned_user: str = Form(...), department: str = Form(default=''), note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     asset = db.get(Asset, asset_id)
     if not asset:
         return RedirectResponse(url='/assets/', status_code=303)
@@ -972,23 +523,39 @@ def asset_assign(asset_id: int, request: Request, assigned_user: str = Form(...)
         _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
     log_audit(db, actor=current_user.username if current_user else None, module='assets', action='assign', entity_type='asset', entity_id=asset.id, metadata={'assigned_user': new_user})
     db.commit()
+    background_tasks.add_task(
+        send_zalo_notification,
+        title=f'CẤP PHÁT TÀI SẢN #{asset.asset_code}',
+        description=f'{asset.asset_name} đã được cấp phát',
+        Người_nhận=new_user,
+        Bộ_phận=department.strip() or asset.department or 'Không xác định',
+        Ghi_chú=note.strip() or 'Cấp phát asset',
+    )
     return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
 
 
 @router.post('/{asset_id}/return')
 @require_permission('can_edit_assets')
-def asset_return(asset_id: int, request: Request, note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def asset_return(asset_id: int, request: Request, background_tasks: BackgroundTasks, note: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     asset = db.get(Asset, asset_id)
     if not asset:
         return RedirectResponse(url='/assets/', status_code=303)
     if not asset.assigned_user:
         return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
-    previous_user = _close_active_assignment(db, asset, current_user.username, note.strip() or 'Thu hồi asset', close_status='returned')
+    previous_user = asset.assigned_user
+    _close_active_assignment(db, asset, current_user.username, note.strip() or 'Thu hồi asset', close_status='returned')
     previous_status, current_status = _set_asset_status(db, asset, 'in_stock', current_user.username, note.strip() or 'Thu hồi asset')
     if previous_status != current_status:
         _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
     log_audit(db, actor=current_user.username if current_user else None, module='assets', action='return', entity_type='asset', entity_id=asset.id, metadata={'returned_user': previous_user})
     db.commit()
+    background_tasks.add_task(
+        send_zalo_notification,
+        title=f'THU HỒI TÀI SẢN #{asset.asset_code}',
+        description=f'{asset.asset_name} đã được thu hồi',
+        Người_trả=previous_user,
+        Ghi_chú=note.strip() or 'Thu hồi asset',
+    )
     return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
 
 
