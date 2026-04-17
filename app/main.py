@@ -21,6 +21,7 @@ from app.logger import get_logger, setup_logging
 
 setup_logging(LOG_DIR, LOG_LEVEL)
 logger = get_logger(__name__)
+
 from app.db.base import Base
 from app.db.migrations import ensure_schema
 from app.db.models import Asset, AssetEvent, User
@@ -108,6 +109,7 @@ def backfill_asset_events():
 ensure_default_admin()
 if AUTO_BACKFILL_ASSET_EVENTS:
     backfill_asset_events()
+logger.info("Starting %s %s (production=%s)", APP_NAME, APP_VERSION, IS_PRODUCTION)
 app = FastAPI(title=APP_NAME)
 app.state.app_version = APP_VERSION
 
@@ -115,9 +117,20 @@ app.state.app_version = APP_VERSION
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.perf_counter()
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = (time.perf_counter() - start) * 1000
+        logger.exception(
+            "Unhandled error: %s %s %.0fms",
+            request.method,
+            request.url.path,
+            duration_ms,
+        )
+        raise
     duration_ms = (time.perf_counter() - start) * 1000
-    logger.info(
+    level = logger.warning if response.status_code >= 400 else logger.info
+    level(
         "%s %s %s %.0fms",
         request.method,
         request.url.path,
