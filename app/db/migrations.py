@@ -11,7 +11,7 @@ MASTER_TABLES = {
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         note TEXT
     )""",
     'employees': """CREATE TABLE IF NOT EXISTS employees (
@@ -22,7 +22,7 @@ MASTER_TABLES = {
         title VARCHAR(120),
         email VARCHAR(120),
         phone VARCHAR(50),
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         note TEXT,
         FOREIGN KEY(department_id) REFERENCES departments(id)
     )""",
@@ -31,7 +31,7 @@ MASTER_TABLES = {
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         category_group VARCHAR(120),
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         note TEXT
     )""",
     'locations': """CREATE TABLE IF NOT EXISTS locations (
@@ -39,7 +39,7 @@ MASTER_TABLES = {
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         site_group VARCHAR(120),
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         note TEXT
     )""",
     'asset_categories': """CREATE TABLE IF NOT EXISTS asset_categories (
@@ -47,60 +47,60 @@ MASTER_TABLES = {
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         description TEXT,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP
     )""",
     'asset_statuses': """CREATE TABLE IF NOT EXISTS asset_statuses (
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         description TEXT,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP
     )""",
     'vendors': """CREATE TABLE IF NOT EXISTS vendors (
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         description TEXT,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP
     )""",
     'incident_categories': """CREATE TABLE IF NOT EXISTS incident_categories (
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         description TEXT,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP
     )""",
     'priorities': """CREATE TABLE IF NOT EXISTS priorities (
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         description TEXT,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP
     )""",
     'maintenance_types': """CREATE TABLE IF NOT EXISTS maintenance_types (
         id INTEGER PRIMARY KEY,
         code VARCHAR(50) NOT NULL UNIQUE,
         name VARCHAR(120) NOT NULL,
         description TEXT,
-        is_active BOOLEAN DEFAULT 1,
+        is_active BOOLEAN DEFAULT true,
         sort_order INTEGER DEFAULT 0,
-        created_at DATETIME,
-        updated_at DATETIME
+        created_at TIMESTAMP,
+        updated_at TIMESTAMP
     )""",
 }
 
@@ -184,8 +184,16 @@ SEED_ROWS = {
 
 
 def _get_columns(conn, table_name: str) -> set[str]:
-    rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
-    return {row[1] for row in rows}
+    dialect = conn.engine.dialect.name
+    if dialect == 'postgresql':
+        rows = conn.execute(
+            text("SELECT column_name FROM information_schema.columns WHERE table_name = :table_name"),
+            {'table_name': table_name}
+        ).fetchall()
+        return {row[0] for row in rows}
+    else:
+        rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+        return {row[1] for row in rows}
 
 
 def _add_column_if_missing(conn, table_name: str, column_name: str, column_type: str) -> None:
@@ -208,7 +216,7 @@ def ensure_master_tables(conn) -> None:
                 old_status_code VARCHAR(50),
                 new_status_code VARCHAR(50) NOT NULL,
                 changed_by VARCHAR(120),
-                changed_at DATETIME,
+                changed_at TIMESTAMP,
                 note TEXT,
                 FOREIGN KEY(asset_id) REFERENCES assets(id),
                 FOREIGN KEY(old_status_id) REFERENCES asset_statuses(id),
@@ -235,7 +243,7 @@ def seed_master_data(conn) -> None:
                 text(
                     f"""
                     INSERT INTO {table_name} (code, name, description, is_active, sort_order, created_at, updated_at)
-                    SELECT :code, :name, :description, 1, :sort_order, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    SELECT CAST(:code AS VARCHAR), CAST(:name AS VARCHAR), CAST(:description AS TEXT), true, CAST(:sort_order AS INTEGER), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                     WHERE NOT EXISTS (
                         SELECT 1 FROM {table_name} WHERE code = :code
                     )
@@ -284,7 +292,7 @@ def _ensure_master_row(conn, table_name: str, raw_value: str | None):
             text(
                 """
                 INSERT INTO asset_categories (code, name, description, is_active, sort_order, created_at, updated_at)
-                SELECT :code, :name, :description, 1, 999, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                SELECT CAST(:code AS VARCHAR), CAST(:name AS VARCHAR), CAST(:description AS TEXT), true, 999, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 WHERE NOT EXISTS (
                     SELECT 1 FROM asset_categories WHERE lower(code) = lower(:code) OR lower(name) = lower(:name)
                 )
@@ -301,7 +309,7 @@ def _ensure_master_row(conn, table_name: str, raw_value: str | None):
             text(
                 """
                 INSERT INTO departments (code, name, is_active, note)
-                SELECT :code, :name, 1, :note
+                SELECT CAST(:code AS VARCHAR), CAST(:name AS VARCHAR), true, CAST(:note AS TEXT)
                 WHERE NOT EXISTS (
                     SELECT 1 FROM departments WHERE lower(code) = lower(:code) OR lower(name) = lower(:name)
                 )
@@ -318,7 +326,7 @@ def _ensure_master_row(conn, table_name: str, raw_value: str | None):
             text(
                 """
                 INSERT INTO locations (code, name, is_active, note)
-                SELECT :code, :name, 1, :note
+                SELECT CAST(:code AS VARCHAR), CAST(:name AS VARCHAR), true, CAST(:note AS TEXT)
                 WHERE NOT EXISTS (
                     SELECT 1 FROM locations WHERE lower(code) = lower(:code) OR lower(name) = lower(:name)
                 )
@@ -335,7 +343,7 @@ def _ensure_master_row(conn, table_name: str, raw_value: str | None):
             text(
                 """
                 INSERT INTO employees (employee_code, full_name, is_active, note)
-                SELECT :code, :name, 1, :note
+                SELECT CAST(:code AS VARCHAR), CAST(:name AS VARCHAR), true, CAST(:note AS TEXT)
                 WHERE NOT EXISTS (
                     SELECT 1 FROM employees WHERE lower(employee_code) = lower(:code) OR lower(full_name) = lower(:name)
                 )
@@ -535,29 +543,29 @@ def backfill_master_data(conn) -> None:
 def ensure_schema() -> None:
     legacy_statements = [
         "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)",
-        "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN can_view_dashboard BOOLEAN DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN can_view_assets BOOLEAN DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN can_view_maintenance BOOLEAN DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN can_view_incidents BOOLEAN DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN can_view_resources BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_create_assets BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_edit_assets BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_import_assets BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_export_assets BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_create_maintenance BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_edit_maintenance BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_export_maintenance BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_create_incidents BOOLEAN DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN can_edit_incidents BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_export_incidents BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_manage_users BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_manage_system BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_manage_resources BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_view_documents BOOLEAN DEFAULT 0",
-        "ALTER TABLE users ADD COLUMN can_manage_documents BOOLEAN DEFAULT 0",
+        "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN can_view_dashboard BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN can_view_assets BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN can_view_maintenance BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN can_view_incidents BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN can_view_resources BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_create_assets BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_edit_assets BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_import_assets BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_export_assets BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_create_maintenance BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_edit_maintenance BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_export_maintenance BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_create_incidents BOOLEAN DEFAULT true",
+        "ALTER TABLE users ADD COLUMN can_edit_incidents BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_export_incidents BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_manage_users BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_manage_system BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_manage_resources BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_view_documents BOOLEAN DEFAULT false",
+        "ALTER TABLE users ADD COLUMN can_manage_documents BOOLEAN DEFAULT false",
         "ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1",
-        "ALTER TABLE users ADD COLUMN password_changed_at DATETIME",
+        "ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP",
         "ALTER TABLE assets ADD COLUMN assigned_at VARCHAR(25)",
         "ALTER TABLE assets ADD COLUMN unassigned_at VARCHAR(25)",
         "ALTER TABLE incidents ADD COLUMN requester_department VARCHAR(120)",
@@ -566,8 +574,8 @@ def ensure_schema() -> None:
             asset_id INTEGER NOT NULL,
             assigned_user VARCHAR(120) NOT NULL,
             assigned_by VARCHAR(120),
-            assigned_at DATETIME,
-            unassigned_at DATETIME,
+            assigned_at TIMESTAMP,
+            unassigned_at TIMESTAMP,
             returned_by VARCHAR(120),
             note TEXT,
             status VARCHAR(20),
@@ -581,7 +589,7 @@ def ensure_schema() -> None:
             title VARCHAR(200),
             description TEXT,
             actor VARCHAR(120),
-            created_at DATETIME,
+            created_at TIMESTAMP,
             FOREIGN KEY(asset_id) REFERENCES assets(id)
         )""",
         "CREATE INDEX ix_asset_events_asset_id ON asset_events (asset_id)",
@@ -593,7 +601,7 @@ def ensure_schema() -> None:
             title VARCHAR(200),
             description TEXT,
             actor VARCHAR(120),
-            created_at DATETIME,
+            created_at TIMESTAMP,
             FOREIGN KEY(incident_id) REFERENCES incidents(id)
         )""",
         "CREATE INDEX ix_incident_events_incident_id ON incident_events (incident_id)",
@@ -609,14 +617,14 @@ def ensure_schema() -> None:
             mime_type VARCHAR(120),
             file_size INTEGER,
             uploaded_by VARCHAR(120),
-            created_at DATETIME,
-            is_active BOOLEAN DEFAULT 1
+            created_at TIMESTAMP,
+            is_active BOOLEAN DEFAULT true
         )""",
         "CREATE INDEX ix_documents_title ON documents (title)",
         "CREATE INDEX ix_documents_category ON documents (category)",
         """CREATE TABLE audit_logs (
             id INTEGER PRIMARY KEY,
-            created_at DATETIME,
+            created_at TIMESTAMP,
             actor VARCHAR(120),
             module VARCHAR(40),
             action VARCHAR(60),
@@ -659,22 +667,25 @@ def ensure_schema() -> None:
     with engine.begin() as conn:
         for statement in legacy_statements:
             try:
-                conn.execute(text(statement))
+                with conn.begin_nested():
+                    conn.execute(text(statement))
             except Exception:
                 pass
         for statement in backfill_statements:
             try:
-                conn.execute(text(statement))
+                with conn.begin_nested():
+                    conn.execute(text(statement))
             except Exception:
                 pass
         ensure_master_tables(conn)
         ensure_fk_columns(conn)
         seed_master_data(conn)
         try:
-            conn.execute(text("UPDATE assets SET status = 'assigned' WHERE lower(COALESCE(status, '')) = 'active' AND COALESCE(assigned_user, '') <> ''"))
-            conn.execute(text("UPDATE assets SET status = 'in_stock' WHERE lower(COALESCE(status, '')) IN ('active', 'inactive') AND COALESCE(assigned_user, '') = ''"))
-            conn.execute(text("UPDATE assets SET status = 'repairing' WHERE lower(COALESCE(status, '')) IN ('in_repair', 'repair', 'repairing', 'broken')"))
-            conn.execute(text("UPDATE assets SET status = lower(status) WHERE upper(COALESCE(status, '')) IN ('IN_STOCK', 'ASSIGNED', 'BORROWED', 'REPAIRING', 'RETIRED', 'DISPOSED', 'LOST')"))
+            with conn.begin_nested():
+                conn.execute(text("UPDATE assets SET status = 'assigned' WHERE lower(COALESCE(status, '')) = 'active' AND COALESCE(assigned_user, '') <> ''"))
+                conn.execute(text("UPDATE assets SET status = 'in_stock' WHERE lower(COALESCE(status, '')) IN ('active', 'inactive') AND COALESCE(assigned_user, '') = ''"))
+                conn.execute(text("UPDATE assets SET status = 'repairing' WHERE lower(COALESCE(status, '')) IN ('in_repair', 'repair', 'repairing', 'broken')"))
+                conn.execute(text("UPDATE assets SET status = lower(status) WHERE upper(COALESCE(status, '')) IN ('IN_STOCK', 'ASSIGNED', 'BORROWED', 'REPAIRING', 'RETIRED', 'DISPOSED', 'LOST')"))
         except Exception:
             pass
         backfill_master_data(conn)
