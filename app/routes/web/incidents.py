@@ -19,18 +19,18 @@ templates = Jinja2Templates(directory='app/templates')
 INCIDENT_PRIORITIES = ['low', 'medium', 'high']
 INCIDENT_STATUSES = ['open', 'in_progress', 'waiting_user', 'waiting_vendor', 'resolved', 'closed', 'cancelled']
 INCIDENT_STATUS_META = {
-    'open': {'label': 'Mới tiếp nhận', 'badge': 'text-bg-secondary'},
-    'in_progress': {'label': 'Đang xử lý', 'badge': 'text-bg-primary'},
-    'waiting_user': {'label': 'Chờ người dùng phản hồi', 'badge': 'text-bg-warning'},
-    'waiting_vendor': {'label': 'Chờ nhà cung cấp', 'badge': 'text-bg-info'},
-    'resolved': {'label': 'Đã xử lý xong', 'badge': 'text-bg-success'},
-    'closed': {'label': 'Đã đóng', 'badge': 'text-bg-dark'},
-    'cancelled': {'label': 'Đã hủy', 'badge': 'text-bg-light text-dark border'},
+    'open': {'label': 'Mới tiếp nhận', 'badge': 'bg-blue-500/10 text-blue-600 border border-blue-500/10'},
+    'in_progress': {'label': 'Đang xử lý', 'badge': 'bg-amber-500/10 text-amber-600 border border-amber-500/10'},
+    'waiting_user': {'label': 'Chờ người dùng phản hồi', 'badge': 'bg-amber-500/10 text-amber-600 border border-amber-500/10'},
+    'waiting_vendor': {'label': 'Chờ nhà cung cấp', 'badge': 'bg-sky-500/10 text-sky-600 border border-sky-500/10'},
+    'resolved': {'label': 'Đã xử lý xong', 'badge': 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/10'},
+    'closed': {'label': 'Đã đóng', 'badge': 'bg-slate-500/10 text-slate-500 border border-slate-500/10'},
+    'cancelled': {'label': 'Đã hủy', 'badge': 'bg-slate-100 text-slate-400 border border-slate-200'},
 }
 INCIDENT_PRIORITY_META = {
-    'low': {'label': 'Thấp', 'badge': 'text-bg-secondary'},
-    'medium': {'label': 'Trung bình', 'badge': 'text-bg-warning'},
-    'high': {'label': 'Cao', 'badge': 'text-bg-danger'},
+    'low': {'label': 'Thấp', 'badge': 'bg-slate-100 text-slate-500 border border-slate-200'},
+    'medium': {'label': 'Trung bình', 'badge': 'bg-amber-500/10 text-amber-600 border border-amber-500/10'},
+    'high': {'label': 'Cao', 'badge': 'bg-rose-500/10 text-rose-600 border border-rose-500/10'},
 }
 FINAL_INCIDENT_STATUSES = {'resolved', 'closed', 'cancelled'}
 INCIDENT_SOURCES = ['user_report', 'monitoring', 'checklist', 'system_generated']
