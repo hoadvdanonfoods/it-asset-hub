@@ -42,3 +42,8 @@ tailwindcss.exe
 
 # Tailwind CSS source input (compiled output is committed)
 app/static/css/input.css
+
+# Test artifacts
+test_endpoints.py
+test_temp.db
+test_*.db

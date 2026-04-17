@@ -3,7 +3,7 @@ import io
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Form, Query, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 import openpyxl
 from sqlalchemy import or_, select
@@ -75,7 +75,7 @@ def status_label(status: str | None) -> str:
 
 def status_badge_class(status: str | None) -> str:
     key = (status or 'open').strip()
-    return INCIDENT_STATUS_META.get(key, {'badge': 'text-bg-secondary'}).get('badge', 'text-bg-secondary')
+    return INCIDENT_STATUS_META.get(key, {'badge': 'bg-slate-100 text-slate-500 border border-slate-200'}).get('badge', 'bg-slate-100 text-slate-500 border border-slate-200')
 
 
 def priority_label(priority: str | None) -> str:
@@ -85,7 +85,7 @@ def priority_label(priority: str | None) -> str:
 
 def priority_badge_class(priority: str | None) -> str:
     key = (priority or 'medium').strip()
-    return INCIDENT_PRIORITY_META.get(key, {'badge': 'text-bg-warning'}).get('badge', 'text-bg-warning')
+    return INCIDENT_PRIORITY_META.get(key, {'badge': 'bg-amber-500/10 text-amber-600 border border-amber-500/10'}).get('badge', 'bg-amber-500/10 text-amber-600 border border-amber-500/10')
 
 
 def source_label(source: str | None) -> str:
