@@ -36,3 +36,9 @@ desktop.ini
 # Logs
 *.log
 logs/
+
+# Tailwind CLI binary (download separately, see tailwind.config.js)
+tailwindcss.exe
+
+# Tailwind CSS source input (compiled output is committed)
+app/static/css/input.css
