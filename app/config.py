@@ -10,6 +10,8 @@ if EXTERNAL_ENV_FILE:
 load_dotenv(BASE_DIR / '.env', override=False)
 
 DATA_DIR = Path(os.getenv('DATA_DIR', str(BASE_DIR / 'data')))
+LOG_DIR = Path(os.getenv('LOG_DIR', str(DATA_DIR / 'logs')))
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
 DEFAULT_DB_PATH = DATA_DIR / 'it_asset_hub.db'
 DEFAULT_DATABASE_URL = f'sqlite:///{DEFAULT_DB_PATH}'
 

@@ -4,6 +4,9 @@ import unicodedata
 from sqlalchemy import text
 
 from app.db.session import engine
+from app.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 MASTER_TABLES = {
@@ -420,7 +423,7 @@ def _print_unmatched_summary(unmatched_tracker: dict) -> None:
         top_values = sorted(values.items(), key=lambda item: (-item[1], item[0]))[:10]
         preview = ', '.join(f'{value} ({count})' for value, count in top_values)
         suffix = ' ...' if unique > len(top_values) else ''
-        print(f"[backfill] unmatched {table_name}.{column_name}: {total} rows, {unique} unique -> {preview}{suffix}")
+        logger.warning("unmatched %s.%s: %d rows, %d unique -> %s%s", table_name, column_name, total, unique, preview, suffix)
 
 
 def _dedupe_master_rows(conn, table_name: str, code_column: str, name_column: str, ref_updates: list[tuple[str, str]], extra_updates: list[str] | None = None) -> None:
@@ -541,6 +544,7 @@ def backfill_master_data(conn) -> None:
 
 
 def ensure_schema() -> None:
+    logger.info("Running schema migration...")
     legacy_statements = [
         "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)",
         "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT true",
@@ -690,3 +694,4 @@ def ensure_schema() -> None:
             pass
         backfill_master_data(conn)
         dedupe_master_data(conn)
+    logger.info("Schema migration complete.")

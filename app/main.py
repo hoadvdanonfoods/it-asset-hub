@@ -1,6 +1,7 @@
+import time
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 
@@ -13,7 +14,13 @@ from app.config import (
     DEFAULT_ADMIN_PASSWORD,
     DEFAULT_ADMIN_USERNAME,
     IS_PRODUCTION,
+    LOG_DIR,
+    LOG_LEVEL,
 )
+from app.logger import get_logger, setup_logging
+
+setup_logging(LOG_DIR, LOG_LEVEL)
+logger = get_logger(__name__)
 from app.db.base import Base
 from app.db.migrations import ensure_schema
 from app.db.models import Asset, AssetEvent, User
@@ -103,6 +110,21 @@ if AUTO_BACKFILL_ASSET_EVENTS:
     backfill_asset_events()
 app = FastAPI(title=APP_NAME)
 app.state.app_version = APP_VERSION
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "%s %s %s %.0fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
+    )
+    return response
 
 static_dir = Path('app/static')
 app.mount('/static', StaticFiles(directory=static_dir), name='static')
