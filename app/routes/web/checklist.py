@@ -814,31 +814,45 @@ def checklist_export_report(
 @router.get("/api/auto-check")
 async def api_auto_check(request: Request, db: Session = Depends(get_db)):
     """Kết nối từng NVR qua Hikvision ISAPI, lấy trạng thái từng kênh camera."""
+    import urllib.parse
+
     current_user = get_current_user(request)
     if not current_user:
         return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
 
-    nvrs = db.scalars(select(Asset).where(Asset.asset_type == "NVR")).all()
-    cameras = db.scalars(select(Asset).where(Asset.asset_type == "Camera")).all()
-    resources = db.scalars(select(Resource).where(Resource.is_active == True)).all()  # noqa: E712
+    try:
+        nvrs = db.scalars(select(Asset).where(Asset.asset_type == "NVR")).all()
+        cameras = db.scalars(select(Asset).where(Asset.asset_type == "Camera")).all()
+        resources = db.scalars(select(Resource).where(Resource.is_active == True)).all()  # noqa: E712
+    except Exception as exc:
+        print(f"[auto-check] DB error: {exc}")
+        return JSONResponse(content={"error": f"DB error: {str(exc)}"}, status_code=500)
 
     # camera_code → camera_id
     cam_by_code: dict[str, int] = {c.asset_code: c.id for c in cameras}
 
-    # NVR ip_address → {username, password, url}
+    # NVR ip_address → credentials — use exact hostname match to avoid substring false positives
     nvr_creds: dict[str, dict] = {}
     for res in resources:
         if not res.url or not res.username_hint:
             continue
+        try:
+            parsed = urllib.parse.urlparse(res.url)
+            url_host = parsed.hostname or parsed.path.strip().split(":")[0]
+        except Exception:
+            url_host = res.url.strip()
         for nvr in nvrs:
-            if not nvr.ip_address:
+            nvr_ip = (nvr.ip_address or "").strip()
+            if not nvr_ip or nvr_ip in nvr_creds:
                 continue
-            if nvr.ip_address in res.url and nvr.ip_address not in nvr_creds:
-                nvr_creds[nvr.ip_address] = {
+            if url_host == nvr_ip:
+                nvr_creds[nvr_ip] = {
                     "username": res.username_hint,
                     "password": decrypt_resource_password(res.password_hint) or "",
                     "url": res.url.rstrip("/"),
                 }
+
+    print(f"[auto-check] NVRs={len(nvrs)} Cameras={len(cameras)} Resources={len(resources)} CredMatches={len(nvr_creds)}")
 
     results: dict[str, str] = {}
     summary = {"ok": 0, "err": 0, "unknown": 0, "nvrs_checked": 0, "nvrs_failed": 0, "nvrs_no_creds": 0}
@@ -858,9 +872,10 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
         base_url = creds["url"] if creds["url"].startswith("http") else f"http://{creds['url']}"
 
         try:
+            hx_timeout = httpx.Timeout(connect=8.0, read=10.0, write=5.0, pool=5.0)
             async with httpx.AsyncClient(
                 auth=httpx.DigestAuth(creds["username"], creds["password"]),
-                base_url=base_url, verify=False, timeout=12.0
+                base_url=base_url, verify=False, timeout=hx_timeout
             ) as client:
                 xml_text = None
                 for ep in [
@@ -879,6 +894,7 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                     for cam in nvr_cameras:
                         results[str(cam.id)] = "unknown"
                     summary["nvrs_failed"] += 1
+                    print(f"[auto-check] NVR {nvr_ip}: no XML from either endpoint")
                     return
 
                 clean_xml = re.sub(r' xmlns="[^"]+"', '', xml_text)
@@ -911,24 +927,42 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                     if cam_id:
                         results[str(cam_id)] = "ok" if is_ok else "err"
 
-                # Mark cameras not returned by NVR as unknown
                 for cam in nvr_cameras:
                     if str(cam.id) not in results:
                         results[str(cam.id)] = "unknown"
 
                 summary["nvrs_checked"] += 1
+                print(f"[auto-check] NVR {nvr_ip}: OK, {len(items)} channels parsed")
 
-        except Exception:
+        except Exception as exc:
             for cam in nvr_cameras:
                 results[str(cam.id)] = "unknown"
             summary["nvrs_failed"] += 1
+            print(f"[auto-check] NVR {nvr_ip} error: {exc}")
 
-    await asyncio.gather(*[_check_nvr(nvr) for nvr in nvrs])
+    async def _check_nvr_guarded(nvr: Asset):
+        """Hard 15s deadline per NVR — prevents hang if httpx stalls."""
+        nvr_ip = (nvr.ip_address or "").strip()
+        try:
+            await asyncio.wait_for(_check_nvr(nvr), timeout=15.0)
+        except asyncio.TimeoutError:
+            nvr_cameras = [c for c in cameras if (c.location or "").strip() == nvr_ip]
+            for cam in nvr_cameras:
+                if str(cam.id) not in results:
+                    results[str(cam.id)] = "unknown"
+            summary["nvrs_failed"] += 1
+            print(f"[auto-check] NVR {nvr_ip}: hard timeout (15s)")
+
+    try:
+        await asyncio.gather(*[_check_nvr_guarded(nvr) for nvr in nvrs])
+    except Exception as exc:
+        print(f"[auto-check] gather error: {exc}")
 
     for v in results.values():
         if v in summary:
             summary[v] += 1
 
+    print(f"[auto-check] Done: {summary}")
     return JSONResponse(content={"results": results, "summary": summary})
 
 

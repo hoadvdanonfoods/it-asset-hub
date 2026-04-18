@@ -772,11 +772,24 @@
     async function runAutoCheck() {
         const btn = document.getElementById('autoCheckBtn');
         btn.disabled = true;
-        btn.innerHTML = '<svg class="w-4 h-4 animate-spin inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg> Đang kết nối NVR...';
+        const spinnerHTML = '<svg class="w-4 h-4 animate-spin inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg>';
+        btn.innerHTML = spinnerHTML + ' Đang kết nối NVR...';
+
+        // Countdown label while waiting
+        let elapsed = 0;
+        const ticker = setInterval(() => {
+            elapsed++;
+            btn.innerHTML = spinnerHTML + ` Đang kết nối... (${elapsed}s)`;
+        }, 1000);
+
+        // Hard 35s browser-side timeout
+        const controller = new AbortController();
+        const abortTimer = setTimeout(() => controller.abort(), 35000);
 
         try {
-            const resp = await fetch('/checklist/api/auto-check');
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const resp = await fetch('/checklist/api/auto-check', { signal: controller.signal });
+            clearTimeout(abortTimer);
+            if (!resp.ok) throw new Error('Server trả về lỗi HTTP ' + resp.status);
             const data = await resp.json();
             if (!data.results) throw new Error(data.error || 'Không có dữ liệu trả về');
 
@@ -789,8 +802,11 @@
             }
             showAutoCheckToast(data.summary, filled, skipped);
         } catch (e) {
-            showAutoCheckToast(null, 0, 0, e.message);
+            clearTimeout(abortTimer);
+            const msg = e.name === 'AbortError' ? 'Timeout: server không phản hồi sau 35 giây' : e.message;
+            showAutoCheckToast(null, 0, 0, msg);
         } finally {
+            clearInterval(ticker);
             btn.disabled = false;
             btn.innerHTML = '<i data-lucide="wifi" class="w-4 h-4"></i><span>Kiểm tra tự động</span>';
             if (window.lucide) lucide.createIcons();
