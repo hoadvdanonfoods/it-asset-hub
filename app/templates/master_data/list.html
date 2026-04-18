@@ -154,130 +154,118 @@
   </div>
 </div>
 
-<div id="bulkEditModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkModalBackdrop"></div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-outline-variant/10">
-      <form action="/master-data/{{ model_name }}/bulk-edit" method="POST" id="bulkEditForm">
-        <input type="hidden" name="item_ids" id="bulkItemIds">
+<div id="bulkEditModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl w-full max-w-lg border border-outline-variant/10">
+    <form action="/master-data/{{ model_name }}/bulk-edit" method="POST" id="bulkEditForm">
+      <input type="hidden" name="item_ids" id="bulkItemIds">
 
-        <div class="bg-primary/5 px-6 py-4 border-b border-outline-variant/10">
-          <h3 class="text-lg font-bold text-primary headline">Chỉnh sửa hàng loạt</h3>
-          <p class="text-xs text-on-surface/60">Cập nhật thông tin cho <span id="selectedCountDisplay" class="font-bold text-indigo-600">0</span> bản ghi đã chọn</p>
+      <div class="bg-primary/5 px-6 py-4 border-b border-outline-variant/10">
+        <h3 class="text-lg font-bold text-primary headline">Chỉnh sửa hàng loạt</h3>
+        <p class="text-xs text-on-surface/60">Cập nhật thông tin cho <span id="selectedCountDisplay" class="font-bold text-indigo-600">0</span> bản ghi đã chọn</p>
+      </div>
+
+      <div class="px-6 py-6 space-y-4 max-h-[60vh] overflow-y-auto">
+        <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+          <p class="text-[11px] text-amber-700 leading-relaxed font-medium">
+            <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
+            Chỉ những trường bạn nhập nội dung mới được cập nhật. Những trường để trống sẽ giữ nguyên giá trị cũ.
+          </p>
         </div>
 
-        <div class="px-6 py-6 space-y-4">
-          <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
-            <p class="text-[11px] text-amber-700 leading-relaxed font-medium">
-              <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1"></i>
-              Chỉ những trường bạn nhập nội dung mới được cập nhật. Những trường để trống sẽ giữ nguyên giá trị cũ.
-            </p>
-          </div>
-
-          {% for field in config.columns %}
-          <div>
-            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">{{ field.label }}</label>
-            {% if field.type == 'textarea' %}
-              <textarea name="{{ field.key }}" rows="2" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all"></textarea>
-            {% elif field.type == 'boolean' %}
-              <select name="{{ field.key }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
-                <option value="">-- Không thay đổi --</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </select>
-            {% elif field.type == 'select' %}
-              <select name="{{ field.key }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
-                <option value="">-- Không thay đổi --</option>
-                {% for option in field_options.get(field.key, []) %}
-                <option value="{{ option|attr(field.option_value or 'id') }}">{{ option|attr(field.option_label or 'name') }}{% if option.code is defined and option.code %} ({{ option.code }}){% endif %}</option>
-                {% endfor %}
-              </select>
-            {% else %}
-              <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="{{ field.key }}" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
-            {% endif %}
-          </div>
-          {% endfor %}
+        {% for field in config.columns %}
+        <div>
+          <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">{{ field.label }}</label>
+          {% if field.type == 'textarea' %}
+            <textarea name="{{ field.key }}" rows="2" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all"></textarea>
+          {% elif field.type == 'boolean' %}
+            <select name="{{ field.key }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+              <option value="">-- Không thay đổi --</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          {% elif field.type == 'select' %}
+            <select name="{{ field.key }}" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all appearance-none cursor-pointer">
+              <option value="">-- Không thay đổi --</option>
+              {% for option in field_options.get(field.key, []) %}
+              <option value="{{ option|attr(field.option_value or 'id') }}">{{ option|attr(field.option_label or 'name') }}{% if option.code is defined and option.code %} ({{ option.code }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <input type="{{ field.type if field.type in ['email', 'number'] else 'text' }}" name="{{ field.key }}" placeholder="Để trống nếu không muốn đổi" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all">
+          {% endif %}
         </div>
+        {% endfor %}
+      </div>
 
-        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
-          <button type="button" id="closeBulkModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
-          <button type="submit" class="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg shadow-primary/20 cursor-pointer">Cập nhật tất cả</button>
-        </div>
-      </form>
-    </div>
+      <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+        <button type="button" id="closeBulkModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+        <button type="submit" class="bg-primary text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg shadow-primary/20 cursor-pointer">Cập nhật tất cả</button>
+      </div>
+    </form>
   </div>
 </div>
 
-<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkArchiveModalBackdrop"></div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-rose-500/20">
-      <form action="/master-data/{{ model_name }}/bulk-archive" method="POST" id="bulkArchiveForm">
-        <input type="hidden" name="item_ids" id="bulkArchiveItemIds">
+<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl w-full max-w-lg border border-rose-500/20">
+    <form action="/master-data/{{ model_name }}/bulk-archive" method="POST" id="bulkArchiveForm">
+      <input type="hidden" name="item_ids" id="bulkArchiveItemIds">
 
-        <div class="bg-rose-500/5 px-6 py-4 border-b border-rose-500/10">
-          <h3 class="text-lg font-bold text-rose-600 headline">Inactive hàng loạt</h3>
-          <p class="text-xs text-on-surface/60">Đưa <span id="archiveCountDisplay" class="font-bold text-rose-600">0</span> bản ghi đã chọn về trạng thái inactive</p>
+      <div class="bg-rose-500/5 px-6 py-4 border-b border-rose-500/10">
+        <h3 class="text-lg font-bold text-rose-600 headline">Inactive hàng loạt</h3>
+        <p class="text-xs text-on-surface/60">Đưa <span id="archiveCountDisplay" class="font-bold text-rose-600">0</span> bản ghi đã chọn về trạng thái inactive</p>
+      </div>
+
+      <div class="px-6 py-6 space-y-4">
+        <div class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
+          <p class="text-[11px] text-rose-700 leading-relaxed font-medium">
+            <i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline mr-1"></i>
+            {% if model_name == 'employees' %}Hành động này sẽ chuyển nhân sự sang inactive, nhưng hệ thống sẽ chặn những người còn đang giữ tài sản để tránh làm sai dữ liệu bàn giao.{% else %}Hành động này sẽ cập nhật các bản ghi đã chọn thành inactive (`is_active = false`).{% endif %}
+          </p>
         </div>
 
-        <div class="px-6 py-6 space-y-4">
-          <div class="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl mb-4">
-            <p class="text-[11px] text-rose-700 leading-relaxed font-medium">
-              <i data-lucide="alert-triangle" class="w-3.5 h-3.5 inline mr-1"></i>
-              {% if model_name == 'employees' %}Hành động này sẽ chuyển nhân sự sang inactive, nhưng hệ thống sẽ chặn những người còn đang giữ tài sản để tránh làm sai dữ liệu bàn giao.{% else %}Hành động này sẽ cập nhật các bản ghi đã chọn thành inactive (`is_active = false`).{% endif %}
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ lớn</label>
-            <input type="text" name="confirm_text" placeholder="Nhập chữ ARCHIVE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-rose-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface transition-all">
-          </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ lớn</label>
+          <input type="text" name="confirm_text" placeholder="Nhập chữ ARCHIVE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-rose-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface transition-all">
         </div>
+      </div>
 
-        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
-          <button type="button" id="closeBulkArchiveModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
-          <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">Đồng ý Inactive</button>
-        </div>
-      </form>
-    </div>
+      <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+        <button type="button" id="closeBulkArchiveModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+        <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">Đồng ý Inactive</button>
+      </div>
+    </form>
   </div>
 </div>
 
-<div id="bulkDeleteModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
-  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" id="bulkDeleteModalBackdrop"></div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-rose-500/30">
-      <form action="/master-data/{{ model_name }}/bulk-delete" method="POST" id="bulkDeleteForm">
-        <input type="hidden" name="item_ids" id="bulkDeleteItemIds">
-        <div class="bg-rose-500/5 px-6 py-4 border-b border-rose-500/10">
-          <h3 class="text-lg font-bold text-rose-600 headline flex items-center gap-2">
-            <i data-lucide="trash-2" class="w-5 h-5"></i> Xóa vĩnh viễn hàng loạt
-          </h3>
-          <p class="text-xs text-on-surface/60 mt-1">Xóa <span id="deleteCountDisplay" class="font-bold text-rose-600">0</span> bản ghi đã chọn — không thể hoàn tác</p>
+<div id="bulkDeleteModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl w-full max-w-lg border border-rose-500/30">
+    <form action="/master-data/{{ model_name }}/bulk-delete" method="POST" id="bulkDeleteForm">
+      <input type="hidden" name="item_ids" id="bulkDeleteItemIds">
+      <div class="bg-rose-500/5 px-6 py-4 border-b border-rose-500/10">
+        <h3 class="text-lg font-bold text-rose-600 headline flex items-center gap-2">
+          <i data-lucide="trash-2" class="w-5 h-5"></i> Xóa vĩnh viễn hàng loạt
+        </h3>
+        <p class="text-xs text-on-surface/60 mt-1">Xóa <span id="deleteCountDisplay" class="font-bold text-rose-600">0</span> bản ghi đã chọn — không thể hoàn tác</p>
+      </div>
+      <div class="px-6 py-6 space-y-4">
+        <div class="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+          <p class="text-sm text-rose-700 font-medium leading-relaxed">
+            <i data-lucide="alert-triangle" class="w-4 h-4 inline mr-1"></i>
+            Hành động này <strong>xóa vĩnh viễn</strong> các bản ghi khỏi database. Dữ liệu đang được tham chiếu bởi module khác sẽ bị chặn tự động để bảo vệ tính toàn vẹn dữ liệu.
+          </p>
         </div>
-        <div class="px-6 py-6 space-y-4">
-          <div class="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-            <p class="text-sm text-rose-700 font-medium leading-relaxed">
-              <i data-lucide="alert-triangle" class="w-4 h-4 inline mr-1"></i>
-              Hành động này <strong>xóa vĩnh viễn</strong> các bản ghi khỏi database. Dữ liệu đang được tham chiếu bởi module khác sẽ bị chặn tự động để bảo vệ tính toàn vẹn dữ liệu.
-            </p>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ in hoa</label>
-            <input type="text" name="confirm_text" placeholder="Nhập DELETE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-rose-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface transition-all">
-          </div>
+        <div>
+          <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ in hoa</label>
+          <input type="text" name="confirm_text" placeholder="Nhập DELETE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-rose-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface transition-all">
         </div>
-        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
-          <button type="button" id="closeBulkDeleteModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
-          <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer flex items-center gap-2">
-            <i data-lucide="trash-2" class="w-4 h-4"></i> Xác nhận xóa
-          </button>
-        </div>
-      </form>
-    </div>
+      </div>
+      <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+        <button type="button" id="closeBulkDeleteModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+        <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer flex items-center gap-2">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Xác nhận xóa
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -442,16 +430,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const openBulkEdit = document.getElementById('openBulkEdit');
   const openBulkArchive = document.getElementById('openBulkArchive');
   const bulkEditModal = document.getElementById('bulkEditModal');
-  const bulkModalBackdrop = document.getElementById('bulkModalBackdrop');
   const closeBulkModal = document.getElementById('closeBulkModal');
   const bulkItemIdsInput = document.getElementById('bulkItemIds');
   const bulkArchiveModal = document.getElementById('bulkArchiveModal');
-  const bulkArchiveModalBackdrop = document.getElementById('bulkArchiveModalBackdrop');
   const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
   const bulkArchiveItemIds = document.getElementById('bulkArchiveItemIds');
   const archiveCountDisplay = document.getElementById('archiveCountDisplay');
   const bulkDeleteModal = document.getElementById('bulkDeleteModal');
-  const bulkDeleteModalBackdrop = document.getElementById('bulkDeleteModalBackdrop');
   const closeBulkDeleteModal = document.getElementById('closeBulkDeleteModal');
   const bulkDeleteItemIds = document.getElementById('bulkDeleteItemIds');
   const deleteCountDisplay = document.getElementById('deleteCountDisplay');
@@ -537,13 +522,11 @@ document.addEventListener('DOMContentLoaded', function() {
   if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModal);
   if (closeBulkDeleteModal) closeBulkDeleteModal.addEventListener('click', closeModal);
 
-  // Click outside card (on overlay or backdrop) to close
+  // Click on overlay background (not on the card) to close
   [bulkEditModal, bulkArchiveModal, bulkDeleteModal].forEach(function(overlay) {
     if (!overlay) return;
     overlay.addEventListener('click', function(e) {
-      const card = overlay.querySelector('.inline-block');
-      if (card && card.contains(e.target)) return;
-      closeModal();
+      if (e.target === overlay) closeModal();
     });
   });
 
