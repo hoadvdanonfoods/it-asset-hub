@@ -532,12 +532,25 @@ document.addEventListener('DOMContentLoaded', function() {
     bulkDeleteModal.classList.add('hidden');
   }
 
+  // Close buttons
   if (closeBulkModal) closeBulkModal.addEventListener('click', closeModal);
-  if (bulkModalBackdrop) bulkModalBackdrop.addEventListener('click', closeModal);
   if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModal);
-  if (bulkArchiveModalBackdrop) bulkArchiveModalBackdrop.addEventListener('click', closeModal);
   if (closeBulkDeleteModal) closeBulkDeleteModal.addEventListener('click', closeModal);
-  if (bulkDeleteModalBackdrop) bulkDeleteModalBackdrop.addEventListener('click', closeModal);
+
+  // Click outside card (on overlay or backdrop) to close
+  [bulkEditModal, bulkArchiveModal, bulkDeleteModal].forEach(function(overlay) {
+    if (!overlay) return;
+    overlay.addEventListener('click', function(e) {
+      const card = overlay.querySelector('.inline-block');
+      if (card && card.contains(e.target)) return;
+      closeModal();
+    });
+  });
+
+  // Escape key
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+  });
 });
 </script>
 {% endblock %}
