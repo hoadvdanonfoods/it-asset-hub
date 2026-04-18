@@ -295,20 +295,21 @@
 
                 <!-- Action buttons -->
                 <div class="flex justify-end gap-3 pt-1">
-                    <button onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
-                    <button id="syncRunBtn" onclick="runSync()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-violet-500 text-white hover:bg-violet-600 transition-all shadow-sm">
+                    <button type="button" onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
+                    <button type="button" id="syncRunBtn" onclick="runSync()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-violet-500 text-white hover:bg-violet-600 transition-all shadow-sm">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i> Bắt đầu quét
                     </button>
                 </div>
             </div>
 
             <!-- Result panel (hidden until done) -->
-            <div id="syncResultPanel" class="hidden px-6 pb-6 space-y-3">
+            <div id="syncResultPanel" class="hidden px-6 pt-4 pb-6 space-y-3">
                 <div id="syncSummaryBar" class="grid grid-cols-3 gap-3 text-center"></div>
                 <div id="syncDetailTable" class="max-h-64 overflow-y-auto custom-scrollbar rounded-2xl border border-outline-variant/10 divide-y divide-outline-variant/10 text-sm"></div>
+                <div id="syncFooter"></div>
                 <div class="flex justify-end gap-3 pt-1">
-                    <button onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Đóng</button>
-                    <button onclick="openSyncModal()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 border border-violet-500/20 transition-all">
+                    <button type="button" onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Đóng</button>
+                    <button type="button" onclick="openSyncModal()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 border border-violet-500/20 transition-all">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i> Quét lại
                     </button>
                 </div>
@@ -878,7 +879,18 @@
                 signal: controller.signal,
             });
             clearTimeout(abortTimer);
-            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            if (!resp.ok) {
+                const ct = resp.headers.get('content-type') || '';
+                if (ct.includes('application/json')) {
+                    const err = await resp.json();
+                    throw new Error(err.error || 'HTTP ' + resp.status);
+                }
+                throw new Error('HTTP ' + resp.status + (resp.status === 403 ? ' (không có quyền)' : ''));
+            }
+            const ct = resp.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                throw new Error('Server trả về không phải JSON — session có thể đã hết hạn, vui lòng tải lại trang');
+            }
             const data = await resp.json();
             if (!dryRun) window._syncDidWrite = true;
             showSyncResult(data, dryRun);
@@ -950,15 +962,17 @@
             </div>`;
         }).join('');
 
-        detailTable.innerHTML = rows || '<div class="px-4 py-6 text-center text-on-surface/40 text-sm">Không có NVR nào được xử lý</div>';
+        if (rows) {
+            detailTable.innerHTML = rows;
+        } else {
+            detailTable.innerHTML = '<div class="px-4 py-8 text-center text-on-surface/50 text-sm font-medium">Không có NVR nào trong hệ thống.<br><span class="text-xs opacity-70">Hãy thêm đầu ghi NVR trong tab Quản lý thiết bị trước.</span></div>';
+        }
 
-        // Stats footer
-        const footerHtml = `<div class="px-4 py-2 bg-surface-container-low/50 text-xs text-on-surface/50 flex gap-4">
+        document.getElementById('syncFooter').innerHTML = `<div class="px-4 py-2 bg-surface-container-low/50 rounded-xl text-xs text-on-surface/50 flex gap-4">
             <span>NVR OK: <strong class="text-emerald-600">${s.nvrs_synced || 0}</strong></span>
             <span>Lỗi: <strong class="text-rose-600">${s.nvrs_failed || 0}</strong></span>
             <span>Thiếu creds: <strong class="text-amber-600">${s.nvrs_no_creds || 0}</strong></span>
         </div>`;
-        detailTable.insertAdjacentHTML('afterend', footerHtml);
 
         if (window.lucide) lucide.createIcons();
     }
