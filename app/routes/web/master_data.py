@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import require_permission
@@ -455,6 +456,57 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
     db.commit()
     tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
     return _redirect_with_bulk_feedback(model_name, message='Đã xử lý inactive hàng loạt', success=success, blocked=blocked, details=details, tone=tone)
+
+
+@router.post('/{model_name}/bulk-delete')
+@require_permission('can_manage_system')
+async def bulk_delete_model_submit(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+
+    form = await request.form()
+    item_ids_raw = (form.get('item_ids') or '').strip()
+    confirm_text = (form.get('confirm_text') or '').strip().upper()
+    if not item_ids_raw or confirm_text != 'DELETE':
+        return _redirect_with_bulk_feedback(model_name, message='Xác nhận không hợp lệ. Nhập chữ DELETE để tiếp tục.', tone='warning')
+
+    item_ids = [int(t) for t in item_ids_raw.split(',') if t.strip().isdigit()]
+    success = 0
+    blocked = 0
+    details: list[str] = []
+
+    if item_ids:
+        items = db.scalars(select(config['model']).where(config['model'].id.in_(item_ids))).all()
+        for item in items:
+            title = str(getattr(item, config['title_field'], item.id))
+
+            # Block employees with active asset assignments
+            if model_name == 'employees':
+                active_assignment = db.scalar(
+                    select(AssetAssignment).where(
+                        AssetAssignment.employee_id == item.id,
+                        AssetAssignment.unassigned_at.is_(None),
+                    ).limit(1)
+                )
+                if active_assignment:
+                    blocked += 1
+                    details.append(f'{title}: còn bàn giao tài sản chưa thu hồi')
+                    continue
+
+            try:
+                db.delete(item)
+                db.flush()
+                success += 1
+                log_audit(db, actor=current_user.username if current_user else None, module='master_data', action='bulk_delete', entity_type=model_name, entity_id=item.id, metadata={'title': title})
+            except IntegrityError:
+                db.rollback()
+                blocked += 1
+                details.append(f'{title}: đang được tham chiếu bởi dữ liệu khác')
+
+    db.commit()
+    tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
+    return _redirect_with_bulk_feedback(model_name, message=f'Đã xóa {success} bản ghi.', success=success, blocked=blocked, details=details, tone=tone)
 
 
 @router.post('/{model_name}/import')

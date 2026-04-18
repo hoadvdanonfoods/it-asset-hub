@@ -144,8 +144,11 @@
     <button type="button" id="openBulkEdit" class="flex items-center gap-2 bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-400 transition-all shadow-lg cursor-pointer">
       <i data-lucide="edit-3" class="w-4 h-4"></i> Sửa
     </button>
-    <button type="button" id="openBulkArchive" class="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">
+    <button type="button" id="openBulkArchive" class="flex items-center gap-2 bg-amber-500 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-amber-400 transition-all shadow-lg cursor-pointer">
       <i data-lucide="archive-x" class="w-4 h-4"></i> Inactive
+    </button>
+    <button type="button" id="openBulkDelete" class="flex items-center gap-2 bg-rose-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">
+      <i data-lucide="trash-2" class="w-4 h-4"></i> Xóa vĩnh viễn
     </button>
     <button type="button" id="cancelSelection" class="text-white/60 hover:text-white px-4 py-2 text-sm font-bold transition-colors cursor-pointer">Hủy chọn</button>
   </div>
@@ -236,6 +239,42 @@
         <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
           <button type="button" id="closeBulkArchiveModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
           <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer">Đồng ý Inactive</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="bulkDeleteModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" id="bulkDeleteModalBackdrop"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-rose-500/30">
+      <form action="/master-data/{{ model_name }}/bulk-delete" method="POST" id="bulkDeleteForm">
+        <input type="hidden" name="item_ids" id="bulkDeleteItemIds">
+        <div class="bg-rose-500/5 px-6 py-4 border-b border-rose-500/10">
+          <h3 class="text-lg font-bold text-rose-600 headline flex items-center gap-2">
+            <i data-lucide="trash-2" class="w-5 h-5"></i> Xóa vĩnh viễn hàng loạt
+          </h3>
+          <p class="text-xs text-on-surface/60 mt-1">Xóa <span id="deleteCountDisplay" class="font-bold text-rose-600">0</span> bản ghi đã chọn — không thể hoàn tác</p>
+        </div>
+        <div class="px-6 py-6 space-y-4">
+          <div class="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+            <p class="text-sm text-rose-700 font-medium leading-relaxed">
+              <i data-lucide="alert-triangle" class="w-4 h-4 inline mr-1"></i>
+              Hành động này <strong>xóa vĩnh viễn</strong> các bản ghi khỏi database. Dữ liệu đang được tham chiếu bởi module khác sẽ bị chặn tự động để bảo vệ tính toàn vẹn dữ liệu.
+            </p>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-on-surface/50 uppercase tracking-widest mb-1.5 ml-1">Xác nhận bằng chữ in hoa</label>
+            <input type="text" name="confirm_text" placeholder="Nhập DELETE để xác nhận" autocomplete="off" required class="w-full bg-surface-container-low border border-rose-500/30 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 text-on-surface transition-all">
+          </div>
+        </div>
+        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+          <button type="button" id="closeBulkDeleteModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+          <button type="submit" class="bg-rose-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-rose-500 transition-all shadow-lg cursor-pointer flex items-center gap-2">
+            <i data-lucide="trash-2" class="w-4 h-4"></i> Xác nhận xóa
+          </button>
         </div>
       </form>
     </div>
@@ -411,6 +450,12 @@ document.addEventListener('DOMContentLoaded', function() {
   const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
   const bulkArchiveItemIds = document.getElementById('bulkArchiveItemIds');
   const archiveCountDisplay = document.getElementById('archiveCountDisplay');
+  const bulkDeleteModal = document.getElementById('bulkDeleteModal');
+  const bulkDeleteModalBackdrop = document.getElementById('bulkDeleteModalBackdrop');
+  const closeBulkDeleteModal = document.getElementById('closeBulkDeleteModal');
+  const bulkDeleteItemIds = document.getElementById('bulkDeleteItemIds');
+  const deleteCountDisplay = document.getElementById('deleteCountDisplay');
+  const openBulkDelete = document.getElementById('openBulkDelete');
 
   function getSelectedIds() {
     return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
@@ -471,15 +516,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  if (openBulkDelete) {
+    openBulkDelete.addEventListener('click', function() {
+      const ids = getSelectedIds();
+      bulkDeleteItemIds.value = ids.join(',');
+      deleteCountDisplay.textContent = ids.length;
+      bulkDeleteModal.classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
   function closeModal() {
     bulkEditModal.classList.add('hidden');
     bulkArchiveModal.classList.add('hidden');
+    bulkDeleteModal.classList.add('hidden');
   }
 
   if (closeBulkModal) closeBulkModal.addEventListener('click', closeModal);
   if (bulkModalBackdrop) bulkModalBackdrop.addEventListener('click', closeModal);
   if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModal);
   if (bulkArchiveModalBackdrop) bulkArchiveModalBackdrop.addEventListener('click', closeModal);
+  if (closeBulkDeleteModal) closeBulkDeleteModal.addEventListener('click', closeModal);
+  if (bulkDeleteModalBackdrop) bulkDeleteModalBackdrop.addEventListener('click', closeModal);
 });
 </script>
 {% endblock %}

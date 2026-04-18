@@ -41,7 +41,20 @@
         <button id="theme-toggle" class="p-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface/70 cursor-pointer">
           <i data-lucide="sun" id="theme-icon" class="w-5 h-5"></i>
         </button>
-        
+
+        <!-- Language Switcher -->
+        <div class="relative" id="lang-switcher">
+          <button id="lang-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-surface-container-lowest border border-outline-variant/10 hover:bg-surface-container-low transition-colors shadow-sm cursor-pointer">
+            <span id="lang-flag" class="text-base leading-none">🇻🇳</span>
+            <span id="lang-label" class="hidden sm:inline text-xs font-bold text-on-surface/70">VI</span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-on-surface/30"></i>
+          </button>
+          <div id="lang-dropdown" class="hidden absolute right-0 mt-2 w-40 bg-surface-container-lowest rounded-2xl shadow-xl border border-outline-variant/10 overflow-hidden z-[100]">
+            <button onclick="setLang('vi')" id="lang-opt-vi" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-primary/5 transition-colors text-left font-medium">🇻🇳 Tiếng Việt</button>
+            <button onclick="setLang('en')" id="lang-opt-en" class="w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-primary/5 transition-colors text-left font-medium">🇺🇸 English</button>
+          </div>
+        </div>
+
         <div class="relative inline-block text-left" id="user-menu-container">
           <button type="button" id="user-menu-button" class="flex items-center gap-3 bg-surface-container-lowest px-3 py-1.5 rounded-full shadow-sm border border-outline-variant/10 hover:bg-surface-container-low transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20">
             <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-inner
@@ -67,22 +80,22 @@
           <!-- Dropdown menu -->
           <div id="user-menu-dropdown" class="hidden absolute right-0 mt-2 w-56 origin-top-right divide-y divide-outline-variant/10 rounded-2xl bg-surface-container-lowest shadow-xl ring-1 ring-on-surface/5 focus:outline-none z-[100] border border-outline-variant/10 overflow-hidden transform opacity-0 scale-95 transition-all duration-200">
             <div class="px-4 py-3 bg-surface-container-low/30">
-              <p class="text-[10px] text-on-surface/50 font-bold uppercase tracking-wider">Đang đăng nhập</p>
+              <p class="text-[10px] text-on-surface/50 font-bold uppercase tracking-wider" data-i18n="user.logged_in">Đang đăng nhập</p>
               <p class="text-sm font-bold text-on-surface truncate">{{ current_user.username or 'Chưa đăng nhập' }}</p>
             </div>
             <div class="py-1">
               {% if current_user and current_user.can_manage_users %}
               <a href="/users/{{ current_user.id }}/edit" class="group flex items-center px-4 py-2.5 text-sm text-on-surface/70 hover:bg-primary/5 hover:text-primary transition-colors">
-                <i data-lucide="user" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> Hồ sơ của tôi
+                <i data-lucide="user" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> <span data-i18n="user.profile">Hồ sơ của tôi</span>
               </a>
               {% endif %}
               <a href="/users/change-password" class="group flex items-center px-4 py-2.5 text-sm text-on-surface/70 hover:bg-primary/5 hover:text-primary transition-colors">
-                <i data-lucide="key-round" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> Đổi mật khẩu
+                <i data-lucide="key-round" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> <span data-i18n="user.change_password">Đổi mật khẩu</span>
               </a>
             </div>
             <div class="py-1">
               <a href="/logout" class="group flex items-center px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 transition-colors">
-                <i data-lucide="log-out" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> Đăng xuất
+                <i data-lucide="log-out" class="mr-3 h-4 w-4 opacity-50 group-hover:opacity-100"></i> <span data-i18n="user.logout">Đăng xuất</span>
               </a>
             </div>
           </div>
@@ -120,43 +133,43 @@
 
         {% if can_view_dashboard_nav %}
         <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p == '/' else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-sm">Dashboard</span>
+            <i data-lucide="layout-dashboard" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.dashboard">Dashboard</span>
         </a>
         {% endif %}
         {% if can_view_assets_nav %}
         <a href="/assets/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/assets') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm">Tài sản (Assets)</span>
+            <i data-lucide="laptop" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.assets">Tài sản (Assets)</span>
         </a>
         {% endif %}
         {% if can_view_maintenance_nav %}
         <a href="/checklist/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/checklist') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-sm">Camera Checklist</span>
+            <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.checklist">Camera Checklist</span>
         </a>
         {% endif %}
         {% if can_view_resources_nav %}
         <a href="/resources/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm">Vật tư (Resources)</span>
+            <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.resources">Vật tư (Resources)</span>
         </a>
         {% endif %}
         {% if can_view_maintenance_nav %}
         <a href="/maintenance/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/maintenance') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm">Bảo trì (Maintenance)</span>
+            <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.maintenance">Bảo trì (Maintenance)</span>
         </a>
         {% endif %}
         {% if can_view_incidents_nav %}
         <a href="/incidents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/incidents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm">Sự cố (Incidents)</span>
+            <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.incidents">Sự cố (Incidents)</span>
         </a>
         {% endif %}
         {% if can_view_documents_nav %}
         <a href="/documents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm">Tài liệu (Documents)</span>
+            <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.documents">Tài liệu (Documents)</span>
         </a>
         {% endif %}
 
         {% if show_master_nav or show_admin_nav %}
         <div class="pt-4 pb-2">
-            <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2">Điều hướng nhanh</p>
+            <p class="px-4 text-[10px] font-bold text-on-surface/40 uppercase tracking-widest mb-2" data-i18n="nav.quick_nav">Điều hướng nhanh</p>
         </div>
         {% endif %}
 
@@ -164,22 +177,22 @@
         <div class="rounded-2xl border border-outline-variant/10 overflow-hidden bg-surface-container-lowest/40">
           <button type="button" data-nav-toggle="master-data-menu" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-all duration-200 {{ 'bg-primary/5 text-primary' if master_open else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <div class="flex items-center gap-3">
-              <i data-lucide="database" class="w-5 h-5"></i><span class="text-sm font-semibold">Master Data</span>
+              <i data-lucide="database" class="w-5 h-5"></i><span class="text-sm font-semibold" data-i18n="nav.master_data">Master Data</span>
             </div>
             <i data-lucide="chevron-down" class="w-4 h-4 transition-transform {{ 'rotate-180' if master_open else '' }}"></i>
           </button>
           <div id="master-data-menu" class="px-2 pb-2 space-y-1 {{ '' if master_open else 'hidden' }}">
             <a href="/master-data/departments" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/departments') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="building" class="w-4 h-4"></i><span class="text-sm">Phòng ban</span>
+                <i data-lucide="building" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.departments">Phòng ban</span>
             </a>
             <a href="/master-data/employees" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/employees') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm">Nhân viên</span>
+                <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.employees">Nhân viên</span>
             </a>
             <a href="/master-data/asset_types" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/asset_types') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="tag" class="w-4 h-4"></i><span class="text-sm">Loại tài sản</span>
+                <i data-lucide="tag" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.asset_types">Loại tài sản</span>
             </a>
             <a href="/master-data/locations" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/master-data/locations') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="map-pin" class="w-4 h-4"></i><span class="text-sm">Vị trí</span>
+                <i data-lucide="map-pin" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.locations">Vị trí</span>
             </a>
           </div>
         </div>
@@ -189,29 +202,29 @@
         <div class="rounded-2xl border border-outline-variant/10 overflow-hidden bg-surface-container-lowest/40 {{ 'mt-3' if show_master_nav else '' }}">
           <button type="button" data-nav-toggle="admin-menu" class="w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-all duration-200 {{ 'bg-primary/5 text-primary' if admin_open else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <div class="flex items-center gap-3">
-              <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm font-semibold">Administration</span>
+              <i data-lucide="settings" class="w-5 h-5"></i><span class="text-sm font-semibold" data-i18n="nav.administration">Administration</span>
             </div>
             <i data-lucide="chevron-down" class="w-4 h-4 transition-transform {{ 'rotate-180' if admin_open else '' }}"></i>
           </button>
           <div id="admin-menu" class="px-2 pb-2 space-y-1 {{ '' if admin_open else 'hidden' }}">
             {% if can_manage_users_nav %}
             <a href="/users/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/users') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm">Người dùng</span>
+                <i data-lucide="users" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.users">Người dùng</span>
             </a>
             {% endif %}
             {% if can_manage_system_nav %}
             <a href="/system/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/system') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="settings-2" class="w-4 h-4"></i><span class="text-sm">Công cụ hệ thống</span>
+                <i data-lucide="settings-2" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.system">Công cụ hệ thống</span>
             </a>
             {% endif %}
             {% if current_user and current_user.role == 'admin' %}
             <a href="/audit/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/audit') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="shield" class="w-4 h-4"></i><span class="text-sm">Audit & Compliance</span>
+                <i data-lucide="shield" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.audit">Audit & Compliance</span>
             </a>
             {% endif %}
             {% if can_manage_system_nav %}
             <a href="/discovery/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-                <i data-lucide="radar" class="w-4 h-4"></i><span class="text-sm">Quét mạng</span>
+                <i data-lucide="radar" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.network_scan">Quét mạng</span>
             </a>
             {% endif %}
           </div>
@@ -223,9 +236,9 @@
       <div class="p-4 mt-auto">
         <div class="bg-primary rounded-2xl p-6 text-white overflow-hidden relative group cursor-pointer shadow-xl shadow-primary/10">
           <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary-container rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500"></div>
-          <h4 class="font-bold relative z-10">Hỗ trợ kỹ thuật</h4>
+          <h4 class="font-bold relative z-10" data-i18n="support.title">Hỗ trợ kỹ thuật</h4>
           <p class="text-xs text-white/80 relative z-10 mt-1">SĐT: 0838641091 (Hòa IT)</p>
-          <a href="tel:0838641091" class="mt-4 inline-block bg-white text-primary text-xs font-bold py-2 px-4 rounded-lg relative z-10 hover:bg-white/90 transition-colors">Gọi Hỗ Trợ</a>
+          <a href="tel:0838641091" class="mt-4 inline-block bg-white text-primary text-xs font-bold py-2 px-4 rounded-lg relative z-10 hover:bg-white/90 transition-colors" data-i18n="support.call">Gọi Hỗ Trợ</a>
         </div>
       </div>
     </aside>
@@ -341,6 +354,100 @@
               }
           });
       });
+
+      // ── Language Switcher ──────────────────────────────────────────────
+      const i18n = {
+        vi: {
+          'nav.dashboard':      'Dashboard',
+          'nav.assets':         'Tài sản (Assets)',
+          'nav.checklist':      'Camera Checklist',
+          'nav.resources':      'Vật tư (Resources)',
+          'nav.maintenance':    'Bảo trì (Maintenance)',
+          'nav.incidents':      'Sự cố (Incidents)',
+          'nav.documents':      'Tài liệu (Documents)',
+          'nav.quick_nav':      'Điều hướng nhanh',
+          'nav.master_data':    'Master Data',
+          'nav.departments':    'Phòng ban',
+          'nav.employees':      'Nhân viên',
+          'nav.asset_types':    'Loại tài sản',
+          'nav.locations':      'Vị trí',
+          'nav.administration': 'Administration',
+          'nav.users':          'Người dùng',
+          'nav.system':         'Công cụ hệ thống',
+          'nav.audit':          'Audit & Compliance',
+          'nav.network_scan':   'Quét mạng',
+          'user.logged_in':     'Đang đăng nhập',
+          'user.profile':       'Hồ sơ của tôi',
+          'user.change_password': 'Đổi mật khẩu',
+          'user.logout':        'Đăng xuất',
+          'support.title':      'Hỗ trợ kỹ thuật',
+          'support.call':       'Gọi Hỗ Trợ',
+        },
+        en: {
+          'nav.dashboard':      'Dashboard',
+          'nav.assets':         'Assets',
+          'nav.checklist':      'Camera Checklist',
+          'nav.resources':      'Resources',
+          'nav.maintenance':    'Maintenance',
+          'nav.incidents':      'Incidents',
+          'nav.documents':      'Documents',
+          'nav.quick_nav':      'Quick Navigation',
+          'nav.master_data':    'Master Data',
+          'nav.departments':    'Departments',
+          'nav.employees':      'Employees',
+          'nav.asset_types':    'Asset Types',
+          'nav.locations':      'Locations',
+          'nav.administration': 'Administration',
+          'nav.users':          'Users',
+          'nav.system':         'System Tools',
+          'nav.audit':          'Audit & Compliance',
+          'nav.network_scan':   'Network Scan',
+          'user.logged_in':     'Logged in',
+          'user.profile':       'My Profile',
+          'user.change_password': 'Change Password',
+          'user.logout':        'Logout',
+          'support.title':      'Tech Support',
+          'support.call':       'Call Support',
+        }
+      };
+
+      function applyLang(lang) {
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+          const key = el.getAttribute('data-i18n');
+          const text = i18n[lang] && i18n[lang][key];
+          if (text) el.textContent = text;
+        });
+        const flagEl  = document.getElementById('lang-flag');
+        const labelEl = document.getElementById('lang-label');
+        if (flagEl)  flagEl.textContent  = lang === 'en' ? '🇺🇸' : '🇻🇳';
+        if (labelEl) labelEl.textContent = lang === 'en' ? 'EN'  : 'VI';
+        const optVi = document.getElementById('lang-opt-vi');
+        const optEn = document.getElementById('lang-opt-en');
+        if (optVi) optVi.classList.toggle('text-primary', lang === 'vi');
+        if (optEn) optEn.classList.toggle('text-primary', lang === 'en');
+      }
+
+      function setLang(lang) {
+        localStorage.setItem('appLang', lang);
+        applyLang(lang);
+        document.getElementById('lang-dropdown').classList.add('hidden');
+      }
+
+      function toggleLangDropdown(e) {
+        e.stopPropagation();
+        document.getElementById('lang-dropdown').classList.toggle('hidden');
+      }
+
+      document.getElementById('lang-btn').addEventListener('click', toggleLangDropdown);
+
+      document.addEventListener('click', (e) => {
+        const dd = document.getElementById('lang-dropdown');
+        const sw = document.getElementById('lang-switcher');
+        if (dd && sw && !sw.contains(e.target)) dd.classList.add('hidden');
+      });
+
+      // Apply saved language on load
+      applyLang(localStorage.getItem('appLang') || 'vi');
     </script>
     {% block extra_js %}{% endblock %}
 </body>

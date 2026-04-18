@@ -1,4 +1,5 @@
 from collections import defaultdict
+import asyncio
 import os
 import datetime
 import openpyxl
@@ -6,6 +7,8 @@ import zipfile
 import io
 import json
 import re
+import xml.etree.ElementTree as ET
+import httpx
 from fastapi import APIRouter, Depends, Request, Query, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
@@ -17,6 +20,8 @@ from openpyxl.utils import get_column_letter
 from app.auth import require_module_access, require_permission, get_current_user, has_permission
 from app.db.session import get_db
 from app.db.models import Asset, AssetEvent
+from app.db.models.resource import Resource
+from app.security import decrypt_resource_password
 
 router = APIRouter(prefix="/checklist", tags=["checklist"])
 templates = Jinja2Templates(directory="app/templates")
@@ -731,7 +736,7 @@ def checklist_export_report(
             cell_title.alignment = center_align
             
             # Row 2: Headers
-            headers = ["Ngày \ Camera"] + [c.asset_name for c in nvr_cameras]
+            headers = ["Ngày / Camera"] + [c.asset_name for c in nvr_cameras]
             for c_idx, h_text in enumerate(headers, start=1):
                 cell = ws.cell(row=2, column=c_idx)
                 cell.value = h_text
@@ -805,6 +810,127 @@ def checklist_export_report(
     except Exception as e:
         print(f"Report Export Error: {e}")
         return RedirectResponse(url=f"/checklist/?error=Report+Export+Failed: {str(e)}", status_code=303)
+
+@router.get("/api/auto-check")
+async def api_auto_check(request: Request, db: Session = Depends(get_db)):
+    """Kết nối từng NVR qua Hikvision ISAPI, lấy trạng thái từng kênh camera."""
+    current_user = get_current_user(request)
+    if not current_user:
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=401)
+
+    nvrs = db.scalars(select(Asset).where(Asset.asset_type == "NVR")).all()
+    cameras = db.scalars(select(Asset).where(Asset.asset_type == "Camera")).all()
+    resources = db.scalars(select(Resource).where(Resource.is_active == True)).all()  # noqa: E712
+
+    # camera_code → camera_id
+    cam_by_code: dict[str, int] = {c.asset_code: c.id for c in cameras}
+
+    # NVR ip_address → {username, password, url}
+    nvr_creds: dict[str, dict] = {}
+    for res in resources:
+        if not res.url or not res.username_hint:
+            continue
+        for nvr in nvrs:
+            if not nvr.ip_address:
+                continue
+            if nvr.ip_address in res.url and nvr.ip_address not in nvr_creds:
+                nvr_creds[nvr.ip_address] = {
+                    "username": res.username_hint,
+                    "password": decrypt_resource_password(res.password_hint) or "",
+                    "url": res.url.rstrip("/"),
+                }
+
+    results: dict[str, str] = {}
+    summary = {"ok": 0, "err": 0, "unknown": 0, "nvrs_checked": 0, "nvrs_failed": 0, "nvrs_no_creds": 0}
+
+    async def _check_nvr(nvr: Asset):
+        nvr_ip = (nvr.ip_address or "").strip()
+        nvr_ip_code = nvr_ip.replace(".", "_").replace(":", "_")
+        nvr_cameras = [c for c in cameras if (c.location or "").strip() == nvr_ip]
+
+        if nvr_ip not in nvr_creds:
+            for cam in nvr_cameras:
+                results[str(cam.id)] = "unknown"
+            summary["nvrs_no_creds"] += 1
+            return
+
+        creds = nvr_creds[nvr_ip]
+        base_url = creds["url"] if creds["url"].startswith("http") else f"http://{creds['url']}"
+
+        try:
+            async with httpx.AsyncClient(
+                auth=httpx.DigestAuth(creds["username"], creds["password"]),
+                base_url=base_url, verify=False, timeout=12.0
+            ) as client:
+                xml_text = None
+                for ep in [
+                    "/ISAPI/ContentMgmt/InputProxy/channels/status",
+                    "/ISAPI/System/Video/inputs/channels/status",
+                ]:
+                    try:
+                        resp = await client.get(ep)
+                        if resp.status_code == 200:
+                            xml_text = resp.text
+                            break
+                    except Exception:
+                        continue
+
+                if not xml_text:
+                    for cam in nvr_cameras:
+                        results[str(cam.id)] = "unknown"
+                    summary["nvrs_failed"] += 1
+                    return
+
+                clean_xml = re.sub(r' xmlns="[^"]+"', '', xml_text)
+                root = ET.fromstring(clean_xml)
+                items = (
+                    root.findall(".//InputProxyChannelStatus")
+                    or root.findall(".//VideoInputStatus")
+                    or root.findall(".//VideoInputChannelStatus")
+                )
+
+                for item in items:
+                    ch_id = item.findtext("id") or item.findtext("channelID")
+                    if not ch_id:
+                        continue
+                    online = item.findtext("online") or ""
+                    signal = (
+                        item.findtext("signalStatus")
+                        or item.findtext("videoSignalStatus")
+                        or item.findtext("videoLoss")
+                        or ""
+                    )
+                    is_ok = (online.lower() == "true") or (
+                        online.lower() != "false"
+                        and "videoloss" not in signal.lower()
+                        and "disconnected" not in signal.lower()
+                        and signal.lower() not in ("loss", "false")
+                    )
+                    cam_code = f"CAM-{nvr_ip_code}-D{ch_id}"
+                    cam_id = cam_by_code.get(cam_code)
+                    if cam_id:
+                        results[str(cam_id)] = "ok" if is_ok else "err"
+
+                # Mark cameras not returned by NVR as unknown
+                for cam in nvr_cameras:
+                    if str(cam.id) not in results:
+                        results[str(cam.id)] = "unknown"
+
+                summary["nvrs_checked"] += 1
+
+        except Exception:
+            for cam in nvr_cameras:
+                results[str(cam.id)] = "unknown"
+            summary["nvrs_failed"] += 1
+
+    await asyncio.gather(*[_check_nvr(nvr) for nvr in nvrs])
+
+    for v in results.values():
+        if v in summary:
+            summary[v] += 1
+
+    return JSONResponse(content={"results": results, "summary": summary})
+
 
 @router.get("/report/preview")
 @require_permission("can_export_assets")

@@ -50,6 +50,10 @@
                 <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
                 <span>Xuất Báo Cáo</span>
             </button>
+            <button id="autoCheckBtn" type="button" onclick="runAutoCheck()" class="flex items-center gap-2 bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 border border-sky-500/20 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm">
+                <i data-lucide="wifi" class="w-4 h-4"></i>
+                <span>Kiểm tra tự động</span>
+            </button>
             <button form="checklistForm" type="submit" class="flex items-center gap-2 bg-primary hover:bg-primary-container text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-[0_4px_12px_rgba(53,37,205,0.25)] hover:shadow-[0_6px_16px_rgba(53,37,205,0.35)] hover:-translate-y-0.5">
                 <i data-lucide="save" class="w-4 h-4"></i>
                 <span>Lưu Chấm Điểm</span>
@@ -443,9 +447,10 @@
                 <div class="text-xs text-on-surface/50">Tổng: <span class="font-bold text-primary">${items.length}</span> thiết bị</div>
                 <div id="deviceBulkBar" class="hidden flex items-center gap-2">
                     <span class="text-xs font-bold text-on-surface/60 mr-2"><span id="deviceBulkCount">0</span> đã chọn</span>
-                    <button onclick="handleDevBulkAction('activate')" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors">Ngừng Khoá</button>
-                    <button onclick="handleDevBulkAction('deactivate')" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 transition-colors">Ngừng HĐ</button>
+                    <button onclick="handleDevBulkAction('activate')" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors">Kích hoạt</button>
+                    <button onclick="handleDevBulkAction('deactivate')" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors">Ngừng HĐ</button>
                     <button onclick="handleDevBulkUpdateLocation()" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors">Đổi NVR</button>
+                    <button onclick="handleDevBulkDelete()" class="px-3 py-1.5 rounded-lg text-[11px] uppercase font-bold bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 border border-rose-500/20 transition-colors flex items-center gap-1"><svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg> Xóa vĩnh viễn</button>
                 </div>
             </div>`;
         html += `<table class="w-full text-left border-collapse text-sm">
@@ -665,6 +670,33 @@
         await submitDevBulk(checked, "update", { location: newLocation });
     }
 
+    async function handleDevBulkDelete() {
+        const checked = Array.from(document.querySelectorAll('.dev-cb:checked')).map(cb => parseInt(cb.value));
+        if (checked.length === 0) return;
+
+        const confirmed = prompt(`Nhập DELETE để xác nhận xóa vĩnh viễn ${checked.length} thiết bị đã chọn.\n\nLưu ý: Nếu xóa NVR, các camera thuộc NVR đó sẽ mất liên kết.`);
+        if (confirmed !== 'DELETE') { alert('Hủy thao tác. (Phải nhập đúng chữ DELETE)'); return; }
+
+        let success = 0, failed = 0;
+        for (const id of checked) {
+            try {
+                const res = await fetch(`/checklist/api/camera/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) success++;
+                else failed++;
+            } catch { failed++; }
+        }
+
+        needsReload = true;
+        await loadDevices();
+
+        const msg = document.createElement('div');
+        msg.className = 'fixed bottom-4 right-4 z-[100] px-5 py-3 rounded-2xl shadow-2xl font-bold text-sm flex items-center gap-2 ' + (failed > 0 ? 'bg-amber-500 text-white' : 'bg-rose-600 text-white');
+        msg.innerHTML = `<svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Đã xóa ${success} thiết bị${failed > 0 ? ` · Lỗi: ${failed}` : ''}.`;
+        document.body.appendChild(msg);
+        setTimeout(() => msg.remove(), 4000);
+    }
+
     async function submitDevBulk(ids, actionType, updates) {
         try {
             const res = await fetch('/checklist/api/camera/bulk', {
@@ -700,10 +732,7 @@
         }
 
         const selectedNvrs = Array.from(modal.querySelectorAll('input[name="nvr_ip"]:checked')).map(cb => cb.value);
-        if (selectedNvrs.length === 0) {
-            alert('Vui lòng chọn ít nhất một đầu ghi');
-            return;
-        }
+        if (selectedNvrs.length === 0) { alert('Vui lòng chọn ít nhất một đầu ghi'); return; }
 
         // Show preview modal with loader
         previewModal.classList.remove('hidden');
@@ -735,6 +764,72 @@
             `;
             if (typeof lucide !== 'undefined') lucide.createIcons();
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Auto-check: kết nối NVR → lấy trạng thái kênh → tự điền checklist
+    // -----------------------------------------------------------------------
+    async function runAutoCheck() {
+        const btn = document.getElementById('autoCheckBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<svg class="w-4 h-4 animate-spin inline mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path></svg> Đang kết nối NVR...';
+
+        try {
+            const resp = await fetch('/checklist/api/auto-check');
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const data = await resp.json();
+            if (!data.results) throw new Error(data.error || 'Không có dữ liệu trả về');
+
+            let filled = 0, skipped = 0;
+            for (const [camId, status] of Object.entries(data.results)) {
+                if (status === 'unknown') { skipped++; continue; }
+                const val = status === 'ok' ? 'ok' : 'err';
+                const radio = document.querySelector(`input[name="cam_${camId}"][value="${val}"]`);
+                if (radio) { radio.checked = true; filled++; }
+            }
+            showAutoCheckToast(data.summary, filled, skipped);
+        } catch (e) {
+            showAutoCheckToast(null, 0, 0, e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i data-lucide="wifi" class="w-4 h-4"></i><span>Kiểm tra tự động</span>';
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    function showAutoCheckToast(summary, filled, skipped, errMsg) {
+        const existing = document.getElementById('autoCheckToast');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.id = 'autoCheckToast';
+        toast.className = 'fixed top-6 right-6 z-[200] max-w-sm w-full shadow-2xl rounded-2xl overflow-hidden';
+        if (errMsg) {
+            toast.innerHTML = `<div class="bg-rose-500 text-white px-5 py-4 flex items-start gap-3"><i data-lucide="wifi-off" class="w-5 h-5 flex-shrink-0 mt-0.5"></i><div><div class="font-bold text-sm">Lỗi kết nối NVR</div><div class="text-xs mt-1 opacity-80">${errMsg}</div></div><button onclick="this.closest('#autoCheckToast').remove()" class="ml-auto opacity-70 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button></div>`;
+        } else {
+            const s = summary || {};
+            toast.innerHTML = `
+                <div class="bg-surface-container-lowest border border-outline-variant/10">
+                    <div class="bg-sky-500 text-white px-5 py-3 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-2 font-bold text-sm"><i data-lucide="wifi" class="w-4 h-4"></i> Kiểm tra tự động hoàn tất</div>
+                        <button onclick="this.closest('#autoCheckToast').remove()" class="opacity-70 hover:opacity-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="px-5 py-4 space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-on-surface/60">Đã điền tự động</span><span class="font-bold">${filled} camera</span></div>
+                        <div class="flex justify-between"><span class="text-emerald-600">● Tốt (online)</span><span class="font-bold">${s.ok || 0}</span></div>
+                        <div class="flex justify-between"><span class="text-rose-600">● Mất Hình (offline)</span><span class="font-bold">${s.err || 0}</span></div>
+                        <div class="flex justify-between"><span class="text-on-surface/40">● Không xác định</span><span class="font-bold">${s.unknown || 0}</span></div>
+                        <div class="border-t border-outline-variant/10 pt-2 mt-2 text-xs text-on-surface/50 flex justify-between">
+                            <span>NVR OK: <strong>${s.nvrs_checked || 0}</strong></span>
+                            <span>Lỗi: <strong>${s.nvrs_failed || 0}</strong></span>
+                            <span>Thiếu credentials: <strong>${s.nvrs_no_creds || 0}</strong></span>
+                        </div>
+                        <p class="text-xs text-amber-600 bg-amber-500/10 rounded-xl px-3 py-2">Xem lại kết quả rồi nhấn <strong>Lưu Chấm Điểm</strong> để lưu.</p>
+                    </div>
+                </div>`;
+        }
+        document.body.appendChild(toast);
+        if (window.lucide) lucide.createIcons();
+        setTimeout(() => { if (toast.parentNode) toast.remove(); }, 15000);
     }
 </script>
 {% endblock %}
