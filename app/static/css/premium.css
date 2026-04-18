@@ -21,3 +21,15 @@
   --color-on-surface: #f8fafc;
   --color-outline-variant: #475569;
 }
+
+/* Violet utility classes (not in compiled Tailwind) */
+.bg-violet-500 { background-color: #8b5cf6; }
+.bg-violet-500\/5 { background-color: rgb(139 92 246 / 0.05); }
+.bg-violet-500\/10 { background-color: rgb(139 92 246 / 0.1); }
+.bg-violet-500\/20 { background-color: rgb(139 92 246 / 0.2); }
+.text-violet-600 { color: #7c3aed; }
+.border-violet-500\/20 { border-color: rgb(139 92 246 / 0.2); }
+.ring-violet-500 { --tw-ring-color: #8b5cf6; }
+.hover\:bg-violet-500\/20:hover { background-color: rgb(139 92 246 / 0.2); }
+.hover\:bg-violet-600:hover { background-color: #7c3aed; }
+.hover\:text-violet-600:hover { color: #7c3aed; }
