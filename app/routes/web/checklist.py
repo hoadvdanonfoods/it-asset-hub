@@ -975,6 +975,202 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
     return JSONResponse(content={"results": results, "summary": summary})
 
 
+@router.post("/api/sync-cameras")
+async def api_sync_cameras(request: Request, db: Session = Depends(get_db)):
+    """Quét từng NVR qua ISAPI, đồng bộ danh sách camera vào DB."""
+    import urllib.parse
+
+    current_user = get_current_user(request)
+    if not current_user or not has_permission(current_user, "can_edit_assets"):
+        return JSONResponse(content={"error": "Unauthorized"}, status_code=403)
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    overwrite_names: bool = body.get("overwrite_names", True)
+    dry_run: bool = body.get("dry_run", False)
+
+    try:
+        nvrs = db.scalars(select(Asset).where(Asset.asset_type == "NVR")).all()
+        cameras = db.scalars(select(Asset).where(Asset.asset_type == "Camera")).all()
+        resources = db.scalars(select(Resource).where(Resource.is_active == True)).all()  # noqa: E712
+    except Exception as exc:
+        print(f"[sync] DB error: {exc}")
+        return JSONResponse(content={"error": f"DB error: {str(exc)}"}, status_code=500)
+
+    # Build credential map — identical logic to auto-check
+    nvr_creds: dict[str, dict] = {}
+    for res in resources:
+        if not res.url or not res.username_hint:
+            continue
+        try:
+            url_str = res.url.strip()
+            if not url_str.startswith(("http://", "https://")):
+                url_str = "http://" + url_str
+            url_host = urllib.parse.urlparse(url_str).netloc
+        except Exception:
+            url_host = res.url.strip()
+        for nvr in nvrs:
+            nvr_ip = (nvr.ip_address or "").strip()
+            if not nvr_ip or nvr_ip in nvr_creds:
+                continue
+            if url_host == nvr_ip:
+                nvr_creds[nvr_ip] = {
+                    "username": res.username_hint,
+                    "password": decrypt_resource_password(res.password_hint) or "",
+                    "url": res.url.rstrip("/"),
+                }
+
+    # asset_code → Asset object (mutable for new inserts)
+    cam_by_code: dict[str, Asset] = {c.asset_code: c for c in cameras}
+
+    summary = {
+        "nvrs_synced": 0, "nvrs_failed": 0, "nvrs_no_creds": 0,
+        "total_created": 0, "total_updated": 0, "total_deactivated": 0,
+        "dry_run": dry_run,
+    }
+    details: list[dict] = []
+
+    async def _sync_nvr(nvr: Asset):
+        nvr_ip = (nvr.ip_address or "").strip()
+        nvr_ip_code = nvr_ip.replace(".", "_").replace(":", "_")
+        nvr_label = nvr.asset_name or nvr_ip
+
+        if nvr_ip not in nvr_creds:
+            summary["nvrs_no_creds"] += 1
+            details.append({"nvr": nvr_label, "ip": nvr_ip, "status": "no_creds",
+                            "created": 0, "updated": 0, "deactivated": 0})
+            return
+
+        creds = nvr_creds[nvr_ip]
+        base_url = creds["url"] if creds["url"].startswith("http") else f"http://{creds['url']}"
+
+        try:
+            hx_timeout = httpx.Timeout(connect=8.0, read=12.0, write=5.0, pool=5.0)
+            async with httpx.AsyncClient(
+                auth=httpx.DigestAuth(creds["username"], creds["password"]),
+                base_url=base_url, verify=False, timeout=hx_timeout
+            ) as client:
+                xml_text = None
+                for ep in [
+                    "/ISAPI/ContentMgmt/InputProxy/channels",
+                    "/ISAPI/System/Video/inputs/channels",
+                ]:
+                    try:
+                        resp = await client.get(ep)
+                        if resp.status_code == 200:
+                            xml_text = resp.text
+                            break
+                    except Exception:
+                        continue
+
+                if not xml_text:
+                    summary["nvrs_failed"] += 1
+                    details.append({"nvr": nvr_label, "ip": nvr_ip, "status": "failed",
+                                    "created": 0, "updated": 0, "deactivated": 0})
+                    print(f"[sync] NVR {nvr_ip}: no XML from either channel-list endpoint")
+                    return
+
+                clean_xml = re.sub(r' xmlns="[^"]+"', "", xml_text)
+                root = ET.fromstring(clean_xml)
+                channel_items = (
+                    root.findall(".//InputProxyChannel")
+                    or root.findall(".//VideoInputChannel")
+                )
+
+                if not channel_items:
+                    summary["nvrs_failed"] += 1
+                    details.append({"nvr": nvr_label, "ip": nvr_ip, "status": "no_channels",
+                                    "created": 0, "updated": 0, "deactivated": 0})
+                    print(f"[sync] NVR {nvr_ip}: XML OK but no channel items found")
+                    return
+
+                nvr_channel_codes: set[str] = set()
+                created = updated = deactivated = 0
+
+                for item in channel_items:
+                    ch_id = item.findtext("id") or item.findtext("channelID")
+                    ch_name = (item.findtext("name") or "").strip()
+                    if not ch_id:
+                        continue
+
+                    cam_code = f"CAM-{nvr_ip_code}-D{ch_id}"
+                    nvr_channel_codes.add(cam_code)
+
+                    existing = cam_by_code.get(cam_code)
+                    if not dry_run:
+                        if existing:
+                            if overwrite_names and ch_name:
+                                existing.asset_name = ch_name
+                            existing.location = nvr_ip
+                            existing.status = "active"
+                            updated += 1
+                        else:
+                            new_cam = Asset(
+                                asset_code=cam_code,
+                                asset_name=ch_name or cam_code,
+                                asset_type="Camera",
+                                location=nvr_ip,
+                                status="active",
+                            )
+                            db.add(new_cam)
+                            cam_by_code[cam_code] = new_cam
+                            created += 1
+                    else:
+                        if existing:
+                            updated += 1
+                        else:
+                            created += 1
+
+                # Cameras in DB for this NVR but absent from NVR response → inactive
+                for cam in cameras:
+                    if (cam.location or "").strip() == nvr_ip and cam.asset_code not in nvr_channel_codes:
+                        if not dry_run:
+                            cam.status = "inactive"
+                        deactivated += 1
+
+                summary["nvrs_synced"] += 1
+                summary["total_created"] += created
+                summary["total_updated"] += updated
+                summary["total_deactivated"] += deactivated
+                details.append({
+                    "nvr": nvr_label, "ip": nvr_ip, "status": "ok",
+                    "channels": len(channel_items),
+                    "created": created, "updated": updated, "deactivated": deactivated,
+                })
+                print(f"[sync] NVR {nvr_ip}: +{created} created, ~{updated} updated, -{deactivated} deactivated")
+
+        except Exception as exc:
+            summary["nvrs_failed"] += 1
+            details.append({"nvr": nvr_label, "ip": nvr_ip, "status": "error",
+                            "error": str(exc), "created": 0, "updated": 0, "deactivated": 0})
+            print(f"[sync] NVR {nvr_ip} error: {exc}")
+
+    async def _sync_nvr_guarded(nvr: Asset):
+        nvr_ip = (nvr.ip_address or "").strip()
+        try:
+            await asyncio.wait_for(_sync_nvr(nvr), timeout=20.0)
+        except asyncio.TimeoutError:
+            summary["nvrs_failed"] += 1
+            details.append({"nvr": nvr.asset_name or nvr_ip, "ip": nvr_ip, "status": "timeout",
+                            "created": 0, "updated": 0, "deactivated": 0})
+            print(f"[sync] NVR {nvr_ip}: hard timeout (20s)")
+
+    await asyncio.gather(*[_sync_nvr_guarded(nvr) for nvr in nvrs])
+
+    if not dry_run:
+        try:
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            print(f"[sync] commit error: {exc}")
+            return JSONResponse(content={"error": f"DB commit error: {str(exc)}"}, status_code=500)
+
+    print(f"[sync] Done: {summary}")
+    return JSONResponse(content={"summary": summary, "details": details})
+
+
 @router.get("/report/preview")
 @require_permission("can_export_assets")
 def checklist_report_preview(
