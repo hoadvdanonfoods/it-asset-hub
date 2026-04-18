@@ -912,19 +912,17 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                     ch_id = item.findtext("id") or item.findtext("channelID")
                     if not ch_id:
                         continue
-                    online = item.findtext("online") or ""
-                    signal = (
-                        item.findtext("signalStatus")
-                        or item.findtext("videoSignalStatus")
-                        or item.findtext("videoLoss")
-                        or ""
-                    )
-                    is_ok = (online.lower() == "true") or (
-                        online.lower() != "false"
-                        and "videoloss" not in signal.lower()
-                        and "disconnected" not in signal.lower()
-                        and signal.lower() not in ("loss", "false")
-                    )
+                    online = (item.findtext("online") or "").strip().lower()
+                    signalState = (item.findtext("signalStatus") or item.findtext("videoSignalStatus") or "").strip().lower()
+                    videoLoss = (item.findtext("videoLoss") or "").strip().lower()
+
+                    is_ok = True
+                    if online == "false":
+                        is_ok = False
+                    if signalState in ("loss", "disconnected", "false") or "loss" in signalState or "disconnect" in signalState:
+                        is_ok = False
+                    if videoLoss == "true":
+                        is_ok = False
                     cam_code = f"CAM-{nvr_ip_code}-D{ch_id}"
                     cam_id = cam_by_code.get(cam_code)
                     if cam_id:
