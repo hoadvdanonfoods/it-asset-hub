@@ -253,9 +253,9 @@
 
     <!-- ========== Sync from NVR Modal ========== -->
     <div id="syncModal" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-on-surface/60 backdrop-blur-sm">
-        <div class="bg-surface-container-lowest w-full max-w-lg rounded-3xl shadow-2xl border border-outline-variant/20 overflow-hidden">
-            <!-- Header -->
-            <div class="flex items-center justify-between px-6 py-5 border-b border-outline-variant/10 bg-violet-500/5">
+        <div class="bg-surface-container-lowest w-full max-w-lg rounded-3xl shadow-2xl border border-outline-variant/20 flex flex-col max-h-[90vh]">
+            <!-- Header (always visible) -->
+            <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/10 bg-violet-500/5 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-violet-500/10 rounded-xl text-violet-600"><i data-lucide="refresh-cw" class="w-5 h-5"></i></div>
                     <div>
@@ -263,12 +263,11 @@
                         <p class="text-xs text-on-surface/50 mt-0.5">Kết nối ISAPI → tự động tạo / cập nhật camera trong hệ thống</p>
                     </div>
                 </div>
-                <button onclick="closeSyncModal()" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors"><i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i></button>
+                <button type="button" onclick="closeSyncModal()" class="p-2 hover:bg-surface-container-low rounded-xl transition-colors cursor-pointer"><i data-lucide="x" class="w-5 h-5 text-on-surface/50"></i></button>
             </div>
 
-            <!-- Body -->
-            <div id="syncModalBody" class="px-6 py-5 space-y-4">
-                <!-- Options -->
+            <!-- Body (scrollable) -->
+            <div id="syncModalBody" class="px-6 py-5 space-y-4 overflow-y-auto">
                 <div class="bg-surface-container-low/50 rounded-2xl border border-outline-variant/10 p-4 space-y-3">
                     <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider">Tuỳ chọn đồng bộ</p>
                     <label class="flex items-start gap-3 cursor-pointer group">
@@ -286,33 +285,33 @@
                         </div>
                     </label>
                 </div>
-
-                <!-- Info note -->
                 <div class="flex gap-2 bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-amber-700">
                     <i data-lucide="info" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
                     <span>Camera có trong DB nhưng NVR không trả về sẽ được đánh dấu <strong>Ngừng hoạt động</strong> (không xóa — lịch sử checklist được giữ nguyên).</span>
                 </div>
-
-                <!-- Action buttons -->
-                <div class="flex justify-end gap-3 pt-1">
-                    <button type="button" onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
-                    <button type="button" id="syncRunBtn" onclick="runSync()" style="background-color:#8b5cf6;color:#fff;" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Bắt đầu quét
-                    </button>
-                </div>
             </div>
 
-            <!-- Result panel (hidden until done) -->
-            <div id="syncResultPanel" class="hidden px-6 pt-4 pb-6 space-y-3">
+            <!-- Body action buttons (fixed, outside scroll) -->
+            <div id="syncModalActions" class="px-6 pb-5 flex justify-end gap-3 flex-shrink-0">
+                <button type="button" onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Hủy</button>
+                <button type="button" id="syncRunBtn" onclick="runSync()" style="background-color:#8b5cf6;color:#fff;" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all shadow-sm">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Bắt đầu quét
+                </button>
+            </div>
+
+            <!-- Result panel (hidden until done, scrollable) -->
+            <div id="syncResultPanel" class="hidden px-6 pt-4 space-y-3 overflow-y-auto flex-1">
                 <div id="syncSummaryBar" class="grid grid-cols-3 gap-3 text-center"></div>
-                <div id="syncDetailTable" class="max-h-64 overflow-y-auto custom-scrollbar rounded-2xl border border-outline-variant/10 divide-y divide-outline-variant/10 text-sm"></div>
+                <div id="syncDetailTable" class="rounded-2xl border border-outline-variant/10 divide-y divide-outline-variant/10 text-sm"></div>
                 <div id="syncFooter"></div>
-                <div class="flex justify-end gap-3 pt-1">
-                    <button type="button" onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Đóng</button>
-                    <button type="button" onclick="openSyncModal()" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-violet-500/10 text-violet-600 hover:bg-violet-500/20 border border-violet-500/20 transition-all">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Quét lại
-                    </button>
-                </div>
+            </div>
+
+            <!-- Result action buttons (fixed at bottom) -->
+            <div id="syncResultActions" class="hidden px-6 py-4 flex justify-end gap-3 border-t border-outline-variant/10 flex-shrink-0">
+                <button type="button" onclick="closeSyncModal()" class="px-5 py-2.5 rounded-xl font-bold text-sm bg-surface-container-low hover:bg-surface-container-highest transition-colors">Đóng</button>
+                <button type="button" onclick="openSyncModal()" style="color:#7c3aed;border:1px solid rgb(139 92 246/0.2);" class="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i> Quét lại
+                </button>
             </div>
         </div>
     </div>
@@ -840,7 +839,9 @@
     // -----------------------------------------------------------------------
     function openSyncModal() {
         document.getElementById('syncModalBody').classList.remove('hidden');
+        document.getElementById('syncModalActions').classList.remove('hidden');
         document.getElementById('syncResultPanel').classList.add('hidden');
+        document.getElementById('syncResultActions').classList.add('hidden');
         document.getElementById('syncRunBtn').disabled = false;
         document.getElementById('syncRunBtn').innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Bắt đầu quét';
         document.getElementById('syncModal').classList.remove('hidden');
@@ -849,13 +850,23 @@
 
     function closeSyncModal() {
         document.getElementById('syncModal').classList.add('hidden');
-        // Reload device list if actual sync was done
         if (window._syncDidWrite) {
             window._syncDidWrite = false;
             needsReload = true;
             loadDevices();
         }
     }
+
+    // Close sync modal on Escape or click outside the card
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const m = document.getElementById('syncModal');
+            if (m && !m.classList.contains('hidden')) closeSyncModal();
+        }
+    });
+    document.getElementById('syncModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSyncModal();
+    });
 
     async function runSync() {
         const overwriteNames = document.getElementById('syncOverwriteNames').checked;
@@ -907,7 +918,9 @@
 
     function showSyncResult(data, dryRun, errMsg) {
         document.getElementById('syncModalBody').classList.add('hidden');
+        document.getElementById('syncModalActions').classList.add('hidden');
         document.getElementById('syncResultPanel').classList.remove('hidden');
+        document.getElementById('syncResultActions').classList.remove('hidden');
 
         const summaryBar = document.getElementById('syncSummaryBar');
         const detailTable = document.getElementById('syncDetailTable');
