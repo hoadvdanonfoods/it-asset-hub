@@ -882,6 +882,8 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
             ) as client:
                 xml_texts = []
                 for ep in [
+                    "/ISAPI/ContentMgmt/InputProxy/channels",
+                    "/ISAPI/System/Video/inputs/channels",
                     "/ISAPI/ContentMgmt/InputProxy/channels/status",
                     "/ISAPI/System/Video/inputs/channels/status",
                 ]:
@@ -908,6 +910,8 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                             root.findall(".//InputProxyChannelStatus")
                             + root.findall(".//VideoInputStatus")
                             + root.findall(".//VideoInputChannelStatus")
+                            + root.findall(".//VideoInputChannel")
+                            + root.findall(".//InputProxyChannel")
                         )
                     except Exception as parse_e:
                         print(f"[auto-check] error parsing XML: {parse_e}")
@@ -917,14 +921,15 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                     ch_id = item.findtext("id") or item.findtext("channelID")
                     if not ch_id:
                         continue
-                    online = (item.findtext("online") or "").strip().lower()
-                    signalState = (item.findtext("signalStatus") or item.findtext("videoSignalStatus") or "").strip().lower()
+                        
+                    online = (item.findtext("online") or item.findtext("videoInputEnabled") or "").strip().lower()
+                    signalState = (item.findtext("signalStatus") or item.findtext("videoSignalStatus") or item.findtext("resDesc") or "").strip().lower()
                     videoLoss = (item.findtext("videoLoss") or "").strip().lower()
 
                     is_ok = True
                     if online == "false":
                         is_ok = False
-                    if signalState in ("loss", "disconnected", "false") or "loss" in signalState or "disconnect" in signalState:
+                    if signalState in ("loss", "disconnected", "false", "no video") or "loss" in signalState or "disconnect" in signalState:
                         is_ok = False
                     if videoLoss == "true":
                         is_ok = False
