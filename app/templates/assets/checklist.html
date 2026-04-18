@@ -109,7 +109,7 @@
                                         <div class="flex rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm bg-surface-container-low/50">
                                             <!-- OK -->
                                             <label class="flex-1 relative cursor-pointer group/ok">
-                                                <input type="radio" name="cam_{{ cam.id }}" value="ok" class="peer sr-only" checked>
+                                                <input type="radio" name="cam_{{ cam.id }}" value="ok" class="peer sr-only">
                                                 <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-emerald-500 hover:bg-emerald-500/10 active:bg-emerald-500/20">
                                                     <i data-lucide="check" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/ok:text-emerald-500 peer-checked:group-hover/ok:text-white transition-colors"></i>
                                                     <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/ok:text-emerald-600 peer-checked:group-hover/ok:text-white transition-colors uppercase tracking-wider">Tốt</span>
@@ -795,7 +795,12 @@
 
             let filled = 0, skipped = 0;
             for (const [camId, status] of Object.entries(data.results)) {
-                if (status === 'unknown') { skipped++; continue; }
+                if (status === 'unknown') { 
+                    skipped++; 
+                    const noteInput = document.querySelector(`input[name="notes_${camId}"]`);
+                    if (noteInput && !noteInput.value) noteInput.value = "Lỗi kết nối NVR";
+                    continue; 
+                }
                 const val = status === 'ok' ? 'ok' : 'err';
                 const radio = document.querySelector(`input[name="cam_${camId}"][value="${val}"]`);
                 if (radio) { radio.checked = true; filled++; }
