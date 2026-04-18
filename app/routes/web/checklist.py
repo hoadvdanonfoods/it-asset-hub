@@ -837,8 +837,11 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
         if not res.url or not res.username_hint:
             continue
         try:
-            parsed = urllib.parse.urlparse(res.url)
-            url_host = parsed.hostname or parsed.path.strip().split(":")[0]
+            url_str = res.url.strip()
+            if not url_str.startswith(('http://', 'https://')):
+                url_str = 'http://' + url_str
+            parsed = urllib.parse.urlparse(url_str)
+            url_host = parsed.netloc
         except Exception:
             url_host = res.url.strip()
         for nvr in nvrs:
