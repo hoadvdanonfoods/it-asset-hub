@@ -882,8 +882,6 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
             ) as client:
                 xml_texts = []
                 for ep in [
-                    "/ISAPI/ContentMgmt/InputProxy/channels",
-                    "/ISAPI/System/Video/inputs/channels",
                     "/ISAPI/ContentMgmt/InputProxy/channels/status",
                     "/ISAPI/System/Video/inputs/channels/status",
                 ]:
