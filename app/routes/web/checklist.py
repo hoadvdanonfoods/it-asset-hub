@@ -831,7 +831,7 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
     # camera_code → camera_id
     cam_by_code: dict[str, int] = {c.asset_code: c.id for c in cameras}
 
-    # NVR ip_address → credentials — use exact hostname match to avoid substring false positives
+    # NVR ip_address → credentials: match by netloc or hostname (port-agnostic fallback)
     nvr_creds: dict[str, dict] = {}
     for res in resources:
         if not res.url or not res.username_hint:
@@ -841,14 +841,17 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
             if not url_str.startswith(('http://', 'https://')):
                 url_str = 'http://' + url_str
             parsed = urllib.parse.urlparse(url_str)
-            url_host = parsed.netloc
+            url_netloc = parsed.netloc
+            url_hostname = parsed.hostname or ""
         except Exception:
-            url_host = res.url.strip()
+            url_netloc = res.url.strip()
+            url_hostname = url_netloc
         for nvr in nvrs:
             nvr_ip = (nvr.ip_address or "").strip()
             if not nvr_ip or nvr_ip in nvr_creds:
                 continue
-            if url_host == nvr_ip:
+            nvr_hostname = urllib.parse.urlparse(f"http://{nvr_ip}").hostname or nvr_ip
+            if url_netloc == nvr_ip or url_hostname == nvr_hostname:
                 nvr_creds[nvr_ip] = {
                     "username": res.username_hint,
                     "password": decrypt_resource_password(res.password_hint) or "",
@@ -999,7 +1002,8 @@ async def api_sync_cameras(request: Request, db: Session = Depends(get_db)):
         print(f"[sync] DB error: {exc}")
         return JSONResponse(content={"error": f"DB error: {str(exc)}"}, status_code=500)
 
-    # Build credential map — identical logic to auto-check
+    # Build credential map: match Resource URL against NVR ip_address
+    # Tries netloc match first (exact host:port), then hostname-only fallback
     nvr_creds: dict[str, dict] = {}
     for res in resources:
         if not res.url or not res.username_hint:
@@ -1008,19 +1012,25 @@ async def api_sync_cameras(request: Request, db: Session = Depends(get_db)):
             url_str = res.url.strip()
             if not url_str.startswith(("http://", "https://")):
                 url_str = "http://" + url_str
-            url_host = urllib.parse.urlparse(url_str).netloc
+            parsed = urllib.parse.urlparse(url_str)
+            url_netloc = parsed.netloc          # "host:port" or "host"
+            url_hostname = parsed.hostname or ""  # "host" only (no port)
         except Exception:
-            url_host = res.url.strip()
+            url_netloc = res.url.strip()
+            url_hostname = url_netloc
         for nvr in nvrs:
             nvr_ip = (nvr.ip_address or "").strip()
             if not nvr_ip or nvr_ip in nvr_creds:
                 continue
-            if url_host == nvr_ip:
+            # Match by netloc (exact), or by hostname only (ignoring port difference)
+            nvr_hostname = urllib.parse.urlparse(f"http://{nvr_ip}").hostname or nvr_ip
+            if url_netloc == nvr_ip or url_hostname == nvr_hostname:
                 nvr_creds[nvr_ip] = {
                     "username": res.username_hint,
                     "password": decrypt_resource_password(res.password_hint) or "",
                     "url": res.url.rstrip("/"),
                 }
+                print(f"[sync] matched NVR {nvr_ip!r} via resource URL {res.url!r}")
 
     # asset_code → Asset object (mutable for new inserts)
     cam_by_code: dict[str, Asset] = {c.asset_code: c for c in cameras}
