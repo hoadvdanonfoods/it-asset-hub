@@ -880,7 +880,7 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                 auth=httpx.DigestAuth(creds["username"], creds["password"]),
                 base_url=base_url, verify=False, timeout=hx_timeout
             ) as client:
-                xml_text = None
+                xml_texts = []
                 for ep in [
                     "/ISAPI/ContentMgmt/InputProxy/channels/status",
                     "/ISAPI/System/Video/inputs/channels/status",
@@ -888,25 +888,30 @@ async def api_auto_check(request: Request, db: Session = Depends(get_db)):
                     try:
                         resp = await client.get(ep)
                         if resp.status_code == 200:
-                            xml_text = resp.text
-                            break
+                            xml_texts.append(resp.text)
                     except Exception:
                         continue
 
-                if not xml_text:
+                if not xml_texts:
                     for cam in nvr_cameras:
                         results[str(cam.id)] = "unknown"
                     summary["nvrs_failed"] += 1
                     print(f"[auto-check] NVR {nvr_ip}: no XML from either endpoint")
                     return
 
-                clean_xml = re.sub(r' xmlns="[^"]+"', '', xml_text)
-                root = ET.fromstring(clean_xml)
-                items = (
-                    root.findall(".//InputProxyChannelStatus")
-                    or root.findall(".//VideoInputStatus")
-                    or root.findall(".//VideoInputChannelStatus")
-                )
+                items = []
+                for xml_text in xml_texts:
+                    try:
+                        clean_xml = re.sub(r' xmlns="[^"]+"', '', xml_text)
+                        root = ET.fromstring(clean_xml)
+                        items.extend(
+                            root.findall(".//InputProxyChannelStatus")
+                            + root.findall(".//VideoInputStatus")
+                            + root.findall(".//VideoInputChannelStatus")
+                        )
+                    except Exception as parse_e:
+                        print(f"[auto-check] error parsing XML: {parse_e}")
+                        continue
 
                 for item in items:
                     ch_id = item.findtext("id") or item.findtext("channelID")
