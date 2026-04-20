@@ -178,11 +178,8 @@
   </div>
 </div>
 
-<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
-  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkArchiveModalBackdrop"></div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-amber-500/20">
+<div id="bulkArchiveModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl w-full max-w-lg border border-amber-500/20">
       <form action="/users/bulk-archive" method="POST" id="bulkArchiveForm">
         <input type="hidden" name="user_ids" id="bulkArchiveUserIds">
         <div class="bg-amber-500/5 px-6 py-4 border-b border-amber-500/10">
@@ -210,26 +207,22 @@
   </div>
 </div>
 
-<div id="bulkRestoreModal" class="hidden fixed inset-0 z-[60] overflow-y-auto" role="dialog" aria-modal="true">
-  <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-    <div class="fixed inset-0 bg-on-surface/50 backdrop-blur-sm transition-opacity" aria-hidden="true" id="bulkRestoreModalBackdrop"></div>
-    <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-    <div class="inline-block align-bottom bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-emerald-500/20">
-      <form action="/users/bulk-restore" method="POST" id="bulkRestoreForm">
-        <input type="hidden" name="user_ids" id="bulkRestoreUserIds">
-        <div class="bg-emerald-500/5 px-6 py-4 border-b border-emerald-500/10">
-          <h3 class="text-lg font-bold text-emerald-600 headline">Khôi phục hàng loạt tài khoản</h3>
-          <p class="text-xs text-on-surface/60">Khôi phục <span id="restoreCountDisplay" class="font-bold text-emerald-600">0</span> tài khoản đã chọn về trạng thái active</p>
-        </div>
-        <div class="px-6 py-6 space-y-4">
-          <p class="text-sm text-on-surface font-medium">Bạn có chắc chắn muốn kích hoạt lại các tài khoản đã chọn không?</p>
-        </div>
-        <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
-          <button type="button" id="closeBulkRestoreModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
-          <button type="submit" class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-emerald-500 transition-all shadow-lg cursor-pointer">Khôi phục</button>
-        </div>
-      </form>
-    </div>
+<div id="bulkRestoreModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="bg-surface-container-lowest rounded-3xl text-left overflow-hidden shadow-2xl w-full max-w-lg border border-emerald-500/20">
+    <form action="/users/bulk-restore" method="POST" id="bulkRestoreForm">
+      <input type="hidden" name="user_ids" id="bulkRestoreUserIds">
+      <div class="bg-emerald-500/5 px-6 py-4 border-b border-emerald-500/10">
+        <h3 class="text-lg font-bold text-emerald-600 headline">Khôi phục hàng loạt tài khoản</h3>
+        <p class="text-xs text-on-surface/60">Khôi phục <span id="restoreCountDisplay" class="font-bold text-emerald-600">0</span> tài khoản đã chọn về trạng thái active</p>
+      </div>
+      <div class="px-6 py-6 space-y-4">
+        <p class="text-sm text-on-surface font-medium">Bạn có chắc chắn muốn kích hoạt lại các tài khoản đã chọn không?</p>
+      </div>
+      <div class="bg-surface-container-low/50 px-6 py-4 flex justify-end items-center gap-3">
+        <button type="button" id="closeBulkRestoreModal" class="px-4 py-2 text-sm font-bold text-on-surface/60 hover:text-on-surface transition-colors cursor-pointer">Hủy</button>
+        <button type="submit" class="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-emerald-500 transition-all shadow-lg cursor-pointer">Khôi phục</button>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}
@@ -246,8 +239,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const openBulkRestore = document.getElementById('openBulkRestore');
   const bulkArchiveModal = document.getElementById('bulkArchiveModal');
   const bulkRestoreModal = document.getElementById('bulkRestoreModal');
-  const bulkArchiveBackdrop = document.getElementById('bulkArchiveModalBackdrop');
-  const bulkRestoreBackdrop = document.getElementById('bulkRestoreModalBackdrop');
   const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
   const closeBulkRestoreModal = document.getElementById('closeBulkRestoreModal');
   const bulkArchiveUserIds = document.getElementById('bulkArchiveUserIds');
@@ -319,8 +310,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModals);
   if (closeBulkRestoreModal) closeBulkRestoreModal.addEventListener('click', closeModals);
-  if (bulkArchiveBackdrop) bulkArchiveBackdrop.addEventListener('click', closeModals);
-  if (bulkRestoreBackdrop) bulkRestoreBackdrop.addEventListener('click', closeModals);
+
+  [bulkArchiveModal, bulkRestoreModal].forEach(function(overlay) {
+    if (!overlay) return;
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModals(); });
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModals();
+  });
 });
 </script>
 {% endblock %}

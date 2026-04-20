@@ -386,8 +386,7 @@
         {% endif %}
       </div>
 
-      <div id="assignmentModalBackdrop" class="fixed inset-0 bg-slate-950/50 backdrop-blur-sm z-40 hidden"></div>
-      <div id="assignModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+      <div id="assignModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
         <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
           <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
           <h4 class="text-xl font-extrabold text-on-surface mb-2">Assign asset</h4>
@@ -401,7 +400,7 @@
         </div>
       </div>
 
-      <div id="borrowModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+      <div id="borrowModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
         <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
           <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
           <h4 class="text-xl font-extrabold text-on-surface mb-2">Borrow asset</h4>
@@ -415,7 +414,7 @@
         </div>
       </div>
 
-      <div id="transferModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+      <div id="transferModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
         <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
           <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
           <h4 class="text-xl font-extrabold text-on-surface mb-2">Transfer asset</h4>
@@ -429,7 +428,7 @@
         </div>
       </div>
 
-      <div id="returnModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+      <div id="returnModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
         <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
           <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
           <h4 class="text-xl font-extrabold text-on-surface mb-2">Return asset</h4>
@@ -441,7 +440,7 @@
         </div>
       </div>
 
-      <div id="borrowReturnModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4">
+      <div id="borrowReturnModal" class="assignment-modal fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm">
         <div class="w-full max-w-lg rounded-3xl bg-surface-container-lowest shadow-2xl border border-outline-variant/10 p-8 relative">
           <button type="button" data-assignment-modal-close class="absolute top-4 right-4 p-2 rounded-xl bg-surface-container-low text-on-surface/50 hover:text-on-surface transition-colors"><i data-lucide="x" class="w-4 h-4"></i></button>
           <h4 class="text-xl font-extrabold text-on-surface mb-2">Return borrowed asset</h4>
@@ -481,7 +480,6 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const backdrop = document.getElementById('assignmentModalBackdrop');
   const modals = document.querySelectorAll('.assignment-modal');
   const openButtons = document.querySelectorAll('[data-assignment-modal-open]');
   const closeButtons = document.querySelectorAll('[data-assignment-modal-close]');
@@ -491,7 +489,6 @@ document.addEventListener('DOMContentLoaded', function() {
       modal.classList.add('hidden');
       modal.classList.remove('flex');
     });
-    if (backdrop) backdrop.classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
   }
 
@@ -501,7 +498,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!modal) return;
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    if (backdrop) backdrop.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
   }
 
@@ -515,9 +511,11 @@ document.addEventListener('DOMContentLoaded', function() {
     button.addEventListener('click', closeAllAssignmentModals);
   });
 
-  if (backdrop) {
-    backdrop.addEventListener('click', closeAllAssignmentModals);
-  }
+  modals.forEach(function(modal) {
+    modal.addEventListener('click', function(e) {
+      if (e.target === modal) closeAllAssignmentModals();
+    });
+  });
 
   document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') closeAllAssignmentModals();
