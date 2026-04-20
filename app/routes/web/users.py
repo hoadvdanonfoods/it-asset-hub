@@ -365,6 +365,8 @@ def change_password_submit(request: Request, old_password: str = Form(...), new_
     user_obj.password_hash = hash_password(new_password)
     user_obj.password = '[hashed]'
     user_obj.password_changed_at = datetime.utcnow()
+    if getattr(user_obj, 'must_change_password', False):
+        user_obj.must_change_password = False
     invalidate_user_sessions(user_obj)
     log_audit(db, actor=current_user.username if current_user else None, module='users', action='change_password', entity_type='user', entity_id=user_obj.id, metadata={'forced_change': force_change})
     db.commit()

@@ -570,6 +570,7 @@ def ensure_schema() -> None:
         "ALTER TABLE users ADD COLUMN can_manage_documents BOOLEAN DEFAULT false",
         "ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1",
         "ALTER TABLE users ADD COLUMN password_changed_at TIMESTAMP",
+        "ALTER TABLE users ADD COLUMN must_change_password BOOLEAN DEFAULT false",
         "ALTER TABLE assets ADD COLUMN assigned_at VARCHAR(25)",
         "ALTER TABLE assets ADD COLUMN unassigned_at VARCHAR(25)",
         "ALTER TABLE incidents ADD COLUMN requester_department VARCHAR(120)",

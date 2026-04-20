@@ -6,8 +6,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import require_permission
-from app.db.models import Asset, AssetAssignment
+from app.db.models import Asset, AssetAssignment, User
 from app.db.models.master_data import AssetType, Department, Employee, Location
+from app.security import hash_password
 from app.db.models.master_reference import AssetCategory, AssetStatus, Vendor, IncidentCategory, Priority, MaintenanceType
 from app.db.session import get_db
 from app.services.audit import log_audit
@@ -62,6 +63,45 @@ def _build_md_preview(rows_cleaned: list[dict], config: dict, db: Session, filen
         'sample_rows': sample_rows,
         'token': _md_preview_token(rows_cleaned, filename),
     }
+
+def _auto_create_user_for_employee(employee, db: Session) -> bool:
+    code = getattr(employee, 'employee_code', None)
+    if not code:
+        return False
+    existing = db.scalar(select(User).where(User.username == code))
+    if existing:
+        return False
+    db.add(User(
+        username=code,
+        password=code,
+        password_hash=hash_password(code),
+        role='user',
+        full_name=getattr(employee, 'full_name', None),
+        is_active=True,
+        must_change_password=True,
+        can_view_dashboard=True,
+        can_view_assets=False,
+        can_view_maintenance=False,
+        can_view_incidents=True,
+        can_view_resources=False,
+        can_create_assets=False,
+        can_edit_assets=False,
+        can_import_assets=False,
+        can_export_assets=False,
+        can_create_maintenance=False,
+        can_edit_maintenance=False,
+        can_export_maintenance=False,
+        can_create_incidents=True,
+        can_edit_incidents=False,
+        can_export_incidents=False,
+        can_manage_users=False,
+        can_manage_system=False,
+        can_manage_resources=False,
+        can_view_documents=False,
+        can_manage_documents=False,
+    ))
+    return True
+
 
 MODEL_CONFIG = {
     'departments': {
@@ -350,7 +390,11 @@ async def create_model(request: Request, model_name: str, current_user=None, db:
         return RedirectResponse('/', status_code=303)
     form = await request.form()
     data = _parse_form_data(form, config)
-    db.add(config['model'](**data))
+    new_obj = config['model'](**data)
+    db.add(new_obj)
+    if model_name == 'employees':
+        db.flush()
+        _auto_create_user_for_employee(new_obj, db)
     db.commit()
     return RedirectResponse(f'/master-data/{model_name}', status_code=303)
 
@@ -554,6 +598,26 @@ async def bulk_delete_model_submit(request: Request, model_name: str, current_us
     return _redirect_with_bulk_feedback(model_name, message=f'Đã xóa {success} bản ghi.', success=success, blocked=blocked, details=details, tone=tone)
 
 
+@router.post('/employees/bulk-create-users')
+@require_permission('can_manage_system')
+async def bulk_create_users_for_employees(request: Request, current_user=None, db: Session = Depends(get_db)):
+    employees = db.scalars(select(Employee).where(Employee.is_active == True)).all()  # noqa: E712
+    existing_usernames = set(db.scalars(select(User.username)).all())
+    created = 0
+    skipped = 0
+    for emp in employees:
+        if emp.employee_code and emp.employee_code not in existing_usernames:
+            _auto_create_user_for_employee(emp, db)
+            existing_usernames.add(emp.employee_code)
+            created += 1
+        else:
+            skipped += 1
+    db.commit()
+    from urllib.parse import quote
+    msg = quote(f'Đã tạo {created} tài khoản mới. {skipped} nhân viên đã có tài khoản hoặc thiếu mã.')
+    return RedirectResponse(f'/master-data/employees?bulk_message={msg}&bulk_tone=success', status_code=303)
+
+
 @router.get('/{model_name}/import', response_class=HTMLResponse)
 @require_permission('can_manage_system')
 async def import_model_page(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
@@ -607,7 +671,11 @@ async def import_model_confirm(request: Request, model_name: str, current_user=N
                 setattr(existing, key, value)
             updated += 1
         else:
-            db.add(config['model'](**cleaned))
+            new_obj = config['model'](**cleaned)
+            db.add(new_obj)
+            if model_name == 'employees':
+                db.flush()
+                _auto_create_user_for_employee(new_obj, db)
             created += 1
     db.commit()
     from urllib.parse import quote

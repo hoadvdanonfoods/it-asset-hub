@@ -73,7 +73,11 @@ def invalidate_user_sessions(user: User) -> None:
 
 
 def _must_force_password_change(user: User) -> bool:
-    if not user or user.username != DEFAULT_ADMIN_USERNAME:
+    if not user:
+        return False
+    if getattr(user, 'must_change_password', False):
+        return True
+    if user.username != DEFAULT_ADMIN_USERNAME:
         return False
     if user.password == DEFAULT_ADMIN_PASSWORD:
         return True

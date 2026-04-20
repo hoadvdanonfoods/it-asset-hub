@@ -29,6 +29,13 @@
     <a href="/master-data/{{ model_name }}/import" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
       <i data-lucide="upload" class="w-4 h-4"></i> Import / Cập nhật Excel
     </a>
+    {% if model_name == 'employees' %}
+    <form method="post" action="/master-data/employees/bulk-create-users" onsubmit="return confirm('Tạo tài khoản cho tất cả nhân viên đang active chưa có tài khoản?\n\nTên đăng nhập và mật khẩu mặc định = mã nhân viên.\nNhân viên bắt buộc đổi mật khẩu khi đăng nhập lần đầu.')">
+      <button type="submit" class="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-500 transition-all shadow-sm">
+        <i data-lucide="user-plus" class="w-4 h-4"></i> Tạo tài khoản hàng loạt
+      </button>
+    </form>
+    {% endif %}
     <button onclick="document.getElementById('createModal').showModal()" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5">
       <i data-lucide="plus" class="w-4 h-4"></i> Thêm {{ config.label | lower }}
     </button>
