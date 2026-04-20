@@ -77,7 +77,7 @@
 
   <!-- Sample rows table -->
   {% if preview.sample_rows %}
-  <div class="overflow-x-auto rounded-2xl border border-outline-variant/10 mb-5">
+  <div class="overflow-x-auto rounded-2xl border border-outline-variant/10 mb-5" style="max-height:18rem;overflow-y:auto;">
     <table class="w-full text-left text-sm whitespace-nowrap">
       <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider">
         <tr>
@@ -114,7 +114,7 @@
   {% if preview.skipped %}
   <div class="mb-5">
     <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-2">Các dòng sẽ bị bỏ qua</p>
-    <ul class="space-y-1 text-sm text-on-surface/60 list-disc list-inside">
+    <ul class="space-y-1 text-sm text-on-surface/60 list-disc list-inside pr-1" style="max-height:10rem;overflow-y:auto;">
       {% for item in preview.skipped %}<li>{{ item }}</li>{% endfor %}
     </ul>
   </div>

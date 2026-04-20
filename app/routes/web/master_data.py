@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_, select
@@ -12,11 +12,56 @@ from app.db.models.master_reference import AssetCategory, AssetStatus, Vendor, I
 from app.db.session import get_db
 from app.services.audit import log_audit
 
+import base64
 import io
+import json
 import openpyxl
 
 router = APIRouter(prefix='/master-data', tags=['master_data'])
 templates = Jinja2Templates(directory='app/templates')
+
+
+def _md_preview_token(rows_cleaned: list[dict], filename: str) -> str:
+    payload = {'filename': filename, 'rows': rows_cleaned}
+    return base64.urlsafe_b64encode(json.dumps(payload, ensure_ascii=False).encode('utf-8')).decode('ascii')
+
+
+def _rows_from_md_token(token: str) -> tuple[list[dict], str]:
+    decoded = base64.urlsafe_b64decode(token.encode('ascii'))
+    payload = json.loads(decoded.decode('utf-8'))
+    return payload['rows'], payload.get('filename', 'import.xlsx')
+
+
+def _build_md_preview(rows_cleaned: list[dict], config: dict, db: Session, filename: str) -> dict:
+    unique_field = config.get('unique_field')
+    created = updated = 0
+    sample_rows = []
+    for i, cleaned in enumerate(rows_cleaned):
+        unique_value = cleaned.get(unique_field) if unique_field else None
+        if unique_field and unique_value not in (None, ''):
+            existing = db.scalar(select(config['model']).where(getattr(config['model'], unique_field) == unique_value))
+            action = 'update' if existing else 'create'
+        else:
+            action = 'create'
+        if action == 'create':
+            created += 1
+        else:
+            updated += 1
+        name_val = cleaned.get('name') or cleaned.get('full_name') or ''
+        sample_rows.append({
+            'row_number': i + 2,
+            'code': cleaned.get(unique_field, '') if unique_field else '',
+            'name': name_val,
+            'action': action,
+        })
+    return {
+        'filename': filename,
+        'created': created,
+        'updated': updated,
+        'total_rows': created + updated,
+        'sample_rows': sample_rows,
+        'token': _md_preview_token(rows_cleaned, filename),
+    }
 
 MODEL_CONFIG = {
     'departments': {
@@ -507,6 +552,67 @@ async def bulk_delete_model_submit(request: Request, model_name: str, current_us
     db.commit()
     tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
     return _redirect_with_bulk_feedback(model_name, message=f'Đã xóa {success} bản ghi.', success=success, blocked=blocked, details=details, tone=tone)
+
+
+@router.get('/{model_name}/import', response_class=HTMLResponse)
+@require_permission('can_manage_system')
+async def import_model_page(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+    return templates.TemplateResponse('master_data/import.html', {
+        'request': request, 'current_user': current_user,
+        'model_name': model_name, 'config': config,
+    })
+
+
+@router.post('/{model_name}/import/preview', response_class=HTMLResponse)
+@require_permission('can_manage_system')
+async def import_model_preview(request: Request, model_name: str, current_user=None, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+    contents = await file.read()
+    workbook = openpyxl.load_workbook(io.BytesIO(contents))
+    sheet = workbook.active
+    headers = [cell.value for cell in sheet[1]]
+    rows_cleaned = []
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        cleaned = _clean_import_row(dict(zip(headers, row)), config)
+        if any(v is not None and v != '' for v in cleaned.values()):
+            rows_cleaned.append(cleaned)
+    preview = _build_md_preview(rows_cleaned, config, db, file.filename or 'import.xlsx')
+    return templates.TemplateResponse('master_data/import.html', {
+        'request': request, 'current_user': current_user,
+        'model_name': model_name, 'config': config, 'preview': preview,
+    })
+
+
+@router.post('/{model_name}/import/confirm')
+@require_permission('can_manage_system')
+async def import_model_confirm(request: Request, model_name: str, current_user=None, preview_token: str = Form(...), db: Session = Depends(get_db)):
+    config = _get_config(model_name)
+    if not config:
+        return RedirectResponse('/', status_code=303)
+    rows_cleaned, _ = _rows_from_md_token(preview_token)
+    unique_field = config.get('unique_field')
+    created = updated = 0
+    for cleaned in rows_cleaned:
+        unique_value = cleaned.get(unique_field) if unique_field else None
+        existing = None
+        if unique_field and unique_value not in (None, ''):
+            existing = db.scalar(select(config['model']).where(getattr(config['model'], unique_field) == unique_value))
+        if existing:
+            for key, value in cleaned.items():
+                setattr(existing, key, value)
+            updated += 1
+        else:
+            db.add(config['model'](**cleaned))
+            created += 1
+    db.commit()
+    from urllib.parse import quote
+    msg = quote(f'Import xong: {created} thêm mới, {updated} cập nhật')
+    return RedirectResponse(f'/master-data/{model_name}?bulk_message={msg}&bulk_tone=success', status_code=303)
 
 
 @router.post('/{model_name}/import')

@@ -285,13 +285,12 @@ def build_import_preview(rows: list[tuple[int, AssetImportDTO]], db: Session, fi
             created += 1
         else:
             updated += 1
-        if len(sample_rows) < 20:
-            sample_rows.append({'row_number': row_number, 'asset_code': dto.asset_code, 'asset_name': dto.asset_name, 'asset_type': dto.asset_type, 'action': action})
+        sample_rows.append({'row_number': row_number, 'asset_code': dto.asset_code, 'asset_name': dto.asset_name, 'asset_type': dto.asset_type, 'action': action})
     return {
         'filename': filename,
         'created': created,
         'updated': updated,
-        'skipped': skipped[:30],
+        'skipped': skipped,
         'total_rows': len(rows),
         'sample_rows': sample_rows,
         'token': preview_token_from_rows(rows, filename),

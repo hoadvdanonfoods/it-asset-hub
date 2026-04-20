@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="/static/css/tailwind.min.css">
 
     <!-- Custom Theme Variables -->
-    <link rel="stylesheet" href="/static/css/premium.css">
+    <link rel="stylesheet" href="/static/css/premium.css?v=2">
 
     <!-- Icons: Lucide (local) -->
     <script src="/static/lucide.min.js"></script>
@@ -104,7 +104,7 @@
     </header>
     
     <!-- Sidebar -->
-    <aside class="hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low pt-20 z-40 border-r border-outline-variant/20">
+    <aside class="app-sidebar hidden lg:flex flex-col h-screen fixed left-0 top-0 w-72 bg-surface-container-low pt-20 z-40 border-r border-outline-variant/20">
       <div class="px-6 mb-8 flex items-center gap-4">
         <div class="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
           <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
@@ -146,11 +146,6 @@
             <i data-lucide="cctv" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.checklist">Camera Checklist</span>
         </a>
         {% endif %}
-        {% if can_view_resources_nav %}
-        <a href="/resources/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
-            <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.resources">Vật tư (Resources)</span>
-        </a>
-        {% endif %}
         {% if can_view_maintenance_nav %}
         <a href="/maintenance/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/maintenance') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="wrench" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.maintenance">Bảo trì (Maintenance)</span>
@@ -164,6 +159,11 @@
         {% if can_view_documents_nav %}
         <a href="/documents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="file-text" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.documents">Tài liệu (Documents)</span>
+        </a>
+        {% endif %}
+        {% if can_view_resources_nav %}
+        <a href="/resources/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/resources') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+            <i data-lucide="boxes" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.resources">Vật tư (Resources)</span>
         </a>
         {% endif %}
 

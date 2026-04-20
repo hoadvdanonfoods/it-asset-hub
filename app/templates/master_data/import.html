@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Import {{ config.label }} - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-2 text-primary/70 text-xs font-bold uppercase tracking-widest mb-2">
+      <i data-lucide="{{ config.icon }}" class="w-4 h-4"></i>
+      <span>Master Data</span>
+    </div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Import {{ config.label }}</h1>
+    <p class="text-on-surface/60 mt-1">Nạp file Excel, hệ thống sẽ thêm mới hoặc cập nhật theo mã duy nhất</p>
+  </div>
+  <div class="flex gap-3">
+    <a href="/master-data/{{ model_name }}/export" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="file-down" class="w-4 h-4"></i> Tải dữ liệu hiện tại
+    </a>
+    <a href="/master-data/{{ model_name }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+    </a>
+  </div>
+</div>
+
+{% if error %}
+<div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6">
+  <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+  <p class="text-sm font-medium">{{ error }}</p>
+</div>
+{% endif %}
+
+<!-- Preview Panel -->
+{% if preview %}
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-primary/20 p-6 mb-8">
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <p class="font-bold text-on-surface">Preview import</p>
+      <p class="text-xs text-on-surface/50 mt-0.5">Xem trước trước khi ghi dữ liệu vào hệ thống</p>
+    </div>
+    <span class="px-3 py-1 rounded-lg bg-primary/10 text-primary text-xs font-bold">{{ preview.total_rows }} dòng</span>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-5">
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">Sẽ thêm mới</p>
+      <p class="text-2xl font-extrabold text-emerald-600">{{ preview.created }}</p>
+    </div>
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">Sẽ cập nhật</p>
+      <p class="text-2xl font-extrabold text-amber-600">{{ preview.updated }}</p>
+    </div>
+    <div class="bg-surface-container-low rounded-2xl p-4 border border-outline-variant/10">
+      <p class="text-xs text-on-surface/50 mb-1">File</p>
+      <p class="text-sm font-bold text-on-surface truncate">{{ preview.filename }}</p>
+    </div>
+  </div>
+
+  <!-- Confirm buttons (top) -->
+  <form method="post" action="/master-data/{{ model_name }}/import/confirm" class="mb-5">
+    <input type="hidden" name="preview_token" value="{{ preview.token }}">
+    <div class="flex gap-3">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="check" class="w-4 h-4"></i> Xác nhận import
+      </button>
+      <a href="/master-data/{{ model_name }}/import" class="flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+        <i data-lucide="refresh-cw" class="w-4 h-4"></i> Chọn file khác
+      </a>
+    </div>
+  </form>
+
+  <!-- Sample rows table -->
+  {% if preview.sample_rows %}
+  <div class="overflow-x-auto rounded-2xl border border-outline-variant/10 mb-5" style="max-height:18rem;overflow-y:auto;">
+    <table class="w-full text-left text-sm whitespace-nowrap">
+      <thead class="bg-surface-container-low/50 text-on-surface/60 font-bold uppercase text-[10px] tracking-wider sticky top-0">
+        <tr>
+          <th class="px-4 py-3">Dòng</th>
+          <th class="px-4 py-3">Mã</th>
+          <th class="px-4 py-3">Tên</th>
+          <th class="px-4 py-3">Trạng thái xử lý</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for row in preview.sample_rows %}
+        <tr class="hover:bg-primary/5">
+          <td class="px-4 py-3 text-on-surface/50">{{ row.row_number }}</td>
+          <td class="px-4 py-3 font-bold text-primary">{{ row.code }}</td>
+          <td class="px-4 py-3 text-on-surface">{{ row.name }}</td>
+          <td class="px-4 py-3">
+            {% if row.action == 'create' %}
+            <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase border border-emerald-500/10">+ Thêm mới</span>
+            {% elif row.action == 'update' %}
+            <span class="px-2 py-0.5 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold uppercase border border-amber-500/10">~ Cập nhật</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Column Info -->
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6 mb-6">
+  <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-3">Các cột hỗ trợ</p>
+  <div class="flex flex-wrap gap-2 mb-3">
+    {% for field in config.columns %}
+    <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/70 text-xs font-bold border border-outline-variant/10">{{ field.key }}</span>
+    {% endfor %}
+  </div>
+  <p class="text-xs text-on-surface/40">Cơ chế: nếu mã đã tồn tại → <strong>cập nhật</strong>, nếu chưa có → <strong>thêm mới</strong>.</p>
+</div>
+
+<!-- Upload Form -->
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 p-6">
+  <p class="font-bold text-on-surface mb-4">Chọn file Excel để import</p>
+  <form method="post" enctype="multipart/form-data" action="/master-data/{{ model_name }}/import/preview" class="space-y-4">
+    <div>
+      <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-2">File Excel (.xlsx) <span class="text-rose-500">*</span></label>
+      <input type="file" name="file" accept=".xlsx" required
+        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary cursor-pointer">
+    </div>
+    <div class="flex gap-3">
+      <button type="submit" class="flex items-center gap-2 bg-primary text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md hover:-translate-y-0.5 cursor-pointer">
+        <i data-lucide="eye" class="w-4 h-4"></i> Preview import
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -22,6 +22,50 @@
   --color-outline-variant: #475569;
 }
 
+/* ============================================
+   APP SIDEBAR — DARK INDIGO THEME
+   ============================================ */
+.app-sidebar {
+  background-color: #1a1140 !important;
+  border-right-color: rgba(255, 255, 255, 0.07) !important;
+  /* Redefine color tokens scoped to sidebar */
+  --color-on-surface: #ffffff;
+  --color-surface-container-lowest: #150f38;
+  --color-surface-container-low: #1a1140;
+  --color-surface-container-highest: #2a2065;
+  --color-primary: #a5b4fc;
+  --color-primary-container: #818cf8;
+  --color-outline-variant: rgba(255, 255, 255, 0.10);
+}
+
+[data-theme="dark"] .app-sidebar {
+  background-color: #100d2e !important;
+  --color-surface-container-low: #100d2e;
+  --color-surface-container-lowest: #0d0a22;
+  --color-surface-container-highest: #1e1a50;
+}
+
+/* Hover — stronger white overlay for clarity */
+.app-sidebar nav a:hover,
+.app-sidebar nav button[data-nav-toggle]:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Active link — light indigo tint + right border */
+.app-sidebar nav a.text-primary {
+  background-color: rgba(165, 180, 252, 0.15) !important;
+  border-right-color: #a5b4fc !important;
+}
+
+/* Accordion containers (Master Data / Admin) */
+.app-sidebar .rounded-2xl.border {
+  background-color: rgba(0, 0, 0, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================ */
+
 /* Violet utility classes (not in compiled Tailwind) */
 .bg-violet-500 { background-color: #8b5cf6; }
 .bg-violet-500\/5 { background-color: rgb(139 92 246 / 0.05); }

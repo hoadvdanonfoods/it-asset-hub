@@ -26,9 +26,9 @@
     <a href="/master-data/{{ model_name }}/export" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
       <i data-lucide="download" class="w-4 h-4"></i> Xuất Excel
     </a>
-    <button onclick="document.getElementById('importModal').showModal()" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+    <a href="/master-data/{{ model_name }}/import" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
       <i data-lucide="upload" class="w-4 h-4"></i> Import / Cập nhật Excel
-    </button>
+    </a>
     <button onclick="document.getElementById('createModal').showModal()" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5">
       <i data-lucide="plus" class="w-4 h-4"></i> Thêm {{ config.label | lower }}
     </button>
@@ -382,40 +382,6 @@
 </dialog>
 {% endfor %}
 
-<dialog id="importModal" class="p-0 rounded-3xl shadow-2xl w-full max-w-2xl backdrop:bg-black/50 bg-transparent">
-  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 overflow-hidden">
-    <div class="px-6 py-5 border-b border-outline-variant/10 flex items-center justify-between">
-      <div>
-        <h3 class="text-lg font-bold text-on-surface">Import {{ config.label | lower }}</h3>
-        <p class="text-sm text-on-surface/50 mt-1">Upload file Excel để thêm mới hoặc cập nhật hàng loạt theo mã duy nhất của danh mục.</p>
-      </div>
-      <button type="button" onclick="this.closest('dialog').close()" class="p-2 rounded-xl hover:bg-surface-container-highest text-on-surface/50">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
-    </div>
-    <form method="POST" action="/master-data/{{ model_name }}/import" enctype="multipart/form-data" class="p-6 space-y-5">
-      <div class="rounded-2xl border border-dashed border-outline-variant/30 bg-surface-container-low p-5">
-        <label class="block text-xs font-bold text-on-surface/60 uppercase tracking-wider mb-3">Chọn file Excel (.xlsx)</label>
-        <input type="file" name="file" accept=".xlsx" required class="w-full bg-surface-container-lowest border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm text-on-surface">
-      </div>
-      <div class="text-xs text-on-surface/50 leading-6 space-y-2">
-        <div>
-          Cơ chế import: nếu mã đã tồn tại thì hệ thống <strong>cập nhật</strong>, nếu chưa có thì sẽ <strong>thêm mới</strong>.
-        </div>
-        <div>
-        Các cột hỗ trợ:
-        {% for field in config.columns %}
-          <span class="inline-flex px-2 py-1 rounded-md bg-surface-container-highest border border-outline-variant/10 mr-1 mb-1">{{ field.key }}</span>
-        {% endfor %}
-        </div>
-      </div>
-      <div class="flex gap-3 justify-end pt-2">
-        <button type="button" onclick="this.closest('dialog').close()" class="px-5 py-2.5 rounded-xl bg-surface-container-highest text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">Hủy</button>
-        <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all">Import dữ liệu</button>
-      </div>
-    </form>
-  </div>
-</dialog>
 {% endblock %}
 
 {% block extra_js %}
