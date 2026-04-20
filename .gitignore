@@ -40,6 +40,9 @@ logs/
 # Tailwind CLI binary (download separately, see tailwind.config.js)
 tailwindcss.exe
 
+# Windows Service wrapper binary (download separately)
+WinSW.exe
+
 # Tailwind CSS source input (compiled output is committed)
 app/static/css/input.css
 

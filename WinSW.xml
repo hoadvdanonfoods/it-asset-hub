@@ -1,0 +1,14 @@
+<service>
+  <id>ITAssetHub</id>
+  <name>IT Asset Hub</name>
+  <description>IT Asset Management System - Danonfoods</description>
+  <executable>C:\Users\SUNNY\it-asset-hub\venv\Scripts\uvicorn.exe</executable>
+  <arguments>app.main:app --host 127.0.0.1 --port 8010</arguments>
+  <workingdirectory>C:\Users\SUNNY\it-asset-hub</workingdirectory>
+  <startmode>Automatic</startmode>
+  <logmode>rotate</logmode>
+  <logpath>C:\Users\SUNNY\it-asset-hub\data\logs</logpath>
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="20 sec"/>
+  <onfailure action="reboot" delay="1 min"/>
+</service>
