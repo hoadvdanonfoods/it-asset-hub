@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Khảo sát hài lòng - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-2 text-primary/70 text-xs font-bold uppercase tracking-widest mb-2">
+      <i data-lucide="star" class="w-4 h-4"></i>
+      <span>Khảo sát</span>
+    </div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Khảo sát hài lòng IT</h1>
+    <p class="text-on-surface/60 mt-1">Quản lý các đợt khảo sát mức độ hài lòng nhân viên</p>
+  </div>
+  <a href="/surveys/new" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5">
+    <i data-lucide="plus" class="w-4 h-4"></i> Tạo đợt khảo sát
+  </a>
+</div>
+
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+  {% if surveys %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm text-on-surface">
+      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
+        <tr>
+          <th class="px-6 py-5">Đợt khảo sát</th>
+          <th class="px-6 py-5">Thời gian</th>
+          <th class="px-6 py-5 text-center">Phản hồi</th>
+          <th class="px-6 py-5 text-center">Trạng thái</th>
+          <th class="px-6 py-5 text-right">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for s in surveys %}
+        <tr class="hover:bg-primary/5 transition-all duration-200">
+          <td class="px-6 py-5">
+            <p class="font-bold text-on-surface">{{ s.title }}</p>
+            <p class="text-xs text-on-surface/40 mt-0.5">{{ s.quarter }}/{{ s.year }}</p>
+          </td>
+          <td class="px-6 py-5 text-on-surface/60 text-xs">
+            {{ s.start_date.strftime('%d/%m/%Y') }} → {{ s.end_date.strftime('%d/%m/%Y') }}
+          </td>
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-surface-container-highest text-sm font-extrabold text-on-surface">
+              {{ response_counts.get(s.id, 0) }}
+            </span>
+          </td>
+          <td class="px-6 py-5 text-center">
+            {% if s.status == 'active' %}
+            <span class="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/15">● Đang mở</span>
+            {% elif s.status == 'draft' %}
+            <span class="px-3 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-bold border border-amber-500/15">○ Nháp</span>
+            {% else %}
+            <span class="px-3 py-1 rounded-lg bg-surface-container-highest text-on-surface/40 text-xs font-bold border border-outline-variant/10">✓ Đã đóng</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-5 text-right">
+            <div class="flex items-center justify-end gap-2">
+              {% if response_counts.get(s.id, 0) > 0 %}
+              <a href="/surveys/{{ s.id }}/dashboard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors border border-primary/20">
+                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> Kết quả
+              </a>
+              {% endif %}
+              {% if s.status == 'draft' %}
+              <form method="post" action="/surveys/{{ s.id }}/activate" class="inline">
+                <button type="submit" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-bold hover:bg-emerald-500/20 transition-colors border border-emerald-500/15 cursor-pointer">
+                  <i data-lucide="play" class="w-3.5 h-3.5"></i> Kích hoạt
+                </button>
+              </form>
+              {% elif s.status == 'active' %}
+              <form method="post" action="/surveys/{{ s.id }}/close" class="inline" onsubmit="return confirm('Đóng đợt khảo sát này? Nhân viên sẽ không thể gửi thêm phản hồi.')">
+                <button type="submit" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 text-xs font-bold hover:bg-rose-500/20 transition-colors border border-rose-500/15 cursor-pointer">
+                  <i data-lucide="square" class="w-3.5 h-3.5"></i> Đóng
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-16 flex flex-col items-center justify-center text-on-surface/40">
+    <i data-lucide="star" class="w-12 h-12 mb-4 opacity-30"></i>
+    <p class="font-medium">Chưa có đợt khảo sát nào.</p>
+    <a href="/surveys/new" class="mt-4 text-primary text-sm font-bold hover:underline">Tạo đợt đầu tiên →</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

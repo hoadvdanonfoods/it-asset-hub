@@ -117,7 +117,7 @@
       
       <nav class="flex-1 px-4 space-y-1 overflow-y-auto pb-4 custom-scrollbar">
         {% set p = request.url.path %}
-        {% set admin_open = p.startswith('/users') or p.startswith('/system') or p.startswith('/audit') or p.startswith('/discovery') %}
+        {% set admin_open = p.startswith('/users') or p.startswith('/system') or p.startswith('/audit') or p.startswith('/discovery') or p.startswith('/surveys') %}
         {% set master_open = p.startswith('/master-data') %}
         {% set is_admin_nav = current_user and current_user.role == 'admin' %}
         {% set can_manage_system_nav = current_user and (is_admin_nav or current_user.can_manage_system) %}
@@ -154,6 +154,14 @@
         {% if can_view_incidents_nav %}
         <a href="/incidents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/incidents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="alert-circle" class="w-5 h-5"></i><span class="text-sm" data-i18n="nav.incidents">Sự cố (Incidents)</span>
+        </a>
+        {% endif %}
+        {% if current_user %}
+        {% set _survey_href = '/surveys/' ~ _pending_survey.id ~ '/respond' if _pending_survey else '/surveys/' %}
+        <a href="{{ _survey_href }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/surveys') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+            <i data-lucide="star" class="w-5 h-5"></i>
+            <span class="text-sm">Khảo sát IT</span>
+            {% if _pending_survey %}<span class="ml-auto w-2 h-2 rounded-full" style="background:#f59e0b;"></span>{% endif %}
         </a>
         {% endif %}
         {% if can_view_documents_nav %}
@@ -226,6 +234,9 @@
             <a href="/discovery/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/discovery') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
                 <i data-lucide="radar" class="w-4 h-4"></i><span class="text-sm" data-i18n="nav.network_scan">Quét mạng</span>
             </a>
+            <a href="/surveys/" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold' if p.startswith('/surveys') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+                <i data-lucide="bar-chart-2" class="w-4 h-4"></i><span class="text-sm">Quản lý khảo sát</span>
+            </a>
             {% endif %}
           </div>
         </div>
@@ -264,6 +275,24 @@
         </a>
     </nav>
     
+    {% set _pending_survey = get_pending_survey(current_user) if current_user else None %}
+    {% if _pending_survey %}
+    <div class="fixed top-[61px] left-0 right-0 z-40 lg:left-72" style="background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;">
+      <div class="flex items-center justify-between gap-4 px-6 py-2.5">
+        <div class="flex items-center gap-3">
+          <i data-lucide="star" class="w-4 h-4 flex-shrink-0"></i>
+          <span class="text-sm font-bold">Đợt khảo sát hài lòng IT đang mở — {{ _pending_survey.title }}</span>
+          <span class="text-xs opacity-75">· Hạn {{ _pending_survey.end_date.strftime('%d/%m/%Y') }}</span>
+        </div>
+        <a href="/surveys/{{ _pending_survey.id }}/respond"
+          class="flex-shrink-0 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors border border-white/30">
+          Đánh giá ngay →
+        </a>
+      </div>
+    </div>
+    <div class="lg:ml-72 h-10"></div>
+    {% endif %}
+
     <main class="lg:ml-72 pt-24 pb-24 lg:pb-12 px-6 lg:px-10 min-h-screen">
         {% block content %}{% endblock %}
     </main>

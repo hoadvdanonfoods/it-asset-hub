@@ -695,4 +695,36 @@ def ensure_schema() -> None:
             pass
         backfill_master_data(conn)
         dedupe_master_data(conn)
+        try:
+            with conn.begin_nested():
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS surveys (
+                        id SERIAL PRIMARY KEY,
+                        title VARCHAR(200) NOT NULL,
+                        quarter VARCHAR(2) NOT NULL,
+                        year INTEGER NOT NULL,
+                        start_date TIMESTAMP NOT NULL,
+                        end_date TIMESTAMP NOT NULL,
+                        status VARCHAR(10) NOT NULL DEFAULT 'draft',
+                        created_at TIMESTAMP,
+                        created_by VARCHAR(120)
+                    )
+                """))
+                conn.execute(text("""
+                    CREATE TABLE IF NOT EXISTS survey_responses (
+                        id SERIAL PRIMARY KEY,
+                        survey_id INTEGER NOT NULL REFERENCES surveys(id),
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        submitted_at TIMESTAMP NOT NULL,
+                        response_time INTEGER NOT NULL,
+                        quality INTEGER NOT NULL,
+                        attitude INTEGER NOT NULL,
+                        knowledge INTEGER NOT NULL,
+                        reason_text TEXT,
+                        respondent_name VARCHAR(120),
+                        CONSTRAINT uq_survey_response UNIQUE (survey_id, user_id)
+                    )
+                """))
+        except Exception:
+            pass
     logger.info("Schema migration complete.")

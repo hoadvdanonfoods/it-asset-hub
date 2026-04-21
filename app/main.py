@@ -40,6 +40,7 @@ from app.routes.web.resources import router as resources_router
 from app.routes.web.documents import router as documents_router
 from app.routes.web.discovery import router as discovery_router
 from app.routes.web.checklist import router as checklist_router
+from app.routes.web.surveys import router as surveys_router
 from app.security import hash_password
 from app.auth import has_permission
 import app.db.models  # noqa: F401
@@ -156,13 +157,16 @@ app.include_router(resources_router)
 app.include_router(documents_router)
 app.include_router(discovery_router)
 app.include_router(checklist_router)
+app.include_router(surveys_router)
 
 # Centralized Template Context Injection
 import sys
+from app.services.survey_service import get_pending_survey_for_user
+from datetime import datetime as _dt
 for router_obj in [
     auth_router, dashboard_router, audit_router, master_data_router, assets_router, maintenance_router,
     incidents_router, qr_router, users_router, system_tools_router,
-    resources_router, documents_router, discovery_router, checklist_router
+    resources_router, documents_router, discovery_router, checklist_router, surveys_router
 ]:
     module = sys.modules.get(router_obj.__module__)
     if module and hasattr(module, 'templates'):
@@ -170,6 +174,8 @@ for router_obj in [
             'APP_NAME': APP_NAME,
             'APP_VERSION': APP_VERSION,
             'has_permission': has_permission,
+            'get_pending_survey': get_pending_survey_for_user,
+            'now_year': _dt.utcnow().year,
         })
 
 

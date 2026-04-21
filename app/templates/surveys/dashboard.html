@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}Kết quả khảo sát - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
+{% block content %}
+<div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+  <div>
+    <div class="flex items-center gap-2 text-primary/70 text-xs font-bold uppercase tracking-widest mb-2">
+      <a href="/surveys/" class="hover:text-primary transition-colors">Khảo sát</a>
+      <i data-lucide="chevron-right" class="w-3 h-3"></i>
+      <span>Kết quả</span>
+    </div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">{{ survey.title }}</h1>
+    <p class="text-on-surface/60 mt-1">{{ survey.quarter }}/{{ survey.year }} · {{ survey.start_date.strftime('%d/%m/%Y') }} – {{ survey.end_date.strftime('%d/%m/%Y') }}</p>
+  </div>
+  <a href="/surveys/" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+    <i data-lucide="arrow-left" class="w-4 h-4"></i> Quay lại
+  </a>
+</div>
+
+{% if total == 0 %}
+<div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-12 text-center text-on-surface/40">
+  <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-4 opacity-30"></i>
+  <p>Chưa có phản hồi nào cho đợt khảo sát này.</p>
+</div>
+{% else %}
+
+<!-- KPI row -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 text-center">
+    <p class="text-xs text-on-surface/50 font-bold uppercase tracking-wider mb-2">Tổng phản hồi</p>
+    <p class="text-4xl font-extrabold headline text-primary">{{ total }}</p>
+  </div>
+  <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 text-center">
+    <p class="text-xs text-on-surface/50 font-bold uppercase tracking-wider mb-2">Điểm trung bình</p>
+    <p class="text-4xl font-extrabold headline" style="color:#f59e0b;">{{ avgs.overall }}</p>
+    <p class="text-on-surface/30 text-xs mt-1">/ 5 sao</p>
+  </div>
+  <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 text-center">
+    <p class="text-xs text-on-surface/50 font-bold uppercase tracking-wider mb-2">% Cần cải thiện</p>
+    <p class="text-4xl font-extrabold headline {% if low_pct > 30 %}text-rose-500{% elif low_pct > 10 %}text-amber-500{% else %}text-emerald-500{% endif %}">{{ low_pct }}%</p>
+    <p class="text-on-surface/30 text-xs mt-1">Có tiêu chí ≤ 3 sao</p>
+  </div>
+  <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 text-center">
+    <p class="text-xs text-on-surface/50 font-bold uppercase tracking-wider mb-2">Trạng thái</p>
+    {% if survey.status == 'active' %}
+    <span class="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-sm font-bold border border-emerald-500/15">● Đang mở</span>
+    {% elif survey.status == 'closed' %}
+    <span class="px-3 py-1.5 rounded-lg bg-surface-container-highest text-on-surface/40 text-sm font-bold border border-outline-variant/10">✓ Đã đóng</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid md:grid-cols-2 gap-6 mb-6">
+  <!-- Avg per criteria -->
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-6">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-5">Điểm trung bình theo tiêu chí</p>
+    <div class="space-y-4">
+      {% set avgs_map = {
+        'response_time': avgs.response_time,
+        'quality':       avgs.quality,
+        'attitude':      avgs.attitude,
+        'knowledge':     avgs.knowledge
+      } %}
+      {% for key, label in criteria %}
+      {% set val = avgs_map[key] %}
+      <div>
+        <div class="flex justify-between items-center mb-1.5">
+          <span class="text-sm text-on-surface/70">{{ label }}</span>
+          <span class="text-sm font-bold {% if val >= 4 %}text-emerald-600{% elif val >= 3 %}text-amber-600{% else %}text-rose-500{% endif %}">{{ val }}/5</span>
+        </div>
+        <div class="h-2 bg-surface-container-highest rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all" style="width:{{ (val/5*100) | round }}%; background-color: {% if val >= 4 %}#10b981{% elif val >= 3 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Distribution -->
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-6">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-5">Phân bổ điểm tổng thể</p>
+    <div class="space-y-3">
+      {% for stars in [5,4,3,2,1] %}
+      {% set count = dist[stars] %}
+      {% set pct = (count / total * 100) | round | int %}
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-bold text-on-surface/60 w-4">{{ stars }}</span>
+        <span class="text-amber-400 text-sm">★</span>
+        <div class="flex-1 h-2.5 bg-surface-container-highest rounded-full overflow-hidden">
+          <div class="h-full rounded-full" style="width:{{ pct }}%; background-color:#f59e0b;opacity:{% if stars >= 4 %}1{% elif stars == 3 %}0.6{% else %}0.35{% endif %};"></div>
+        </div>
+        <span class="text-xs text-on-surface/40 w-12 text-right">{{ count }} ({{ pct }}%)</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Responses with reason -->
+{% set with_reason = responses | selectattr('reason_text') | list %}
+{% if with_reason %}
+<div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-6 mb-6">
+  <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-4">Góp ý từ nhân viên ({{ with_reason | length }})</p>
+  <div class="space-y-3" style="max-height:20rem;overflow-y:auto;">
+    {% for r in with_reason %}
+    <div class="bg-surface-container-low rounded-2xl px-4 py-3 border border-outline-variant/5">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-sm font-bold text-on-surface">{{ r.respondent_name or 'Ẩn danh' }}</span>
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400 text-sm">{{ '★' * ((r.response_time + r.quality + r.attitude + r.knowledge) // 4) }}</span>
+          <span class="text-xs text-on-surface/30">{{ r.submitted_at.strftime('%d/%m/%Y') }}</span>
+        </div>
+      </div>
+      <p class="text-sm text-on-surface/70 italic leading-relaxed">"{{ r.reason_text }}"</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Full response table -->
+<div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 overflow-hidden">
+  <div class="px-6 py-4 border-b border-outline-variant/10 bg-surface-container-low/30">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider">Danh sách phản hồi</p>
+  </div>
+  <div class="overflow-x-auto" style="max-height:24rem;overflow-y:auto;">
+    <table class="w-full text-left text-sm text-on-surface">
+      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest sticky top-0">
+        <tr>
+          <th class="px-5 py-4">Nhân viên</th>
+          <th class="px-5 py-4 text-center">Phản hồi</th>
+          <th class="px-5 py-4 text-center">Chất lượng</th>
+          <th class="px-5 py-4 text-center">Thái độ</th>
+          <th class="px-5 py-4 text-center">Kiến thức</th>
+          <th class="px-5 py-4 text-center">Trung bình</th>
+          <th class="px-5 py-4">Thời gian</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for r in responses %}
+        {% set avg_r = ((r.response_time + r.quality + r.attitude + r.knowledge) / 4) | round(1) %}
+        <tr class="hover:bg-primary/5 transition-colors">
+          <td class="px-5 py-4 font-medium">{{ r.respondent_name or '—' }}</td>
+          <td class="px-5 py-4 text-center font-bold {% if r.response_time <= 3 %}text-rose-500{% else %}text-emerald-600{% endif %}">{{ r.response_time }}★</td>
+          <td class="px-5 py-4 text-center font-bold {% if r.quality <= 3 %}text-rose-500{% else %}text-emerald-600{% endif %}">{{ r.quality }}★</td>
+          <td class="px-5 py-4 text-center font-bold {% if r.attitude <= 3 %}text-rose-500{% else %}text-emerald-600{% endif %}">{{ r.attitude }}★</td>
+          <td class="px-5 py-4 text-center font-bold {% if r.knowledge <= 3 %}text-rose-500{% else %}text-emerald-600{% endif %}">{{ r.knowledge }}★</td>
+          <td class="px-5 py-4 text-center">
+            <span class="font-extrabold {% if avg_r >= 4 %}text-emerald-600{% elif avg_r >= 3 %}text-amber-600{% else %}text-rose-500{% endif %}">{{ avg_r }}</span>
+          </td>
+          <td class="px-5 py-4 text-on-surface/40 text-xs">{{ r.submitted_at.strftime('%d/%m %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

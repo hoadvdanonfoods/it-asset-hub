@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Phản hồi của tôi - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-8 text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 mb-4">
+      <i data-lucide="check-circle" class="w-8 h-8 text-emerald-500"></i>
+    </div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Cảm ơn bạn đã đánh giá!</h1>
+    <p class="text-on-surface/60 mt-2">{{ survey.title }} · {{ survey.quarter }}/{{ survey.year }}</p>
+    <p class="text-on-surface/40 text-xs mt-1">Gửi lúc {{ response.submitted_at.strftime('%H:%M ngày %d/%m/%Y') }}</p>
+  </div>
+
+  <!-- Overall score -->
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-6 mb-5 text-center">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-2">Điểm trung bình của bạn</p>
+    <div class="text-6xl font-extrabold headline mb-1" style="color:#f59e0b;">{{ overall }}</div>
+    <div class="flex justify-center gap-1 mb-2">
+      {% for i in range(1, 6) %}
+      <span class="text-2xl" style="color: {% if i <= overall | round %}#f59e0b{% else %}#e2e8f0{% endif %}">★</span>
+      {% endfor %}
+    </div>
+    <p class="text-on-surface/40 text-xs">/ 5 sao</p>
+  </div>
+
+  <!-- Per-criteria scores -->
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-6 mb-5">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-4">Chi tiết theo tiêu chí</p>
+    <div class="space-y-4">
+      {% set score_map = {
+        'response_time': response.response_time,
+        'quality':       response.quality,
+        'attitude':      response.attitude,
+        'knowledge':     response.knowledge
+      } %}
+      {% for key, label in criteria %}
+      {% set val = score_map[key] %}
+      <div class="flex items-center justify-between gap-4">
+        <span class="text-sm text-on-surface/70 w-48">{{ label }}</span>
+        <div class="flex items-center gap-2 flex-1">
+          <div class="flex gap-1">
+            {% for i in range(1, 6) %}
+            <span class="text-lg" style="color: {% if i <= val %}#f59e0b{% else %}#e2e8f0{% endif %}">★</span>
+            {% endfor %}
+          </div>
+          <span class="text-sm font-bold text-on-surface ml-2">{{ val }}/5</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Reason -->
+  {% if response.reason_text %}
+  <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 p-6 mb-5">
+    <p class="text-xs font-bold text-on-surface/50 uppercase tracking-wider mb-3">Lý do / Góp ý</p>
+    <p class="text-sm text-on-surface/80 leading-relaxed italic">"{{ response.reason_text }}"</p>
+  </div>
+  {% endif %}
+
+  <div class="text-center">
+    <a href="/" class="inline-flex items-center gap-2 bg-surface-container-highest px-5 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors border border-outline-variant/20">
+      <i data-lucide="home" class="w-4 h-4"></i> Về trang chủ
+    </a>
+  </div>
+</div>
+{% endblock %}

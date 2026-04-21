@@ -11,5 +11,6 @@ from app.db.models.incident_event import IncidentEvent
 from app.db.models.maintenance import Maintenance
 from app.db.models.resource import Resource
 from app.db.models.user import User
+from app.db.models.survey import Survey, SurveyResponse
 
-__all__ = ['Department', 'Employee', 'AssetType', 'Location', 'AssetCategory', 'AssetStatus', 'Vendor', 'IncidentCategory', 'Priority', 'MaintenanceType', 'Asset', 'AssetAssignment', 'AssetEvent', 'AssetStatusHistory', 'AuditLog', 'Document', 'Maintenance', 'Incident', 'IncidentEvent', 'Resource', 'User']
+__all__ = ['Department', 'Employee', 'AssetType', 'Location', 'AssetCategory', 'AssetStatus', 'Vendor', 'IncidentCategory', 'Priority', 'MaintenanceType', 'Asset', 'AssetAssignment', 'AssetEvent', 'AssetStatusHistory', 'AuditLog', 'Document', 'Maintenance', 'Incident', 'IncidentEvent', 'Resource', 'User', 'Survey', 'SurveyResponse']

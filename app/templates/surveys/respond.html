@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block title %}Khảo sát hài lòng IT - {{ APP_NAME | default('IT Asset Hub') }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+  <div class="mb-8 text-center">
+    <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-4">
+      <i data-lucide="star" class="w-8 h-8 text-amber-500"></i>
+    </div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">{{ survey.title }}</h1>
+    <p class="text-on-surface/60 mt-2">{{ survey.quarter }}/{{ survey.year }} · Đến {{ survey.end_date.strftime('%d/%m/%Y') }}</p>
+    <p class="text-on-surface/50 text-sm mt-3 max-w-md mx-auto">Đánh giá của bạn giúp bộ phận IT cải thiện chất lượng phục vụ. Phản hồi chỉ gửi được <strong>một lần</strong> và không thể chỉnh sửa.</p>
+  </div>
+
+  {% if error %}
+  <div class="flex items-start gap-3 bg-rose-50 border border-rose-300/40 text-rose-700 rounded-2xl px-5 py-4 mb-6">
+    <i data-lucide="circle-x" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+    <p class="text-sm font-medium">{{ error }}</p>
+  </div>
+  {% endif %}
+
+  <form method="post" action="/surveys/{{ survey.id }}/respond" id="surveyForm">
+
+    <!-- Star rating cards -->
+    <div class="space-y-4 mb-6">
+      {% set criteria_labels = {
+        'response_time': 'Tốc độ phản hồi',
+        'quality':       'Chất lượng xử lý',
+        'attitude':      'Thái độ phục vụ',
+        'knowledge':     'Kiến thức chuyên môn'
+      } %}
+      {% set criteria_desc = {
+        'response_time': 'Thời gian tiếp nhận và phản hồi yêu cầu hỗ trợ',
+        'quality':       'Vấn đề được giải quyết triệt để, đúng yêu cầu',
+        'attitude':      'Thân thiện, nhiệt tình, chuyên nghiệp khi hỗ trợ',
+        'knowledge':     'Hiểu vấn đề, đưa ra giải pháp phù hợp'
+      } %}
+      {% for key, label in criteria %}
+      {% set prev_val = prev[key] if prev is defined and prev else 0 %}
+      <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <p class="font-bold text-on-surface">{{ label }}</p>
+            <p class="text-xs text-on-surface/50 mt-0.5">{{ criteria_desc[key] }}</p>
+          </div>
+          <span class="score-display text-2xl font-extrabold text-on-surface/20 min-w-[2rem] text-right" id="display_{{ key }}">
+            {{ '★' * prev_val + '☆' * (5 - prev_val) if prev_val else '☆☆☆☆☆' }}
+          </span>
+        </div>
+        <input type="hidden" name="{{ key }}" id="{{ key }}" value="{{ prev_val }}">
+        <div class="star-group flex gap-3" data-field="{{ key }}">
+          {% for i in range(1, 6) %}
+          <button type="button" data-value="{{ i }}"
+            class="star-btn text-4xl transition-all duration-150 cursor-pointer leading-none {% if prev_val >= i %}text-amber-400{% else %}text-on-surface/15 hover:text-amber-300{% endif %}"
+            style="background:none;border:none;padding:0;">★</button>
+          {% endfor %}
+        </div>
+        <div class="flex justify-between text-[10px] text-on-surface/30 mt-2 px-1">
+          <span>Rất không hài lòng</span><span>Rất hài lòng</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Reason text -->
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 mb-6" id="reasonSection" style="display:none;">
+      <label class="block font-bold text-on-surface mb-1">Lý do <span class="text-rose-500">*</span></label>
+      <p class="text-xs text-on-surface/50 mb-3">Bắt buộc khi có tiêu chí ≤ 3 sao. Tối thiểu 30 ký tự và 5 từ.</p>
+      <textarea name="reason_text" id="reason_text" rows="4"
+        placeholder="Mô tả cụ thể điều bạn chưa hài lòng và kỳ vọng cải thiện..."
+        class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface transition-all resize-none">{{ prev.reason_text if prev is defined and prev else '' }}</textarea>
+      <div class="flex justify-between mt-2">
+        <span id="charCount" class="text-xs text-on-surface/40">0 ký tự</span>
+        <span class="text-xs text-on-surface/30">Tối thiểu 30 ký tự · 5 từ</span>
+      </div>
+    </div>
+
+    <!-- Confirm & Submit -->
+    <div id="submitSection" style="display:none;">
+      <div class="bg-amber-500/5 border border-amber-500/15 rounded-2xl p-4 mb-4">
+        <p class="text-sm text-amber-700 font-medium">
+          <i data-lucide="alert-triangle" class="w-4 h-4 inline mr-1"></i>
+          Sau khi gửi, bạn <strong>không thể chỉnh sửa</strong> phản hồi. Hãy kiểm tra kỹ trước khi xác nhận.
+        </p>
+      </div>
+      <button type="button" id="confirmBtn"
+        class="w-full flex items-center justify-center gap-2 bg-primary text-white py-3 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-md cursor-pointer">
+        <i data-lucide="send" class="w-4 h-4"></i> Gửi đánh giá
+      </button>
+    </div>
+
+    <!-- Confirm dialog -->
+    <div id="confirmModal" class="hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="bg-surface-container-lowest rounded-3xl shadow-2xl border border-outline-variant/10 w-full max-w-sm p-6 text-center">
+        <div class="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <i data-lucide="send" class="w-7 h-7 text-primary"></i>
+        </div>
+        <h3 class="font-extrabold text-on-surface text-lg headline mb-2">Xác nhận gửi đánh giá?</h3>
+        <p class="text-sm text-on-surface/60 mb-6">Phản hồi của bạn sẽ được ghi nhận và <strong>không thể thay đổi</strong> sau khi gửi.</p>
+        <div class="flex gap-3">
+          <button type="button" id="cancelConfirm" class="flex-1 py-2.5 rounded-xl bg-surface-container-highest text-on-surface font-bold text-sm border border-outline-variant/20 cursor-pointer">Kiểm tra lại</button>
+          <button type="submit" class="flex-1 py-2.5 rounded-xl bg-primary text-white font-bold text-sm hover:bg-primary-container transition-all cursor-pointer">Gửi ngay</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const scores = { response_time: 0, quality: 0, attitude: 0, knowledge: 0 };
+  const reasonSection = document.getElementById('reasonSection');
+  const submitSection = document.getElementById('submitSection');
+  const confirmModal = document.getElementById('confirmModal');
+  const reasonTA = document.getElementById('reason_text');
+  const charCount = document.getElementById('charCount');
+
+  function updateReasonVisibility() {
+    const needsReason = Object.values(scores).some(s => s > 0 && s <= 3);
+    reasonSection.style.display = needsReason ? '' : 'none';
+    const allFilled = Object.values(scores).every(s => s > 0);
+    submitSection.style.display = allFilled ? '' : 'none';
+  }
+
+  document.querySelectorAll('.star-group').forEach(function (group) {
+    const field = group.dataset.field;
+    const hidden = document.getElementById(field);
+    const display = document.getElementById('display_' + field);
+    const btns = group.querySelectorAll('.star-btn');
+
+    function paint(val) {
+      btns.forEach(function (btn) {
+        const v = parseInt(btn.dataset.value);
+        btn.style.color = v <= val ? '#f59e0b' : '';
+        btn.className = btn.className.replace(/text-amber-400|text-on-surface\/15/g, '').trim();
+      });
+    }
+
+    function setScore(val) {
+      scores[field] = val;
+      hidden.value = val;
+      paint(val);
+      const filled = val > 0 ? '★'.repeat(val) + '☆'.repeat(5 - val) : '☆☆☆☆☆';
+      display.textContent = filled;
+      display.style.color = val > 0 ? '#f59e0b' : '';
+      updateReasonVisibility();
+    }
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('mouseenter', function () { paint(parseInt(btn.dataset.value)); });
+      btn.addEventListener('mouseleave', function () { paint(scores[field]); });
+      btn.addEventListener('click', function () { setScore(parseInt(btn.dataset.value)); });
+    });
+
+    // Set initial value if prev filled
+    const initVal = parseInt(hidden.value) || 0;
+    if (initVal > 0) { scores[field] = initVal; paint(initVal); }
+  });
+
+  if (reasonTA) {
+    reasonTA.addEventListener('input', function () {
+      charCount.textContent = reasonTA.value.length + ' ký tự';
+    });
+  }
+
+  document.getElementById('confirmBtn').addEventListener('click', function () {
+    confirmModal.classList.remove('hidden');
+    if (window.lucide) lucide.createIcons();
+  });
+  document.getElementById('cancelConfirm').addEventListener('click', function () {
+    confirmModal.classList.add('hidden');
+  });
+
+  updateReasonVisibility();
+});
+</script>
+{% endblock %}
