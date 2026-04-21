@@ -376,6 +376,7 @@ def incident_edit(incident_id: int, request: Request, db: Session = Depends(get_
         'request': request,
         'assets': assets,
         'item': item,
+        'asset_id': None,
         'current_user': current_user,
         'format_bangkok_datetime': format_bangkok_datetime,
         'incident_statuses': INCIDENT_STATUSES,

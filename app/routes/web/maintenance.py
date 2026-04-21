@@ -213,7 +213,7 @@ def maintenance_edit(maintenance_id: int, request: Request, db: Session = Depend
     if item:
         _maintenance_view_model(item)
     assets = db.scalars(select(Asset).order_by(Asset.asset_code.asc())).all()
-    context = {'request': request, 'assets': assets, 'item': item, 'current_user': current_user}
+    context = {'request': request, 'assets': assets, 'item': item, 'asset_id': None, 'current_user': current_user}
     context.update(_maintenance_master_context(db))
     return templates.TemplateResponse('maintenance/form.html', context)
 
