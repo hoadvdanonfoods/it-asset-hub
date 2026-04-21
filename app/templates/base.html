@@ -275,7 +275,7 @@
         </a>
     </nav>
     
-    {% set _pending_survey = get_pending_survey(current_user) if current_user else None %}
+    {% set _pending_survey = (get_pending_survey(current_user) if get_pending_survey is defined else None) if current_user else None %}
     {% if _pending_survey %}
     <div class="fixed top-[61px] left-0 right-0 z-40 lg:left-72" style="background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;">
       <div class="flex items-center justify-between gap-4 px-6 py-2.5">
