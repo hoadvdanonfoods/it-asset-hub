@@ -20,7 +20,8 @@ templates = Jinja2Templates(directory='app/templates')
 @router.get('/', response_class=HTMLResponse)
 @require_permission('can_manage_system')
 def survey_list(request: Request, current_user=None, db: Session = Depends(get_db)):
-    surveys = db.scalars(select(Survey).order_by(Survey.year.desc(), Survey.quarter.desc())).all()
+    surveys = db.scalars(select(Survey).order_by(Survey.year.desc(), Survey.quarter.asc())).all()
+
     counts = {
         r[0]: r[1]
         for r in db.execute(
@@ -28,9 +29,32 @@ def survey_list(request: Request, current_user=None, db: Session = Depends(get_d
             .group_by(SurveyResponse.survey_id)
         ).all()
     }
+
+    avgs = {
+        r[0]: round((r[1] + r[2] + r[3] + r[4]) / 4, 2)
+        for r in db.execute(
+            select(
+                SurveyResponse.survey_id,
+                func.avg(SurveyResponse.response_time),
+                func.avg(SurveyResponse.quality),
+                func.avg(SurveyResponse.attitude),
+                func.avg(SurveyResponse.knowledge),
+            ).group_by(SurveyResponse.survey_id)
+        ).all()
+    }
+
+    # Group by year → {year: {quarter: survey}}
+    from collections import defaultdict
+    by_year = defaultdict(dict)
+    for s in surveys:
+        by_year[s.year][s.quarter] = s
+    years = sorted(by_year.keys(), reverse=True)
+
     return templates.TemplateResponse('surveys/list.html', {
         'request': request, 'current_user': current_user,
-        'surveys': surveys, 'response_counts': counts,
+        'by_year': by_year, 'years': years,
+        'response_counts': counts, 'avgs': avgs,
+        'quarters': ['Q1', 'Q2', 'Q3', 'Q4'],
     })
 
 
@@ -38,9 +62,12 @@ def survey_list(request: Request, current_user=None, db: Session = Depends(get_d
 
 @router.get('/new', response_class=HTMLResponse)
 @require_permission('can_manage_system')
-def survey_new(request: Request, current_user=None):
+def survey_new(request: Request, current_user=None, quarter: str = '', year: int = 0):
+    from datetime import datetime as _dt
     return templates.TemplateResponse('surveys/form.html', {
         'request': request, 'current_user': current_user, 'error': None,
+        'default_quarter': quarter if quarter in ('Q1','Q2','Q3','Q4') else '',
+        'default_year': year if year else _dt.utcnow().year,
     })
 
 

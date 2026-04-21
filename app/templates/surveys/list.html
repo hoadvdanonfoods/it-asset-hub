@@ -9,83 +9,164 @@
       <span>Khảo sát</span>
     </div>
     <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Khảo sát hài lòng IT</h1>
-    <p class="text-on-surface/60 mt-1">Quản lý các đợt khảo sát mức độ hài lòng nhân viên</p>
+    <p class="text-on-surface/60 mt-1">Theo dõi mức độ hài lòng nhân viên theo từng quý</p>
   </div>
   <a href="/surveys/new" class="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-primary-container transition-all shadow-lg hover:-translate-y-0.5">
     <i data-lucide="plus" class="w-4 h-4"></i> Tạo đợt khảo sát
   </a>
 </div>
 
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  {% if surveys %}
-  <div class="overflow-x-auto">
-    <table class="w-full text-left text-sm text-on-surface">
-      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
-        <tr>
-          <th class="px-6 py-5">Đợt khảo sát</th>
-          <th class="px-6 py-5">Thời gian</th>
-          <th class="px-6 py-5 text-center">Phản hồi</th>
-          <th class="px-6 py-5 text-center">Trạng thái</th>
-          <th class="px-6 py-5 text-right">Thao tác</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-outline-variant/5">
-        {% for s in surveys %}
-        <tr class="hover:bg-primary/5 transition-all duration-200">
-          <td class="px-6 py-5">
-            <p class="font-bold text-on-surface">{{ s.title }}</p>
-            <p class="text-xs text-on-surface/40 mt-0.5">{{ s.quarter }}/{{ s.year }}</p>
-          </td>
-          <td class="px-6 py-5 text-on-surface/60 text-xs">
-            {{ s.start_date.strftime('%d/%m/%Y') }} → {{ s.end_date.strftime('%d/%m/%Y') }}
-          </td>
-          <td class="px-6 py-5 text-center">
-            <span class="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-surface-container-highest text-sm font-extrabold text-on-surface">
-              {{ response_counts.get(s.id, 0) }}
-            </span>
-          </td>
-          <td class="px-6 py-5 text-center">
-            {% if s.status == 'active' %}
-            <span class="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-bold border border-emerald-500/15">● Đang mở</span>
-            {% elif s.status == 'draft' %}
-            <span class="px-3 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-xs font-bold border border-amber-500/15">○ Nháp</span>
-            {% else %}
-            <span class="px-3 py-1 rounded-lg bg-surface-container-highest text-on-surface/40 text-xs font-bold border border-outline-variant/10">✓ Đã đóng</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5 text-right">
-            <div class="flex items-center justify-end gap-2">
-              {% if response_counts.get(s.id, 0) > 0 %}
-              <a href="/surveys/{{ s.id }}/dashboard" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors border border-primary/20">
-                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> Kết quả
-              </a>
-              {% endif %}
-              {% if s.status == 'draft' %}
-              <form method="post" action="/surveys/{{ s.id }}/activate" class="inline">
-                <button type="submit" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 text-xs font-bold hover:bg-emerald-500/20 transition-colors border border-emerald-500/15 cursor-pointer">
-                  <i data-lucide="play" class="w-3.5 h-3.5"></i> Kích hoạt
-                </button>
-              </form>
-              {% elif s.status == 'active' %}
-              <form method="post" action="/surveys/{{ s.id }}/close" class="inline" onsubmit="return confirm('Đóng đợt khảo sát này? Nhân viên sẽ không thể gửi thêm phản hồi.')">
-                <button type="submit" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 text-xs font-bold hover:bg-rose-500/20 transition-colors border border-rose-500/15 cursor-pointer">
-                  <i data-lucide="square" class="w-3.5 h-3.5"></i> Đóng
-                </button>
-              </form>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-  <div class="py-16 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="star" class="w-12 h-12 mb-4 opacity-30"></i>
-    <p class="font-medium">Chưa có đợt khảo sát nào.</p>
-    <a href="/surveys/new" class="mt-4 text-primary text-sm font-bold hover:underline">Tạo đợt đầu tiên →</a>
-  </div>
-  {% endif %}
+{% if not years %}
+<div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/10 py-20 flex flex-col items-center justify-center text-on-surface/40">
+  <i data-lucide="star" class="w-14 h-14 mb-4 opacity-20"></i>
+  <p class="font-semibold text-lg">Chưa có đợt khảo sát nào.</p>
+  <a href="/surveys/new" class="mt-4 text-primary text-sm font-bold hover:underline">Tạo đợt đầu tiên →</a>
 </div>
+{% else %}
+
+{% for year in years %}
+{% set year_surveys = by_year[year] %}
+
+{# Tính summary cả năm #}
+{% set ns = namespace(total=0, score_sum=0, scored=0) %}
+{% for q in quarters %}
+  {% if year_surveys.get(q) %}
+    {% set s = year_surveys[q] %}
+    {% set cnt = response_counts.get(s.id, 0) %}
+    {% set ns.total = ns.total + cnt %}
+    {% if avgs.get(s.id) %}
+      {% set ns.score_sum = ns.score_sum + avgs[s.id] %}
+      {% set ns.scored = ns.scored + 1 %}
+    {% endif %}
+  {% endif %}
+{% endfor %}
+{% set year_avg = (ns.score_sum / ns.scored) | round(2) if ns.scored > 0 else None %}
+
+<div class="mb-8">
+  <!-- Year header -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+        <i data-lucide="calendar" class="w-5 h-5 text-primary"></i>
+      </div>
+      <div>
+        <h2 class="text-xl font-extrabold text-on-surface headline">{{ year }}</h2>
+        <p class="text-xs text-on-surface/40">
+          {{ ns.total }} phản hồi tổng cộng
+          {% if year_avg %}· Trung bình năm:
+            <span class="font-bold {% if year_avg >= 4 %}text-emerald-600{% elif year_avg >= 3 %}text-amber-600{% else %}text-rose-500{% endif %}">
+              {{ year_avg }}★
+            </span>
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    {# Mini trend bar for the year #}
+    {% if ns.scored >= 2 %}
+    <div class="hidden md:flex items-end gap-1 h-8">
+      {% for q in quarters %}
+        {% if year_surveys.get(q) and avgs.get(year_surveys[q].id) %}
+          {% set val = avgs[year_surveys[q].id] %}
+          {% set h = ((val / 5) * 100) | round | int %}
+          <div title="{{ q }}: {{ val }}★" class="w-4 rounded-t-sm"
+            style="height:{{ h }}%;min-height:4px;background:{% if val >= 4 %}#10b981{% elif val >= 3 %}#f59e0b{% else %}#ef4444{% endif %};opacity:0.8;"></div>
+        {% else %}
+          <div class="w-4 rounded-t-sm" style="height:4px;background:#e2e8f0;"></div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Quarter cards grid -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    {% for q in quarters %}
+    {% if year_surveys.get(q) %}
+    {% set s = year_surveys[q] %}
+    {% set cnt = response_counts.get(s.id, 0) %}
+    {% set avg = avgs.get(s.id) %}
+
+    <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+      <!-- Quarter badge + status -->
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-extrabold text-primary bg-primary/10 px-2.5 py-1 rounded-lg">{{ q }}</span>
+        {% if s.status == 'active' %}
+        <span class="flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/15">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Đang mở
+        </span>
+        {% elif s.status == 'draft' %}
+        <span class="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/15">○ Nháp</span>
+        {% else %}
+        <span class="text-[10px] font-bold text-on-surface/40 bg-surface-container-highest px-2 py-0.5 rounded-full border border-outline-variant/10">✓ Đóng</span>
+        {% endif %}
+      </div>
+
+      <!-- Score -->
+      <div class="text-center py-2">
+        {% if avg %}
+        <p class="text-4xl font-extrabold headline {% if avg >= 4 %}text-emerald-600{% elif avg >= 3 %}text-amber-500{% else %}text-rose-500{% endif %}">
+          {{ avg }}
+        </p>
+        <p class="text-xs text-on-surface/40 mt-0.5">/ 5 sao · {{ cnt }} phản hồi</p>
+        <!-- Mini star bar -->
+        <div class="mt-2 h-1.5 bg-surface-container-highest rounded-full overflow-hidden mx-4">
+          <div class="h-full rounded-full transition-all"
+            style="width:{{ (avg/5*100)|round }}%;background:{% if avg >= 4 %}#10b981{% elif avg >= 3 %}#f59e0b{% else %}#ef4444{% endif %};"></div>
+        </div>
+        {% elif cnt == 0 %}
+        <p class="text-3xl font-extrabold text-on-surface/20">—</p>
+        <p class="text-xs text-on-surface/30 mt-0.5">Chưa có phản hồi</p>
+        {% endif %}
+      </div>
+
+      <!-- Date -->
+      <p class="text-[10px] text-on-surface/40 text-center">
+        {{ s.start_date.strftime('%d/%m') }} – {{ s.end_date.strftime('%d/%m/%Y') }}
+      </p>
+
+      <!-- Actions -->
+      <div class="flex flex-col gap-1.5 mt-auto">
+        {% if cnt > 0 %}
+        <a href="/surveys/{{ s.id }}/dashboard"
+          class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold hover:bg-primary/20 transition-colors border border-primary/15">
+          <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i> Xem kết quả
+        </a>
+        {% endif %}
+        {% if s.status == 'draft' %}
+        <form method="post" action="/surveys/{{ s.id }}/activate" class="w-full">
+          <button type="submit"
+            class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/10 text-emerald-700 text-xs font-bold hover:bg-emerald-500/20 transition-colors border border-emerald-500/15 cursor-pointer">
+            <i data-lucide="play" class="w-3.5 h-3.5"></i> Kích hoạt
+          </button>
+        </form>
+        {% elif s.status == 'active' %}
+        <form method="post" action="/surveys/{{ s.id }}/close" class="w-full"
+          onsubmit="return confirm('Đóng đợt khảo sát này?')">
+          <button type="submit"
+            class="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 text-rose-600 text-xs font-bold hover:bg-rose-500/20 transition-colors border border-rose-500/15 cursor-pointer">
+            <i data-lucide="square" class="w-3.5 h-3.5"></i> Đóng lại
+          </button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Empty quarter slot -->
+    <div class="bg-surface-container-lowest/50 rounded-2xl border border-outline-variant/10 border-dashed p-5 flex flex-col items-center justify-center gap-3 text-center min-h-[180px]">
+      <span class="text-xs font-extrabold text-on-surface/30 bg-surface-container-highest px-2.5 py-1 rounded-lg">{{ q }}</span>
+      <p class="text-xs text-on-surface/30">Chưa tạo</p>
+      <a href="/surveys/new?quarter={{ q }}&year={{ year }}"
+        class="flex items-center gap-1 text-xs font-bold text-primary/60 hover:text-primary transition-colors">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> Tạo
+      </a>
+    </div>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+{% endif %}
 {% endblock %}
