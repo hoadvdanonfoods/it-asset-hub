@@ -130,6 +130,7 @@
         {% set can_view_documents_nav = current_user and (is_admin_nav or current_user.can_view_documents) %}
         {% set show_admin_nav = can_manage_system_nav or can_manage_users_nav %}
         {% set show_master_nav = can_manage_system_nav %}
+        {% set _pending_survey = (get_pending_survey(current_user) if get_pending_survey is defined else None) if current_user else None %}
 
         {% if can_view_dashboard_nav %}
         <a href="/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p == '/' else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
@@ -157,12 +158,15 @@
         </a>
         {% endif %}
         {% if current_user %}
-        {% set _survey_href = '/surveys/' ~ _pending_survey.id ~ '/respond' if _pending_survey else '/surveys/' %}
-        <a href="{{ _survey_href }}" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/surveys') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
+        {% if can_manage_system_nav %}
+        {# Admin: always go to management list, not respond form #}
+        {% elif _pending_survey %}
+        <a href="/surveys/{{ _pending_survey.id }}/respond" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/surveys') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
             <i data-lucide="star" class="w-5 h-5"></i>
             <span class="text-sm">Khảo sát IT</span>
-            {% if _pending_survey %}<span class="ml-auto w-2 h-2 rounded-full" style="background:#f59e0b;"></span>{% endif %}
+            <span class="ml-auto w-2 h-2 rounded-full" style="background:#f59e0b;"></span>
         </a>
+        {% endif %}
         {% endif %}
         {% if can_view_documents_nav %}
         <a href="/documents/" class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ 'bg-primary/5 text-primary font-bold border-r-4 border-primary' if p.startswith('/documents') else 'text-on-surface/60 hover:text-primary hover:bg-surface-container-highest/50' }}">
@@ -275,7 +279,6 @@
         </a>
     </nav>
     
-    {% set _pending_survey = (get_pending_survey(current_user) if get_pending_survey is defined else None) if current_user else None %}
     {% if _pending_survey %}
     <div class="fixed top-[61px] left-0 right-0 z-40 lg:left-72" style="background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;">
       <div class="flex items-center justify-between gap-4 px-6 py-2.5">
@@ -284,10 +287,17 @@
           <span class="text-sm font-bold">Đợt khảo sát hài lòng IT đang mở — {{ _pending_survey.title }}</span>
           <span class="text-xs opacity-75">· Hạn {{ _pending_survey.end_date.strftime('%d/%m/%Y') }}</span>
         </div>
+        {% if can_manage_system_nav %}
+        <a href="/surveys/{{ _pending_survey.id }}/dashboard"
+          class="flex-shrink-0 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors border border-white/30">
+          Xem kết quả →
+        </a>
+        {% else %}
         <a href="/surveys/{{ _pending_survey.id }}/respond"
           class="flex-shrink-0 bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-1.5 rounded-lg transition-colors border border-white/30">
           Đánh giá ngay →
         </a>
+        {% endif %}
       </div>
     </div>
     <div class="lg:ml-72 h-10"></div>

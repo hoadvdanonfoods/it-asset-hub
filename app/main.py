@@ -160,23 +160,35 @@ app.include_router(checklist_router)
 app.include_router(surveys_router)
 
 # Centralized Template Context Injection
-import sys
 from app.services.survey_service import get_pending_survey_for_user
 from datetime import datetime as _dt
-for router_obj in [
-    auth_router, dashboard_router, audit_router, master_data_router, assets_router, maintenance_router,
-    incidents_router, qr_router, users_router, system_tools_router,
-    resources_router, documents_router, discovery_router, checklist_router, surveys_router
-]:
-    module = sys.modules.get(router_obj.__module__)
-    if module and hasattr(module, 'templates'):
-        module.templates.env.globals.update({
-            'APP_NAME': APP_NAME,
-            'APP_VERSION': APP_VERSION,
-            'has_permission': has_permission,
-            'get_pending_survey': get_pending_survey_for_user,
-            'now_year': _dt.utcnow().year,
-        })
+import app.routes.web.auth as _m_auth
+import app.routes.web.dashboard as _m_dashboard
+import app.routes.web.audit as _m_audit
+import app.routes.web.master_data as _m_master_data
+import app.routes.web.assets as _m_assets
+import app.routes.web.maintenance as _m_maintenance
+import app.routes.web.incidents as _m_incidents
+import app.routes.web.qr as _m_qr
+import app.routes.web.users as _m_users
+import app.routes.web.system_tools as _m_system_tools
+import app.routes.web.resources as _m_resources
+import app.routes.web.documents as _m_documents
+import app.routes.web.discovery as _m_discovery
+import app.routes.web.checklist as _m_checklist
+import app.routes.web.surveys as _m_surveys
+_globals = {
+    'APP_NAME': APP_NAME,
+    'APP_VERSION': APP_VERSION,
+    'has_permission': has_permission,
+    'get_pending_survey': get_pending_survey_for_user,
+    'now_year': _dt.utcnow().year,
+}
+for _m in [_m_auth, _m_dashboard, _m_audit, _m_master_data, _m_assets, _m_maintenance,
+           _m_incidents, _m_qr, _m_users, _m_system_tools, _m_resources, _m_documents,
+           _m_discovery, _m_checklist, _m_surveys]:
+    if hasattr(_m, 'templates'):
+        _m.templates.env.globals.update(_globals)
 
 
 @app.get('/health')
