@@ -348,6 +348,26 @@ def _clean_import_row(row_data, config):
     return cleaned
 
 
+# Map FK field -> (model, pk column) for FK validation during import
+_FK_FIELD_MODELS = {
+    'department_id': (Department, 'id'),
+}
+
+
+def _sanitize_fk_fields(cleaned: dict, db: Session) -> dict:
+    """Replace any FK id values that don't exist in the target DB with None."""
+    for field_key, (model, pk_col) in _FK_FIELD_MODELS.items():
+        if field_key not in cleaned:
+            continue
+        raw_id = cleaned[field_key]
+        if raw_id is None:
+            continue
+        exists = db.scalar(select(model).where(getattr(model, pk_col) == raw_id))
+        if not exists:
+            cleaned[field_key] = None
+    return cleaned
+
+
 @router.get('/{model_name}', response_class=HTMLResponse)
 @require_permission('can_manage_system')
 async def list_model(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
@@ -662,6 +682,8 @@ async def import_model_confirm(request: Request, model_name: str, current_user=N
     unique_field = config.get('unique_field')
     created = updated = 0
     for cleaned in rows_cleaned:
+        # Validate FK references — nullify any IDs that don't exist in target DB
+        cleaned = _sanitize_fk_fields(cleaned, db)
         unique_value = cleaned.get(unique_field) if unique_field else None
         existing = None
         if unique_field and unique_value not in (None, ''):
@@ -700,6 +722,8 @@ async def import_model(request: Request, model_name: str, current_user=None, fil
         row_data = dict(zip(headers, row))
         cleaned = _clean_import_row(row_data, config)
         if any(v is not None and v != '' for v in cleaned.values()):
+            # Validate FK references — nullify any IDs that don't exist in target DB
+            cleaned = _sanitize_fk_fields(cleaned, db)
             existing = None
             unique_value = cleaned.get(unique_field) if unique_field else None
             if unique_field and unique_value not in (None, ''):
