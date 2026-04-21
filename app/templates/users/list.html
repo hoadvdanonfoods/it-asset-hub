@@ -47,113 +47,29 @@
 {% endif %}
 
 <div class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10 mb-4">
-  <form method="get" class="flex gap-3">
+  <form method="get" id="filter-form"
+        hx-get="/users/partial"
+        hx-target="#users-table-wrapper"
+        hx-swap="innerHTML"
+        hx-trigger="submit"
+        hx-indicator="#filter-spinner"
+        class="flex gap-3">
     <div class="relative flex-1">
       <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
       <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên đăng nhập hoặc họ tên..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-on-surface placeholder:text-on-surface/40">
     </div>
     <button type="submit" class="bg-on-surface text-surface-container-lowest font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-on-surface/80 transition-colors shadow-sm cursor-pointer">Tìm</button>
-    {% if q %}
-    <a href="/users/" class="flex items-center px-3.5 bg-surface-container-highest text-on-surface/60 rounded-xl hover:bg-outline-variant/30 transition-colors border border-outline-variant/20" title="Xóa bộ lọc"><i data-lucide="x" class="w-4 h-4"></i></a>
-    {% endif %}
+    <a href="/users/" class="flex items-center px-3.5 bg-surface-container-highest text-on-surface/60 rounded-xl hover:bg-outline-variant/30 transition-colors border border-outline-variant/20" title="Xóa bộ lọc"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></a>
   </form>
 </div>
 
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto custom-scrollbar">
-    <table class="w-full text-left text-sm text-on-surface">
-      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
-        <tr>
-          <th class="px-6 py-5 w-12 text-center"><input type="checkbox" id="selectAllRows" class="rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer"></th>
-          <th class="px-6 py-5 w-16 text-center">STT</th>
-          <th class="px-6 py-5 min-w-[180px]">Tài khoản</th>
-          <th class="px-6 py-5 min-w-[200px]">Họ tên</th>
-          <th class="px-6 py-5 w-40 text-center">Vai trò</th>
-          <th class="px-6 py-5 min-w-[240px]">Quyền hạn chính</th>
-          <th class="px-6 py-5 w-36 text-center">Trạng thái</th>
-          <th class="px-6 py-5 w-28 text-right">Thao tác</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-outline-variant/5">
-        {% for u in users %}
-        <tr class="hover:bg-purple-500/5 transition-all duration-200 group">
-          <td class="px-6 py-5 text-center">
-            <input type="checkbox" value="{{ u.id }}" class="row-checkbox rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer">
-          </td>
-          <td class="px-6 py-5 text-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-purple-500/10 group-hover:text-purple-600 transition-colors">
-              {{ loop.index }}
-            </span>
-          </td>
-          <td class="px-6 py-5">
-            <div class="flex items-center gap-3">
-              <div class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center text-sm font-bold flex-shrink-0 border border-purple-500/10 shadow-sm">{{ u.username[0] | upper }}</div>
-              <span class="font-bold text-on-surface group-hover:text-purple-700 transition-colors">{{ u.username }}</span>
-            </div>
-          </td>
-          <td class="px-6 py-5 text-on-surface/70 font-medium">{{ u.full_name or '-' }}</td>
-          <td class="px-6 py-5 text-center">
-            {% if u.role == 'admin' %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 text-[10px] font-bold tracking-wide uppercase border border-purple-500/10 shadow-sm"><i data-lucide="shield-check" class="w-3 h-3"></i>admin</span>
-            {% elif u.role == 'technician' %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10 shadow-sm"><i data-lucide="tool" class="w-3 h-3"></i>technician</span>
-            {% else %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="user" class="w-3 h-3"></i>user</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5">
-            <div class="flex flex-wrap gap-1.5">
-              {% if u.can_manage_users %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">USERS</span>{% endif %}
-              {% if u.can_manage_system %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">SYSTEM</span>{% endif %}
-              {% if u.can_manage_resources %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">RESOURCES</span>{% endif %}
-              {% if u.can_manage_documents %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">DOCUMENTS</span>{% endif %}
-              {% if u.can_edit_assets %}<span class="px-2 py-0.5 rounded-md bg-blue-500/5 text-blue-500 text-[9px] font-bold border border-blue-500/10">ASSET_EDIT</span>{% endif %}
-              {% if u.can_edit_maintenance %}<span class="px-2 py-0.5 rounded-md bg-emerald-500/5 text-emerald-500 text-[9px] font-bold border border-emerald-500/10">MAINT_EDIT</span>{% endif %}
-              {% if u.can_edit_incidents %}<span class="px-2 py-0.5 rounded-md bg-rose-500/5 text-rose-500 text-[9px] font-bold border border-rose-500/10">INCIDENT_EDIT</span>{% endif %}
-            </div>
-          </td>
-          <td class="px-6 py-5 text-center">
-            {% if u.is_active %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active
-            </span>
-            {% else %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10 opacity-70">
-              <i data-lucide="archive" class="w-3 h-3"></i>Archived
-            </span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5 text-right">
-            <div class="flex items-center justify-end gap-1.5 text-on-surface/30">
-              <a href="/users/{{ u.id }}/edit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-purple-500/10 hover:text-purple-600 transition-all border border-outline-variant/10 hover:border-purple-500/20" title="Sửa">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </a>
-              {% if u.is_active %}
-              <form method="post" action="/users/{{ u.id }}/archive" onsubmit="return confirm('Archive user này?');" class="inline">
-                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-amber-500/10 hover:text-amber-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-amber-500/20" title="Archive">
-                  <i data-lucide="archive" class="w-4 h-4"></i>
-                </button>
-              </form>
-              {% else %}
-              <form method="post" action="/users/{{ u.id }}/restore" onsubmit="return confirm('Khôi phục user này?');" class="inline">
-                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-emerald-500/20" title="Khôi phục">
-                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                </button>
-              </form>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if not users %}
-  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="users" class="w-12 h-12 mb-4 opacity-50"></i>
-    <p>Chưa có người dùng nào.</p>
-  </div>
-  {% endif %}
+<!-- HTMX loading bar -->
+<div id="filter-spinner" class="htmx-indicator h-0.5 mb-4 bg-indigo-500/20 rounded-full overflow-hidden">
+  <div class="h-full bg-indigo-500 animate-pulse w-full rounded-full"></div>
+</div>
+
+<div id="users-table-wrapper">
+  {% include 'users/_table.html' %}
 </div>
 
 <div id="bulkActionBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 transform translate-y-32 opacity-0 flex items-center gap-6 bg-on-surface px-8 py-4 rounded-2xl shadow-2xl border border-white/10 z-50 transition-all duration-500 pointer-events-none">
@@ -229,95 +145,117 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const selectAll = document.getElementById('selectAllRows');
-  const rowCheckboxes = document.querySelectorAll('.row-checkbox');
+function _getUsersSelectedIds() {
+  return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+}
+
+function _updateUsersBulkBar() {
+  const ids = _getUsersSelectedIds();
   const bulkActionBar = document.getElementById('bulkActionBar');
   const selectedCountBar = document.getElementById('selectedCountBar');
-  const cancelSelection = document.getElementById('cancelSelection');
-  const openBulkArchive = document.getElementById('openBulkArchive');
-  const openBulkRestore = document.getElementById('openBulkRestore');
-  const bulkArchiveModal = document.getElementById('bulkArchiveModal');
-  const bulkRestoreModal = document.getElementById('bulkRestoreModal');
-  const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
-  const closeBulkRestoreModal = document.getElementById('closeBulkRestoreModal');
-  const bulkArchiveUserIds = document.getElementById('bulkArchiveUserIds');
-  const bulkRestoreUserIds = document.getElementById('bulkRestoreUserIds');
-  const archiveCountDisplay = document.getElementById('archiveCountDisplay');
-  const restoreCountDisplay = document.getElementById('restoreCountDisplay');
-
-  function getSelectedIds() {
-    return Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+  if (!bulkActionBar) return;
+  if (ids.length > 0) {
+    if (selectedCountBar) selectedCountBar.textContent = ids.length;
+    bulkActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
+  } else {
+    bulkActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
   }
+}
 
-  function updateBulkBar() {
-    const ids = getSelectedIds();
-    const count = ids.length;
-    if (count > 0) {
-      selectedCountBar.textContent = count;
-      bulkActionBar.classList.remove('translate-y-32', 'opacity-0', 'pointer-events-none');
-    } else {
-      bulkActionBar.classList.add('translate-y-32', 'opacity-0', 'pointer-events-none');
-    }
+function _closeUserModals() {
+  var arch = document.getElementById('bulkArchiveModal');
+  var rest = document.getElementById('bulkRestoreModal');
+  if (arch) arch.classList.add('hidden');
+  if (rest) rest.classList.add('hidden');
+}
+
+// Event delegation for checkboxes — survives htmx innerHTML swaps
+document.addEventListener('change', function(e) {
+  if (e.target.id === 'selectAllRows') {
+    document.querySelectorAll('.row-checkbox').forEach(cb => { cb.checked = e.target.checked; });
+    _updateUsersBulkBar();
+  } else if (e.target.classList.contains('row-checkbox')) {
+    var all = Array.from(document.querySelectorAll('.row-checkbox')).every(c => c.checked);
+    var sa = document.getElementById('selectAllRows');
+    if (sa) sa.checked = all;
+    _updateUsersBulkBar();
   }
+});
 
-  function closeModals() {
-    bulkArchiveModal.classList.add('hidden');
-    bulkRestoreModal.classList.add('hidden');
+// After htmx swap: reset selectAll + bulk bar + re-render icons
+document.body.addEventListener('htmx:afterSwap', function(evt) {
+  if (evt.detail.target && evt.detail.target.id === 'users-table-wrapper') {
+    var sa = document.getElementById('selectAllRows');
+    if (sa) sa.checked = false;
+    _updateUsersBulkBar();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   }
+});
 
-  if (selectAll) {
-    selectAll.addEventListener('change', function() {
-      rowCheckboxes.forEach(cb => cb.checked = selectAll.checked);
-      updateBulkBar();
-    });
-  }
-
-  rowCheckboxes.forEach(cb => {
-    cb.addEventListener('change', function() {
-      if (selectAll) selectAll.checked = Array.from(rowCheckboxes).every(c => c.checked);
-      updateBulkBar();
-    });
+// Debounced auto-trigger on search input
+var _usersSearchTimer;
+var _usersSearchInput = document.querySelector('#filter-form input[name="q"]');
+if (_usersSearchInput) {
+  _usersSearchInput.addEventListener('input', function() {
+    clearTimeout(_usersSearchTimer);
+    _usersSearchTimer = setTimeout(function() {
+      htmx.trigger(document.getElementById('filter-form'), 'submit');
+    }, 350);
   });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var cancelSelection = document.getElementById('cancelSelection');
+  var openBulkArchive = document.getElementById('openBulkArchive');
+  var openBulkRestore = document.getElementById('openBulkRestore');
+  var bulkArchiveModal = document.getElementById('bulkArchiveModal');
+  var bulkRestoreModal = document.getElementById('bulkRestoreModal');
+  var closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
+  var closeBulkRestoreModal = document.getElementById('closeBulkRestoreModal');
 
   if (cancelSelection) {
     cancelSelection.addEventListener('click', function() {
-      rowCheckboxes.forEach(cb => cb.checked = false);
-      if (selectAll) selectAll.checked = false;
-      updateBulkBar();
+      document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+      var sa = document.getElementById('selectAllRows');
+      if (sa) sa.checked = false;
+      _updateUsersBulkBar();
     });
   }
 
   if (openBulkArchive) {
     openBulkArchive.addEventListener('click', function() {
-      const ids = getSelectedIds();
-      bulkArchiveUserIds.value = ids.join(',');
-      archiveCountDisplay.textContent = ids.length;
-      bulkArchiveModal.classList.remove('hidden');
+      var ids = _getUsersSelectedIds();
+      var el = document.getElementById('bulkArchiveUserIds');
+      var cnt = document.getElementById('archiveCountDisplay');
+      if (el) el.value = ids.join(',');
+      if (cnt) cnt.textContent = ids.length;
+      if (bulkArchiveModal) bulkArchiveModal.classList.remove('hidden');
       if (window.lucide) lucide.createIcons();
     });
   }
 
   if (openBulkRestore) {
     openBulkRestore.addEventListener('click', function() {
-      const ids = getSelectedIds();
-      bulkRestoreUserIds.value = ids.join(',');
-      restoreCountDisplay.textContent = ids.length;
-      bulkRestoreModal.classList.remove('hidden');
+      var ids = _getUsersSelectedIds();
+      var el = document.getElementById('bulkRestoreUserIds');
+      var cnt = document.getElementById('restoreCountDisplay');
+      if (el) el.value = ids.join(',');
+      if (cnt) cnt.textContent = ids.length;
+      if (bulkRestoreModal) bulkRestoreModal.classList.remove('hidden');
       if (window.lucide) lucide.createIcons();
     });
   }
 
-  if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', closeModals);
-  if (closeBulkRestoreModal) closeBulkRestoreModal.addEventListener('click', closeModals);
+  if (closeBulkArchiveModal) closeBulkArchiveModal.addEventListener('click', _closeUserModals);
+  if (closeBulkRestoreModal) closeBulkRestoreModal.addEventListener('click', _closeUserModals);
 
   [bulkArchiveModal, bulkRestoreModal].forEach(function(overlay) {
     if (!overlay) return;
-    overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModals(); });
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) _closeUserModals(); });
   });
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModals();
+    if (e.key === 'Escape') _closeUserModals();
   });
 });
 </script>

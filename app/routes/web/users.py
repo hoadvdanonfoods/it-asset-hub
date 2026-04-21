@@ -147,6 +147,22 @@ def user_list(request: Request, db: Session = Depends(get_db), current_user=None
     return templates.TemplateResponse('users/list.html', {'request': request, 'users': users, 'current_user': current_user})
 
 
+@router.get('/partial', response_class=HTMLResponse)
+@require_permission('can_manage_users')
+def user_list_partial(request: Request, q: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    stmt = select(User).order_by(User.id.desc())
+    if q:
+        like = f'%{q.strip()}%'
+        stmt = stmt.where(User.username.ilike(like) | User.full_name.ilike(like))
+    users = db.scalars(stmt).all()
+    return templates.TemplateResponse('users/_table.html', {
+        'request': request,
+        'users': users,
+        'current_user': current_user,
+        'q': q or '',
+    })
+
+
 @router.get('/new', response_class=HTMLResponse)
 @require_permission('can_manage_users')
 def user_new(request: Request, current_user=None):

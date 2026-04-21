@@ -62,16 +62,28 @@
     </div>
 
     <!-- NVR Multi-Selector (Dropdown) -->
-    <div class="mb-6 flex flex-col md:flex-row items-center gap-4 bg-surface-container-low/30 p-4 rounded-2xl border border-outline-variant/10">
+    <div class="mb-6 flex flex-col md:flex-row items-center gap-4 bg-surface-container-low/30 p-4 rounded-2xl border border-outline-variant/10 relative">
+        <div id="loadingIndicator" class="htmx-indicator absolute inset-0 bg-surface-container-lowest/50 backdrop-blur-sm rounded-2xl z-50 flex items-center justify-center pointer-events-none">
+            <div class="bg-surface-container-highest px-4 py-2 rounded-xl shadow-lg flex items-center gap-3">
+                <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-primary"></i>
+                <span class="text-sm font-bold text-on-surface">Đang tải...</span>
+            </div>
+        </div>
         <div class="flex items-center gap-3">
             <div class="p-2 bg-primary/10 rounded-lg text-primary">
                 <i data-lucide="server" class="w-5 h-5"></i>
             </div>
             <label for="nvrSelector" class="font-bold text-sm text-on-surface/80">Chọn Đầu ghi / NVR:</label>
         </div>
-        <select id="nvrSelector" onchange="openTab(this.value);" class="flex-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 font-bold text-sm text-primary outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer shadow-sm">
+        <select id="nvrSelector" name="nvr_ip"
+                hx-get="/checklist/partial"
+                hx-target="#checklistContent"
+                hx-indicator="#loadingIndicator"
+                hx-trigger="change"
+                onchange="document.getElementById('activeNvrInput').value = this.options[this.selectedIndex].getAttribute('data-nvr-ip');"
+                class="flex-1 bg-surface-container-lowest border border-outline-variant/30 rounded-xl px-4 py-2.5 font-bold text-sm text-primary outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer shadow-sm">
             {% for loc, camera_list in grouped_cameras.items() %}
-            <option value="{{ loop.index }}" data-nvr-ip="{{ loc }}">
+            <option value="{{ loc }}" data-nvr-ip="{{ loc }}">
                 {{ nvr_map[loc].asset_name if loc in nvr_map else loc }} ({{ camera_list|length }} camera)
             </option>
             {% endfor %}
@@ -79,85 +91,20 @@
     </div>
 
     <form id="checklistForm" method="POST" action="/checklist/save" onsubmit="return handleChecklistSubmit(event);">
-        <input type="hidden" name="active_nvr" id="activeNvrInput" value="">
-        <div class="relative">
-            {% set first_content = true %}
-            {% for loc, camera_list in grouped_cameras.items() %}
-            <div id="content-{{ loop.index }}" class="tab-content-pane transition-opacity duration-300 {{ 'block opacity-100' if first_content else 'hidden opacity-0' }}">
-
-                <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-sm overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-surface-container-low/50 text-on-surface/50 text-xs uppercase tracking-widest border-b border-outline-variant/20 font-bold">
-                                    <th class="py-4 px-4 w-12 text-center">#</th>
-                                    <th class="py-4 px-4">Tên Camera</th>
-                                    <th class="py-4 px-4 w-96 text-center">Đánh giá</th>
-                                    <th class="py-4 px-4 w-72">Ghi chú sự vụ</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-outline-variant/10 text-sm">
-                                {% for cam in camera_list %}
-                                <tr class="hover:bg-primary/5 transition-colors group">
-                                    <td class="py-3 px-4 text-center text-on-surface/40 font-bold">{{ loop.index }}</td>
-                                    <td class="py-3 px-4">
-                                        <div class="font-bold text-on-surface">{{ cam.asset_name }}</div>
-                                        <div class="text-xs text-on-surface/50 font-mono mt-0.5">{{ cam.asset_code }}</div>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <!-- Custom Tailwind Segmented Radio Controls -->
-                                        <div class="flex rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm bg-surface-container-low/50">
-                                            <!-- OK -->
-                                            <label class="flex-1 relative cursor-pointer group/ok">
-                                                <input type="radio" name="cam_{{ cam.id }}" value="ok" class="peer sr-only">
-                                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-emerald-500 hover:bg-emerald-500/10 active:bg-emerald-500/20">
-                                                    <i data-lucide="check" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/ok:text-emerald-500 peer-checked:group-hover/ok:text-white transition-colors"></i>
-                                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/ok:text-emerald-600 peer-checked:group-hover/ok:text-white transition-colors uppercase tracking-wider">Tốt</span>
-                                                </div>
-                                            </label>
-                                            <div class="w-px bg-outline-variant/20"></div>
-                                            <!-- Warn -->
-                                            <label class="flex-1 relative cursor-pointer group/warn">
-                                                <input type="radio" name="cam_{{ cam.id }}" value="warn" class="peer sr-only">
-                                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-amber-500 hover:bg-amber-500/10 active:bg-amber-500/20">
-                                                    <i data-lucide="eye-off" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/warn:text-amber-500 peer-checked:group-hover/warn:text-white transition-colors"></i>
-                                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/warn:text-amber-600 peer-checked:group-hover/warn:text-white transition-colors uppercase tracking-wider">Mờ/Nhiễu</span>
-                                                </div>
-                                            </label>
-                                            <div class="w-px bg-outline-variant/20"></div>
-                                            <!-- Err -->
-                                            <label class="flex-1 relative cursor-pointer group/err">
-                                                <input type="radio" name="cam_{{ cam.id }}" value="err" class="peer sr-only">
-                                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-rose-500 hover:bg-rose-500/10 active:bg-rose-500/20">
-                                                    <i data-lucide="x" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/err:text-rose-500 peer-checked:group-hover/err:text-white transition-colors"></i>
-                                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/err:text-rose-600 peer-checked:group-hover/err:text-white transition-colors uppercase tracking-wider">Mất Hình</span>
-                                                </div>
-                                            </label>
-                                        </div>
-                                    </td>
-                                    <td class="py-3 px-4">
-                                        <input type="text" name="notes_{{ cam.id }}" placeholder="Nhập ghi chú..."
-                                               class="w-full bg-surface-container-low border border-transparent hover:border-outline-variant/30 focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-sm text-on-surface transition-all outline-none placeholder:text-on-surface/30">
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+        <input type="hidden" name="active_nvr" id="activeNvrInput" value="{{ grouped_cameras|first if grouped_cameras else '' }}">
+        <div class="relative" id="checklistContent">
+            {% if grouped_cameras %}
+                {% set first_loc = grouped_cameras|first %}
+                {% set camera_list = grouped_cameras[first_loc] %}
+                {% include 'assets/_checklist_table.html' %}
+            {% else %}
+                <div class="flex flex-col items-center justify-center py-20 px-4 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/20 border-dashed">
+                    <div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
+                        <i data-lucide="camera-off" class="w-10 h-10 text-on-surface/30"></i>
                     </div>
+                    <h3 class="text-xl font-bold text-on-surface mb-2 headline">Chưa có dữ liệu Camera</h3>
+                    <p class="text-on-surface/60 text-sm max-w-sm">Hệ thống của bạn chưa có bất kì Camera nào để đánh giá. Vui lòng thiết lập thêm tài sản loại Camera.</p>
                 </div>
-
-            </div>
-            {% set first_content = false %}
-            {% endfor %}
-
-            {% if not grouped_cameras %}
-            <div class="flex flex-col items-center justify-center py-20 px-4 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/20 border-dashed">
-                <div class="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-4">
-                    <i data-lucide="camera-off" class="w-10 h-10 text-on-surface/30"></i>
-                </div>
-                <h3 class="text-xl font-bold text-on-surface mb-2 headline">Chưa có dữ liệu Camera</h3>
-                <p class="text-on-surface/60 text-sm max-w-sm">Hệ thống của bạn chưa có bất kì Camera nào để đánh giá. Vui lòng thiết lập thêm tài sản loại Camera.</p>
-            </div>
             {% endif %}
         </div>
     </form>
@@ -429,39 +376,8 @@
         return false;
     }
 
-    // ===== Tab switching (Now with Dropdown) =====
-    function openTab(index) {
-        document.querySelectorAll('.tab-content-pane').forEach(el => {
-            el.classList.remove('block', 'opacity-100');
-            el.classList.add('hidden', 'opacity-0');
-        });
-        
-        const content = document.getElementById(`content-${index}`);
-        if(content) {
-            content.classList.remove('hidden');
-            setTimeout(() => {
-                content.classList.remove('opacity-0');
-                content.classList.add('opacity-100');
-            }, 10);
-        }
-
-        // Update hidden input for active NVR
-        const selector = document.getElementById('nvrSelector');
-        const selectedOption = selector.options[selector.selectedIndex];
-        if(selectedOption) {
-            document.getElementById('activeNvrInput').value = selectedOption.getAttribute('data-nvr-ip');
-        }
-
-        lucide.createIcons();
-    }
-
-    // Initialize the active NVR on load
-    window.addEventListener('DOMContentLoaded', () => {
-        const selector = document.getElementById('nvrSelector');
-        if(selector && selector.value) {
-            openTab(selector.value);
-        }
-    });
+    // Initialize the active NVR on load is handled by server render directly now
+    // Since we use HTMX, openTab is no longer needed.
 
     // ===== Device Management =====
     let allDevices = { cameras: [], nvrs: [] };

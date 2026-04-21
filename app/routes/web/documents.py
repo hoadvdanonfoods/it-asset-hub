@@ -40,6 +40,22 @@ def document_list(request: Request, q: str | None = Query(default=None), categor
     categories = db.scalars(select(Document.category).where(Document.category.is_not(None)).distinct().order_by(Document.category.asc())).all()
     return templates.TemplateResponse('documents/list.html', {'request': request, 'current_user': current_user, 'items': items, 'q': q or '', 'category': category or '', 'categories': categories, 'success': success, 'skipped': skipped})
 
+@router.get('/partial', response_class=HTMLResponse)
+@require_module_access('documents')
+def document_partial(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    stmt = select(Document).where(Document.is_active == True)  # noqa: E712
+    if q:
+        like = f'%{q.strip()}%'
+        stmt = stmt.where(Document.title.ilike(like))
+    if category:
+        stmt = stmt.where(Document.category == category)
+    items = db.scalars(stmt.order_by(Document.created_at.desc(), Document.title.asc())).all()
+    return templates.TemplateResponse('documents/_table.html', {
+        'request': request,
+        'current_user': current_user,
+        'items': items,
+    })
+
 
 @router.get('/new', response_class=HTMLResponse)
 @require_permission('can_manage_documents')

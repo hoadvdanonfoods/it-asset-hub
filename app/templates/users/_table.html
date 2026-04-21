@@ -1,0 +1,96 @@
+<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+  <div class="overflow-x-auto custom-scrollbar">
+    <table class="w-full text-left text-sm text-on-surface">
+      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
+        <tr>
+          <th class="px-6 py-5 w-12 text-center"><input type="checkbox" id="selectAllRows" class="rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer"></th>
+          <th class="px-6 py-5 w-16 text-center">STT</th>
+          <th class="px-6 py-5 min-w-[180px]">Tài khoản</th>
+          <th class="px-6 py-5 min-w-[200px]">Họ tên</th>
+          <th class="px-6 py-5 w-40 text-center">Vai trò</th>
+          <th class="px-6 py-5 min-w-[240px]">Quyền hạn chính</th>
+          <th class="px-6 py-5 w-36 text-center">Trạng thái</th>
+          <th class="px-6 py-5 w-28 text-right">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-outline-variant/5">
+        {% for u in users %}
+        <tr class="hover:bg-purple-500/5 transition-all duration-200 group">
+          <td class="px-6 py-5 text-center">
+            <input type="checkbox" value="{{ u.id }}" class="row-checkbox rounded border-outline-variant/50 focus:ring-primary w-4 h-4 cursor-pointer">
+          </td>
+          <td class="px-6 py-5 text-center">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-purple-500/10 group-hover:text-purple-600 transition-colors">
+              {{ loop.index }}
+            </span>
+          </td>
+          <td class="px-6 py-5">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-purple-500/10 text-purple-600 flex items-center justify-center text-sm font-bold flex-shrink-0 border border-purple-500/10 shadow-sm">{{ u.username[0] | upper }}</div>
+              <span class="font-bold text-on-surface group-hover:text-purple-700 transition-colors">{{ u.username }}</span>
+            </div>
+          </td>
+          <td class="px-6 py-5 text-on-surface/70 font-medium">{{ u.full_name or '-' }}</td>
+          <td class="px-6 py-5 text-center">
+            {% if u.role == 'admin' %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/10 text-purple-600 text-[10px] font-bold tracking-wide uppercase border border-purple-500/10 shadow-sm"><i data-lucide="shield-check" class="w-3 h-3"></i>admin</span>
+            {% elif u.role == 'technician' %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10 shadow-sm"><i data-lucide="tool" class="w-3 h-3"></i>technician</span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="user" class="w-3 h-3"></i>user</span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-5">
+            <div class="flex flex-wrap gap-1.5">
+              {% if u.can_manage_users %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">USERS</span>{% endif %}
+              {% if u.can_manage_system %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">SYSTEM</span>{% endif %}
+              {% if u.can_manage_resources %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">RESOURCES</span>{% endif %}
+              {% if u.can_manage_documents %}<span class="px-2 py-0.5 rounded-md bg-slate-500/5 text-slate-500 text-[9px] font-bold border border-slate-500/10">DOCUMENTS</span>{% endif %}
+              {% if u.can_edit_assets %}<span class="px-2 py-0.5 rounded-md bg-blue-500/5 text-blue-500 text-[9px] font-bold border border-blue-500/10">ASSET_EDIT</span>{% endif %}
+              {% if u.can_edit_maintenance %}<span class="px-2 py-0.5 rounded-md bg-emerald-500/5 text-emerald-500 text-[9px] font-bold border border-emerald-500/10">MAINT_EDIT</span>{% endif %}
+              {% if u.can_edit_incidents %}<span class="px-2 py-0.5 rounded-md bg-rose-500/5 text-rose-500 text-[9px] font-bold border border-rose-500/10">INCIDENT_EDIT</span>{% endif %}
+            </div>
+          </td>
+          <td class="px-6 py-5 text-center">
+            {% if u.is_active %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>Active
+            </span>
+            {% else %}
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10 opacity-70">
+              <i data-lucide="archive" class="w-3 h-3"></i>Archived
+            </span>
+            {% endif %}
+          </td>
+          <td class="px-6 py-5 text-right">
+            <div class="flex items-center justify-end gap-1.5 text-on-surface/30">
+              <a href="/users/{{ u.id }}/edit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-purple-500/10 hover:text-purple-600 transition-all border border-outline-variant/10 hover:border-purple-500/20" title="Sửa">
+                <i data-lucide="pencil" class="w-4 h-4"></i>
+              </a>
+              {% if u.is_active %}
+              <form method="post" action="/users/{{ u.id }}/archive" onsubmit="return confirm('Archive user này?');" class="inline">
+                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-amber-500/10 hover:text-amber-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-amber-500/20" title="Archive">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                </button>
+              </form>
+              {% else %}
+              <form method="post" action="/users/{{ u.id }}/restore" onsubmit="return confirm('Khôi phục user này?');" class="inline">
+                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-emerald-500/20" title="Khôi phục">
+                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                </button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if not users %}
+  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
+    <i data-lucide="users" class="w-12 h-12 mb-4 opacity-50"></i>
+    <p>Chưa có người dùng nào.</p>
+  </div>
+  {% endif %}
+</div>

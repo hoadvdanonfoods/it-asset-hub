@@ -91,6 +91,29 @@ def checklist_index(request: Request, db: Session = Depends(get_db), current_use
 
 
 # ---------------------------------------------------------------------------
+# GET /checklist/partial — HTMX fragment for camera list by NVR
+# ---------------------------------------------------------------------------
+@router.get("/partial", response_class=HTMLResponse)
+@require_module_access("assets")
+def checklist_partial(request: Request, nvr_ip: str = Query(""), db: Session = Depends(get_db), current_user=None):
+    stmt = select(Asset).where(Asset.asset_type == "Camera")
+    if nvr_ip == "chưa_gán":
+        stmt = stmt.where((Asset.location == None) | (Asset.location == ""))
+    elif nvr_ip:
+        stmt = stmt.where(Asset.location == nvr_ip)
+
+    cameras = db.scalars(stmt).all()
+    cameras = sorted(cameras, key=_ip_sort_key)
+
+    return templates.TemplateResponse("assets/_checklist_table.html", {
+        "request": request,
+        "camera_list": cameras,
+        "nvr_ip": nvr_ip,
+        "current_user": current_user
+    })
+
+
+# ---------------------------------------------------------------------------
 # POST /checklist/save — Save checklist evaluations + update Excel
 # ---------------------------------------------------------------------------
 @router.post("/save")

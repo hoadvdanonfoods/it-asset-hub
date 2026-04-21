@@ -1,0 +1,60 @@
+<div class="bg-surface-container-lowest border border-outline-variant/20 rounded-2xl shadow-sm overflow-hidden" hx-on::after-swap="lucide.createIcons();">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-surface-container-low/50 text-on-surface/50 text-xs uppercase tracking-widest border-b border-outline-variant/20 font-bold">
+                    <th class="py-4 px-4 w-12 text-center">#</th>
+                    <th class="py-4 px-4">Tên Camera</th>
+                    <th class="py-4 px-4 w-96 text-center">Đánh giá</th>
+                    <th class="py-4 px-4 w-72">Ghi chú sự vụ</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/10 text-sm">
+                {% for cam in camera_list %}
+                <tr class="hover:bg-primary/5 transition-colors group">
+                    <td class="py-3 px-4 text-center text-on-surface/40 font-bold">{{ loop.index }}</td>
+                    <td class="py-3 px-4">
+                        <div class="font-bold text-on-surface">{{ cam.asset_name }}</div>
+                        <div class="text-xs text-on-surface/50 font-mono mt-0.5">{{ cam.asset_code }}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <!-- Custom Tailwind Segmented Radio Controls -->
+                        <div class="flex rounded-xl overflow-hidden border border-outline-variant/20 shadow-sm bg-surface-container-low/50">
+                            <!-- OK -->
+                            <label class="flex-1 relative cursor-pointer group/ok">
+                                <input type="radio" name="cam_{{ cam.id }}" value="ok" class="peer sr-only">
+                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-emerald-500 hover:bg-emerald-500/10 active:bg-emerald-500/20">
+                                    <i data-lucide="check" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/ok:text-emerald-500 peer-checked:group-hover/ok:text-white transition-colors"></i>
+                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/ok:text-emerald-600 peer-checked:group-hover/ok:text-white transition-colors uppercase tracking-wider">Tốt</span>
+                                </div>
+                            </label>
+                            <div class="w-px bg-outline-variant/20"></div>
+                            <!-- Warn -->
+                            <label class="flex-1 relative cursor-pointer group/warn">
+                                <input type="radio" name="cam_{{ cam.id }}" value="warn" class="peer sr-only">
+                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-amber-500 hover:bg-amber-500/10 active:bg-amber-500/20">
+                                    <i data-lucide="eye-off" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/warn:text-amber-500 peer-checked:group-hover/warn:text-white transition-colors"></i>
+                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/warn:text-amber-600 peer-checked:group-hover/warn:text-white transition-colors uppercase tracking-wider">Mờ/Nhiễu</span>
+                                </div>
+                            </label>
+                            <div class="w-px bg-outline-variant/20"></div>
+                            <!-- Err -->
+                            <label class="flex-1 relative cursor-pointer group/err">
+                                <input type="radio" name="cam_{{ cam.id }}" value="err" class="peer sr-only">
+                                <div class="flex flex-col items-center justify-center py-2 px-3 transition-colors peer-checked:bg-rose-500 hover:bg-rose-500/10 active:bg-rose-500/20">
+                                    <i data-lucide="x" class="w-4 h-4 mb-0.5 text-on-surface/40 peer-checked:text-white group-hover/err:text-rose-500 peer-checked:group-hover/err:text-white transition-colors"></i>
+                                    <span class="text-[11px] font-bold text-on-surface/50 peer-checked:text-white group-hover/err:text-rose-600 peer-checked:group-hover/err:text-white transition-colors uppercase tracking-wider">Mất Hình</span>
+                                </div>
+                            </label>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <input type="text" name="notes_{{ cam.id }}" placeholder="Nhập ghi chú..."
+                               class="w-full bg-surface-container-low border border-transparent hover:border-outline-variant/30 focus:border-primary/50 focus:bg-surface-container-lowest focus:ring-2 focus:ring-primary/20 rounded-xl px-3 py-2 text-sm text-on-surface transition-all outline-none placeholder:text-on-surface/30">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

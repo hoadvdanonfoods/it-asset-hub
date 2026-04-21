@@ -9,7 +9,7 @@
   </div>
   <div class="flex flex-wrap items-center gap-3">
     {% if current_user.can_export_assets %}
-    <a href="/assets/export?q={{ q }}&asset_type={{ asset_type }}&department={{ department }}&status={{ status }}&warranty={{ warranty }}&filter={{ filter }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm">
+    <a id="export-link" href="/assets/export?q={{ q }}&asset_type={{ asset_type }}&department={{ department }}&status={{ status }}&warranty={{ warranty }}&filter={{ filter }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm">
       <i data-lucide="download" class="w-4 h-4"></i> Xuất Excel
     </a>
     {% endif %}
@@ -27,16 +27,23 @@
 </div>
 
 <!-- Filters -->
-<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-8">
-  <form method="get" class="mb-0">
+<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-4">
+  <form method="get" id="filter-form"
+        hx-get="/assets/partial"
+        hx-target="#assets-table-wrapper"
+        hx-swap="innerHTML"
+        hx-trigger="submit"
+        hx-indicator="#filter-spinner"
+        class="mb-0">
     <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
       <div class="md:col-span-2">
         <div class="relative">
           <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
-          <input type="text" name="q" value="{{ q }}" placeholder="Tìm mã, tên, IP, người dùng..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all">
+          <input type="text" name="q" value="{{ q }}" placeholder="Tìm mã, tên, IP, người dùng..."
+                 class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all">
         </div>
       </div>
-      
+
       <div>
         <select name="asset_type" class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary text-on-surface appearance-none transition-all cursor-pointer">
           <option value="">Loại thiết bị</option>
@@ -65,103 +72,14 @@
   </form>
 </div>
 
+<!-- HTMX loading bar (outside swap target, persists during request) -->
+<div id="filter-spinner" class="htmx-indicator h-0.5 mb-4 bg-primary/20 rounded-full overflow-hidden">
+  <div class="h-full bg-primary animate-pulse w-full rounded-full"></div>
+</div>
+
 <!-- Data Table -->
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto custom-scrollbar">
-    <table class="w-full text-left text-sm text-on-surface">
-      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
-        <tr>
-          <th class="px-6 py-5 w-12 text-center">
-            <input type="checkbox" id="selectAll" class="w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary cursor-pointer transition-all">
-          </th>
-          <th class="px-6 py-5 w-16 text-center">STT</th>
-          <th class="px-6 py-5 w-40">Mã thiết bị</th>
-          <th class="px-6 py-5 min-w-[180px]">Tên thiết bị</th>
-          <th class="px-6 py-5 w-44 font-bold">Loại thiết bị</th>
-          <th class="px-6 py-5 w-44">Bộ phận</th>
-          <th class="px-6 py-5 min-w-[160px]">Người sử dụng</th>
-          <th class="px-6 py-5 w-40 font-bold text-center">Trạng Thái</th>
-          <th class="px-6 py-5 w-28 text-right">Thao Tác</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-outline-variant/5">
-        {% for asset in assets %}
-        <tr class="hover:bg-indigo-500/5 transition-all duration-200 group asset-row" data-asset-status="{{ asset.display_status or asset.status }}">
-          <td class="px-6 py-5 text-center">
-            <input type="checkbox" name="asset_checkbox" value="{{ asset.id }}" data-asset-status="{{ asset.display_status or asset.status }}" class="asset-checkbox w-4 h-4 rounded border-outline-variant/30 text-primary focus:ring-primary cursor-pointer transition-all">
-          </td>
-          <td class="px-6 py-5 text-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-indigo-500/10 group-hover:text-indigo-600 transition-colors">
-              {{ loop.index }}
-            </span>
-          </td>
-          <td class="px-6 py-5 font-bold text-indigo-600 group-hover:text-indigo-700 transition-colors">
-            <a href="/assets/{{ asset.id }}" class="hover:underline flex items-center gap-2">
-              <span class="w-3.5 h-3.5 bg-indigo-500/10 rounded flex items-center justify-center"><i data-lucide="hash" class="w-2.5 h-2.5 opacity-60"></i></span>
-              {{ asset.asset_code }}
-            </a>
-          </td>
-          <td class="px-6 py-5 font-medium">{{ asset.asset_name }}</td>
-          <td class="px-6 py-5 text-on-surface/70">{{ asset.display_asset_type or asset.asset_type }}</td>
-          <td class="px-6 py-5 text-on-surface/60">{{ asset.display_department or asset.department or '-' }}</td>
-          <td class="px-6 py-5">
-            {% if asset.assigned_user %}
-            <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-full bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-[10px] font-bold border border-indigo-500/10 shadow-sm">{{ asset.assigned_user[0] | upper }}</div>
-              <span class="text-xs font-medium text-on-surface/70">{{ asset.assigned_user }}</span>
-            </div>
-            {% else %}
-            <span class="text-on-surface/20 italic text-xs">Chưa bàn giao</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5 text-center">
-            {% set asset_status = asset.display_status or asset.status %}
-            {% set asset_status_label = asset.status_label or asset_status %}
-            {% if asset_status in ['assigned', 'in_stock'] %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 text-[10px] font-bold tracking-wide uppercase border border-emerald-500/10"><i data-lucide="check-circle-2" class="w-3 h-3"></i>{{ asset_status_label }}</span>
-            {% elif asset_status in ['repairing', 'borrowed'] %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 text-[10px] font-bold tracking-wide uppercase border border-amber-500/10"><i data-lucide="wrench" class="w-3 h-3"></i>{{ asset_status_label }}</span>
-            {% elif asset_status in ['retired', 'disposed', 'lost'] %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/50 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20"><i data-lucide="archive" class="w-3 h-3"></i>{{ asset_status_label }}</span>
-            {% else %}
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-outline-variant/10 text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20">{{ asset_status_label }}</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5 text-right">
-            <div class="flex items-center justify-end gap-1.5">
-              {% if current_user.can_edit_assets %}
-              <a href="/assets/{{ asset.id }}/edit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-indigo-500/10 hover:text-indigo-600 transition-all text-on-surface/30 border border-outline-variant/10 hover:border-indigo-500/20" title="Sửa">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </a>
-              {% set asset_status = asset.display_status or asset.status %}
-              {% if asset_status not in ['retired', 'disposed', 'lost'] %}
-              <form method="post" action="/assets/{{ asset.id }}/retire" onsubmit="return confirm('Đánh dấu thiết bị này là retired?');" class="inline">
-                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-rose-500/10 hover:text-rose-600 transition-all text-on-surface/30 cursor-pointer border border-outline-variant/10 hover:border-rose-500/20" title="Thanh lý">
-                  <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-              </form>
-              {% endif %}
-              {% if asset_status in ['retired', 'disposed', 'lost'] %}
-              <form method="post" action="/assets/{{ asset.id }}/restore" onsubmit="return confirm('Khôi phục thiết bị này về in_stock?');" class="inline">
-                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-emerald-500/10 hover:text-emerald-600 transition-all text-on-surface/30 cursor-pointer border border-outline-variant/10 hover:border-emerald-500/20" title="Khôi phục">
-                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                </button>
-              </form>
-              {% endif %}
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if not assets %}
-  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="ghost" class="w-12 h-12 mb-4 opacity-50"></i>
-    <p>Không tìm thấy thiết bị nào khớp với bộ lọc.</p>
-  </div>
-  {% endif %}
+<div id="assets-table-wrapper" class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
+  {% include 'assets/_table.html' %}
 </div>
 
 <!-- Bulk Action Bar -->
@@ -200,38 +118,28 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const selectAll = document.getElementById('selectAll');
-  const assetCheckboxes = document.querySelectorAll('.asset-checkbox');
   const bulkActionBar = document.getElementById('bulkActionBar');
-  const selectedCountDisplay = document.getElementById('selectedCountDisplay');
   const selectedCountBar = document.getElementById('selectedCountBar');
   const selectionStatusSummary = document.getElementById('selectionStatusSummary');
   const cancelSelection = document.getElementById('cancelSelection');
   const openBulkPrintQr = document.getElementById('openBulkPrintQr');
   const openBulkEdit = document.getElementById('openBulkEdit');
-  
+
   const statusLabels = {
-    in_stock: 'In Stock',
-    assigned: 'Assigned',
-    borrowed: 'Borrowed',
-    repairing: 'Repairing',
-    retired: 'Retired',
-    disposed: 'Disposed',
-    lost: 'Lost'
+    in_stock: 'In Stock', assigned: 'Assigned', borrowed: 'Borrowed',
+    repairing: 'Repairing', retired: 'Retired', disposed: 'Disposed', lost: 'Lost'
   };
 
   const bulkEditModal = document.getElementById('bulkEditModal');
   const closeBulkModal = document.getElementById('closeBulkModal');
   const bulkAssetIdsInput = document.getElementById('bulkAssetIds');
   const bulkEditStatusHint = document.getElementById('bulkEditStatusHint');
-
   const openBulkArchive = document.getElementById('openBulkArchive');
   const bulkArchiveModal = document.getElementById('bulkArchiveModal');
   const closeBulkArchiveModal = document.getElementById('closeBulkArchiveModal');
   const bulkArchiveAssetIds = document.getElementById('bulkArchiveAssetIds');
   const archiveCountDisplay = document.getElementById('archiveCountDisplay');
   const bulkArchiveStatusHint = document.getElementById('bulkArchiveStatusHint');
-
   const openBulkRestore = document.getElementById('openBulkRestore');
   const bulkRestoreModal = document.getElementById('bulkRestoreModal');
   const closeBulkRestoreModal = document.getElementById('closeBulkRestoreModal');
@@ -243,42 +151,35 @@ document.addEventListener('DOMContentLoaded', function() {
     const selected = Array.from(document.querySelectorAll('.asset-checkbox:checked'));
     const ids = selected.map(cb => cb.value);
     const statuses = selected.map(cb => cb.dataset.assetStatus || 'unknown');
-    const counts = statuses.reduce((acc, status) => {
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {});
+    const counts = statuses.reduce((acc, s) => { acc[s] = (acc[s] || 0) + 1; return acc; }, {});
     const uniqueStatuses = Object.keys(counts);
-    const archivable = statuses.filter(status => !['retired', 'disposed', 'lost'].includes(status)).length;
-    const restorable = statuses.filter(status => ['retired', 'disposed', 'lost'].includes(status)).length;
+    const archivable = statuses.filter(s => !['retired', 'disposed', 'lost'].includes(s)).length;
+    const restorable = statuses.filter(s => ['retired', 'disposed', 'lost'].includes(s)).length;
     return { ids, statuses, counts, uniqueStatuses, archivable, restorable, total: selected.length };
   }
 
   function renderSelectionSummary(meta) {
-    if (!meta.total) {
-      selectionStatusSummary.textContent = 'Chưa có lựa chọn';
-      return;
-    }
+    if (!meta.total) { selectionStatusSummary.textContent = 'Chưa có lựa chọn'; return; }
     if (meta.uniqueStatuses.length === 1) {
       selectionStatusSummary.textContent = `${meta.total} thiết bị, cùng trạng thái ${statusLabels[meta.uniqueStatuses[0]] || meta.uniqueStatuses[0]}`;
       return;
     }
-    selectionStatusSummary.textContent = meta.uniqueStatuses.map(status => `${statusLabels[status] || status} (${meta.counts[status]})`).join(', ');
+    selectionStatusSummary.textContent = meta.uniqueStatuses.map(s => `${statusLabels[s] || s} (${meta.counts[s]})`).join(', ');
   }
 
-  function setButtonEnabled(button, enabled) {
-    if (!button) return;
-    button.disabled = !enabled;
-    button.classList.toggle('opacity-40', !enabled);
-    button.classList.toggle('cursor-not-allowed', !enabled);
+  function setButtonEnabled(btn, enabled) {
+    if (!btn) return;
+    btn.disabled = !enabled;
+    btn.classList.toggle('opacity-40', !enabled);
+    btn.classList.toggle('cursor-not-allowed', !enabled);
   }
 
   function updateBulkBar() {
     const meta = getSelectionMeta();
-    const count = meta.total;
-    
-    if (count > 0) {
-      selectedCountBar.textContent = count;
-      selectedCountDisplay.textContent = count;
+    const selectedCountDisplay = document.getElementById('selectedCountDisplay');
+    if (meta.total > 0) {
+      selectedCountBar.textContent = meta.total;
+      if (selectedCountDisplay) selectedCountDisplay.textContent = meta.total;
       renderSelectionSummary(meta);
       setButtonEnabled(openBulkArchive, meta.archivable > 0);
       setButtonEnabled(openBulkRestore, meta.restorable > 0);
@@ -291,38 +192,53 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  selectAll.addEventListener('change', function() {
-    assetCheckboxes.forEach(cb => {
-      cb.checked = selectAll.checked;
-    });
-    updateBulkBar();
-  });
-
-  assetCheckboxes.forEach(cb => {
-    cb.addEventListener('change', function() {
-      const allChecked = Array.from(assetCheckboxes).every(c => c.checked);
-      selectAll.checked = allChecked;
+  // Event delegation: survives htmx innerHTML swaps on #assets-table-wrapper
+  document.addEventListener('change', function(e) {
+    if (e.target.id === 'selectAll') {
+      document.querySelectorAll('.asset-checkbox').forEach(cb => { cb.checked = e.target.checked; });
       updateBulkBar();
-    });
+    } else if (e.target.classList.contains('asset-checkbox')) {
+      const allChecked = Array.from(document.querySelectorAll('.asset-checkbox')).every(c => c.checked);
+      const sa = document.getElementById('selectAll');
+      if (sa) sa.checked = allChecked;
+      updateBulkBar();
+    }
   });
 
   cancelSelection.addEventListener('click', function() {
-    assetCheckboxes.forEach(cb => cb.checked = false);
-    selectAll.checked = false;
+    document.querySelectorAll('.asset-checkbox').forEach(cb => { cb.checked = false; });
+    const sa = document.getElementById('selectAll');
+    if (sa) sa.checked = false;
     updateBulkBar();
   });
 
-  // Modal logic
-  function getSelectedIds() {
-    return getSelectionMeta().ids;
-  }
+  // After htmx swaps table content: reset selection + re-render icons
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target && evt.detail.target.id === 'assets-table-wrapper') {
+      const sa = document.getElementById('selectAll');
+      if (sa) sa.checked = false;
+      updateBulkBar();
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  });
 
+  // Keep export link in sync with active filters after each htmx request
+  document.body.addEventListener('htmx:afterRequest', function() {
+    const form = document.getElementById('filter-form');
+    const exportLink = document.getElementById('export-link');
+    if (!form || !exportLink) return;
+    const params = new URLSearchParams();
+    new FormData(form).forEach(function(v, k) { if (v) params.append(k, v); });
+    exportLink.href = '/assets/export?' + params.toString();
+  });
+
+  // Modal logic
   openBulkEdit.addEventListener('click', function() {
     const meta = getSelectionMeta();
     bulkAssetIdsInput.value = meta.ids.join(',');
     if (bulkEditStatusHint) {
       bulkEditStatusHint.textContent = meta.uniqueStatuses.length > 1
-        ? `Tập chọn đang mixed: ${meta.uniqueStatuses.map(status => `${status} (${meta.counts[status]})`).join(', ')}. Backend sẽ chỉ áp dụng các chuyển trạng thái hợp lệ.`
+        ? `Tập chọn đang mixed: ${meta.uniqueStatuses.map(s => `${s} (${meta.counts[s]})`).join(', ')}. Backend sẽ chỉ áp dụng các chuyển trạng thái hợp lệ.`
         : `Tập chọn cùng trạng thái ${meta.uniqueStatuses[0] || 'unknown'}.`;
     }
     bulkEditModal.classList.remove('hidden');
@@ -333,8 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
     openBulkPrintQr.addEventListener('click', function() {
       const meta = getSelectionMeta();
       if (!meta.total) return;
-      const url = `/qr/assets/print?asset_ids=${encodeURIComponent(meta.ids.join(','))}`;
-      window.open(url, '_blank');
+      window.open(`/qr/assets/print?asset_ids=${encodeURIComponent(meta.ids.join(','))}`, '_blank');
     });
   }
 
@@ -383,9 +298,26 @@ document.addEventListener('DOMContentLoaded', function() {
     overlay.addEventListener('click', function(e) { if (e.target === overlay) closeModals(); });
   });
 
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeModals();
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModals(); });
+
+  // Auto-trigger htmx form submit on select change
+  document.querySelectorAll('#filter-form select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      htmx.trigger(document.getElementById('filter-form'), 'submit');
+    });
   });
+
+  // Debounced auto-trigger on search input
+  var searchTimer;
+  var searchInput = document.querySelector('#filter-form input[name="q"]');
+  if (searchInput) {
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function() {
+        htmx.trigger(document.getElementById('filter-form'), 'submit');
+      }, 350);
+    });
+  }
 });
 </script>
 {% endblock %}

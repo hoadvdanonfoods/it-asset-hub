@@ -196,6 +196,27 @@ def asset_list(request: Request, q: str | None = Query(default=None), asset_type
     })
 
 
+@router.get('/partial', response_class=HTMLResponse)
+@require_module_access('assets')
+def asset_list_partial(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), filter: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    assets = [_asset_view_model(asset) for asset in _filtered_assets(db, q=q, asset_type=asset_type, department=department, status=status, warranty=warranty, filter=filter)]
+    statuses = ASSET_STATUSES
+    return templates.TemplateResponse('assets/_table.html', {
+        'request': request,
+        'assets': assets,
+        'q': q or '',
+        'asset_type': asset_type or '',
+        'department': department or '',
+        'status': status or '',
+        'warranty': warranty or '',
+        'filter': filter or '',
+        'statuses': statuses,
+        'status_labels': STATUS_LABELS,
+        'current_user': current_user,
+        'days_to_warranty': _days_to_warranty,
+    })
+
+
 @router.get('/export')
 @require_permission('can_export_assets')
 def asset_export(request: Request, q: str | None = Query(default=None), asset_type: str | None = Query(default=None), department: str | None = Query(default=None), status: str | None = Query(default=None), warranty: str | None = Query(default=None), filter: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):

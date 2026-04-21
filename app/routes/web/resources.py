@@ -228,6 +228,21 @@ def resource_list(request: Request, q: str | None = Query(default=None), categor
     return templates.TemplateResponse('resources/list.html', {'request': request, 'items': items, 'categories': categories, 'q': q or '', 'category': category or '', 'current_user': current_user, 'page': page, 'total_pages': total_pages, 'total_items': total_items, 'success': success, 'skipped': skipped})
 
 
+@router.get('/partial', response_class=HTMLResponse)
+@require_module_access('resources')
+def resource_list_partial(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), page: int = Query(default=1), db: Session = Depends(get_db), current_user=None):
+    base = _resource_base_stmt(q, category)
+    total_items = db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    total_pages = max(1, math.ceil(total_items / PAGE_SIZE))
+    page = max(1, min(page, total_pages))
+    items = db.scalars(base.limit(PAGE_SIZE).offset((page - 1) * PAGE_SIZE)).all()
+    _decrypt_page(db, items)
+    return templates.TemplateResponse('resources/_table.html', {
+        'request': request, 'items': items, 'q': q or '', 'category': category or '',
+        'current_user': current_user, 'page': page, 'total_pages': total_pages,
+    })
+
+
 @router.get('/export')
 @require_permission('can_manage_resources')
 def resource_export(request: Request, q: str | None = Query(default=None), category: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):

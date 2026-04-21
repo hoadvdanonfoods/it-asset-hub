@@ -243,11 +243,44 @@ def _apply_status_effects(item: Incident, new_status: str):
 
 @router.get('/', response_class=HTMLResponse)
 @require_module_access('incidents')
-def incident_list(request: Request, status: str | None = Query(default=None), priority: str | None = Query(default=None), source: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+def incident_list(request: Request, q: str | None = Query(default=None), status: str | None = Query(default=None), priority: str | None = Query(default=None), source: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
     items = [_incident_view_model(item) for item in _filtered_incidents(db, current_user, status=status, priority=priority, source=source)]
+    if q:
+        q_lower = q.lower()
+        items = [i for i in items if q_lower in (i.asset.asset_code if i.asset else '').lower() or q_lower in (i.reported_by or '').lower() or q_lower in (i.issue_description or '').lower()]
     return templates.TemplateResponse('incidents/list.html', {
         'request': request,
         'items': items,
+        'q': q or '',
+        'status': status or '',
+        'priority': priority or '',
+        'source': source or '',
+        'current_user': current_user,
+        'format_bangkok_datetime': format_bangkok_datetime,
+        'format_duration': format_duration,
+        'status_label': status_label,
+        'status_badge_class': status_badge_class,
+        'priority_label': priority_label,
+        'priority_badge_class': priority_badge_class,
+        'incident_statuses': INCIDENT_STATUSES,
+        'incident_priorities': INCIDENT_PRIORITIES,
+        'incident_sources': INCIDENT_SOURCES,
+        'source_label': source_label,
+        'incident_sla_hours': incident_sla_hours,
+    })
+
+
+@router.get('/partial', response_class=HTMLResponse)
+@require_module_access('incidents')
+def incident_list_partial(request: Request, q: str | None = Query(default=None), status: str | None = Query(default=None), priority: str | None = Query(default=None), source: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    items = [_incident_view_model(item) for item in _filtered_incidents(db, current_user, status=status, priority=priority, source=source)]
+    if q:
+        q_lower = q.lower()
+        items = [i for i in items if q_lower in (i.asset.asset_code if i.asset else '').lower() or q_lower in (i.reported_by or '').lower() or q_lower in (i.issue_description or '').lower()]
+    return templates.TemplateResponse('incidents/_table.html', {
+        'request': request,
+        'items': items,
+        'q': q or '',
         'status': status or '',
         'priority': priority or '',
         'source': source or '',

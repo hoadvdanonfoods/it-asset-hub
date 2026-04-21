@@ -77,7 +77,7 @@ def _filtered_maintenance(db: Session, technician: str | None = None, asset_code
         stmt = stmt.where(Asset.asset_code.ilike(f"%{asset_code.strip()}%"))
     if maintenance_type:
         stmt = stmt.join(MaintenanceType, Maintenance.maintenance_type_id == MaintenanceType.id, isouter=True)
-        stmt = stmt.where(MaintenanceType.name.ilike(f'%{maintenance_type.strip()}%'))
+        stmt = stmt.where((MaintenanceType.name.ilike(f'%{maintenance_type.strip()}%')) | (MaintenanceType.code.ilike(f'%{maintenance_type.strip()}%')))
     if due_state:
         today = date.today()
         upcoming = today + timedelta(days=7)
@@ -117,6 +117,16 @@ def maintenance_list(request: Request, technician: str | None = Query(default=No
         'first_day_of_month': first_day,
         'maintenance_type_label': lambda value: value or 'Không rõ',
         'due_state_options': ['overdue', 'upcoming', 'scheduled', 'unscheduled']
+    })
+
+@router.get('/partial', response_class=HTMLResponse)
+@require_module_access('maintenance')
+def maintenance_partial(request: Request, technician: str | None = Query(default=None), asset_code: str | None = Query(default=None), maintenance_type: str | None = Query(default=None), due_state: str | None = Query(default=None), db: Session = Depends(get_db), current_user=None):
+    items = [_maintenance_view_model(item) for item in _filtered_maintenance(db, technician=technician, asset_code=asset_code, maintenance_type=maintenance_type, due_state=due_state)]
+    return templates.TemplateResponse('maintenance/_table.html', {
+        'request': request,
+        'items': items,
+        'current_user': current_user,
     })
 
 

@@ -15,13 +15,29 @@
 </div>
 
 <!-- Filters -->
-<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-8">
-  <form method="get" class="mb-0">
+<div class="bg-surface-container-lowest p-5 rounded-3xl shadow-sm border border-outline-variant/10 mb-8 relative">
+  <!-- Loading Indicator -->
+  <div id="loadingIndicator" class="htmx-indicator absolute inset-0 bg-surface-container-lowest/50 backdrop-blur-sm rounded-3xl z-50 flex items-center justify-center pointer-events-none">
+    <div class="bg-surface-container-highest px-4 py-2 rounded-xl shadow-lg flex items-center gap-3">
+      <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-sky-600"></i>
+      <span class="text-sm font-bold text-on-surface">Đang tải...</span>
+    </div>
+  </div>
+  <form method="get" class="mb-0"
+        hx-get="/documents/partial"
+        hx-target="#documentsTable"
+        hx-trigger="submit, change from:select"
+        hx-indicator="#loadingIndicator">
     <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
       <div class="md:col-span-2">
         <div class="relative">
           <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface/40"></i>
-          <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên tài liệu..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all">
+          <input type="text" name="q" value="{{ q }}" placeholder="Tìm theo tên tài liệu..." 
+                 class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent text-on-surface placeholder:text-on-surface/40 transition-all"
+                 hx-get="/documents/partial"
+                 hx-trigger="keyup changed delay:350ms, search"
+                 hx-target="#documentsTable"
+                 hx-indicator="#loadingIndicator">
         </div>
       </div>
       <div class="md:col-span-2">
@@ -78,98 +94,9 @@
 </div>
 
 <!-- Data Table -->
-<div class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto custom-scrollbar">
-    <table class="w-full text-left text-sm text-on-surface">
-      <thead class="bg-surface-container-low/50 text-on-surface/50 font-bold uppercase text-[10px] tracking-widest border-b border-outline-variant/10">
-        <tr>
-          <th class="px-4 py-5 w-12 text-center">
-            <input type="checkbox" id="selectAllCheckbox" class="rounded border-outline-variant/50 text-sky-600 focus:ring-sky-500 cursor-pointer w-4 h-4" onchange="toggleSelectAll(this.checked)">
-          </th>
-          <th class="px-4 py-5 w-16 text-center">STT</th>
-          <th class="px-6 py-5 min-w-[200px]">Tên tài liệu</th>
-          <th class="px-6 py-5 w-40">Phân loại</th>
-          <th class="px-6 py-5 min-w-[200px]">Mô tả</th>
-          <th class="px-6 py-5 w-48">Tập tin</th>
-          <th class="px-6 py-5 min-w-[160px]">Người tải lên</th>
-          <th class="px-6 py-5 w-44">Ngày tạo</th>
-          <th class="px-6 py-5 w-28 text-right">Thao tác</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-outline-variant/5">
-        {% for item in items %}
-        <tr class="hover:bg-sky-500/5 transition-all duration-200 group {% if not item.is_active %}opacity-60 grayscale-[0.2]{% endif %}">
-          <td class="px-4 py-5 text-center">
-            <input type="checkbox" value="{{ item.id }}" class="item-checkbox rounded border-outline-variant/50 text-sky-600 focus:ring-sky-500 cursor-pointer w-4 h-4" onchange="updateBulkActionBar()">
-          </td>
-          <td class="px-4 py-5 text-center">
-            <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-surface-container-highest text-xs font-bold text-on-surface/40 group-hover:bg-sky-500/10 group-hover:text-sky-600 transition-colors">
-              {{ loop.index }}
-            </span>
-          </td>
-          <td class="px-6 py-5 font-bold text-on-surface group-hover:text-sky-700 transition-colors">
-            <div class="flex items-center gap-2.5">
-              <span class="p-2 rounded-xl bg-sky-500/10 text-sky-600"><i data-lucide="file-text" class="w-4 h-4"></i></span>
-              {{ item.title }}
-            </div>
-          </td>
-          <td class="px-6 py-5">
-            {% if item.category %}
-            <span class="px-2.5 py-1 rounded-lg bg-surface-container-highest text-on-surface/60 text-[10px] font-bold tracking-wide uppercase border border-outline-variant/20 group-hover:border-sky-500/20 group-hover:bg-sky-500/5 group-hover:text-sky-600 transition-all">{{ item.category }}</span>
-            {% else %}
-            <span class="text-on-surface/20 italic text-xs">—</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5 text-on-surface/60 text-xs">
-            <p class="max-w-[220px] line-clamp-2" title="{{ item.description }}">{{ item.description or '-' }}</p>
-          </td>
-          <td class="px-6 py-5">
-            <a href="/documents/{{ item.id }}/download" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/5 text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 font-medium text-xs border border-sky-500/10 transition-all">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span class="truncate max-w-[120px]">{{ item.original_filename }}</span>
-            </a>
-          </td>
-          <td class="px-6 py-5">
-            {% if item.uploaded_by %}
-            <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-full bg-sky-500/10 text-sky-600 flex items-center justify-center text-[10px] font-bold border border-sky-500/10 shadow-sm">{{ item.uploaded_by[0] | upper }}</div>
-              <span class="text-xs font-medium text-on-surface/70">{{ item.uploaded_by }}</span>
-            </div>
-            {% else %}
-            <span class="text-on-surface/20 italic text-xs">-</span>
-            {% endif %}
-          </td>
-          <td class="px-6 py-5 text-on-surface/60 text-xs font-medium">
-            <div class="flex items-center gap-2">
-              <i data-lucide="calendar" class="w-3.5 h-3.5 opacity-40"></i>
-              {{ item.created_at.strftime('%d/%m/%Y %H:%M') if item.created_at else '-' }}
-            </div>
-          </td>
-          <td class="px-6 py-5 text-right">
-            {% if current_user.can_manage_documents %}
-            <div class="flex items-center justify-end gap-1.5 text-on-surface/30">
-              <a href="/documents/{{ item.id }}/edit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-primary/10 hover:text-primary transition-all border border-outline-variant/10 hover:border-primary/20" title="Sửa">
-                <i data-lucide="pencil" class="w-4 h-4"></i>
-              </a>
-              <form method="post" action="/documents/{{ item.id }}/archive" onsubmit="return confirm('Ẩn tài liệu này?');" class="inline">
-                <button type="submit" class="p-2 rounded-xl bg-surface-container-highest/50 hover:bg-amber-500/10 hover:text-amber-600 transition-all cursor-pointer border border-outline-variant/10 hover:border-amber-500/20" title="Archive">
-                  <i data-lucide="archive" class="w-4 h-4"></i>
-                </button>
-              </form>
-            </div>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if not items %}
-  <div class="py-12 flex flex-col items-center justify-center text-on-surface/40">
-    <i data-lucide="file-x" class="w-12 h-12 mb-4 opacity-50"></i>
-    <p>Chưa có tài liệu nào.</p>
-  </div>
-  {% endif %}
+<div id="documentsTable" class="bg-surface-container-lowest rounded-3xl shadow-sm border border-outline-variant/10 overflow-hidden"
+     hx-on::after-swap="lucide.createIcons(); updateBulkActionBar();">
+  {% include 'documents/_table.html' %}
 </div>
 </div>
 
