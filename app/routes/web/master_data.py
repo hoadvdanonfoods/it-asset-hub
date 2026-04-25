@@ -368,10 +368,14 @@ def _sanitize_fk_fields(cleaned: dict, db: Session) -> dict:
         if raw_id is None:
             continue
 
-        # Try direct ID lookup
-        exists = db.scalar(select(model).where(getattr(model, pk_col) == raw_id))
-        if exists:
-            continue
+        # Try direct ID lookup safely
+        try:
+            lookup_id = int(raw_id) if pk_col == 'id' else raw_id
+            exists = db.scalar(select(model).where(getattr(model, pk_col) == lookup_id))
+            if exists:
+                continue
+        except (ValueError, TypeError):
+            pass
 
         # Try fallback lookup by code/name (handles string values or cross-DB imports)
         fallback_fields = _FK_FIELD_LOOKUP_FALLBACK.get(field_key, [])
