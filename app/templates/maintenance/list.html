@@ -317,7 +317,7 @@
 
         try {
             // Correct API: Fetch all active assets
-            const res = await fetch('/assets/api/list?status=active');
+            const res = await fetch('/assets/api/list');
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             
             const data = await res.json();

@@ -164,9 +164,12 @@ def asset_api_list(request: Request, db: Session = Depends(get_db), current_user
         stmt = stmt.where(Asset.asset_type != 'Camera')
         if status:
             raw_status = status.strip().lower()
-            stmt = stmt.where(Asset.status == raw_status)
+            if raw_status == 'active':
+                stmt = stmt.where(Asset.status.notin_(['retired', 'lost', 'disposed']))
+            else:
+                stmt = stmt.where(Asset.status == raw_status)
         else:
-            stmt = stmt.where(Asset.status.in_(['assigned', 'in_stock']))
+            stmt = stmt.where(Asset.status.in_(['assigned', 'in_stock', 'repairing']))
         assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
         return {
             'items': [
