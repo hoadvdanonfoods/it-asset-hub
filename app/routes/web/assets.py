@@ -9,7 +9,7 @@ import openpyxl
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.auth import has_permission, require_module_access, require_permission
+from app.auth import has_permission, require_login, require_module_access, require_permission
 from app.db.models import Asset, AssetAssignment, AssetType, Department, Employee, Location, AssetStatus
 from app.db.session import get_db
 from app.services.audit import log_audit
@@ -157,7 +157,7 @@ def asset_api_employees_by_department(request: Request, department: str | None =
     return HTMLResponse(content=html)
 
 @router.get('/api/list')
-@require_module_access('assets')
+@require_login
 def asset_api_list(request: Request, db: Session = Depends(get_db), current_user: Any = None, status: str | None = Query(None)):
     try:
         stmt = select(Asset)
@@ -166,10 +166,12 @@ def asset_api_list(request: Request, db: Session = Depends(get_db), current_user
             raw_status = status.strip().lower()
             if raw_status == 'active':
                 stmt = stmt.where(Asset.status.notin_(['retired', 'lost', 'disposed']))
+            elif raw_status in ASSET_STATUSES:
+                stmt = stmt.where(Asset.status == raw_status)
             else:
                 stmt = stmt.where(Asset.status == raw_status)
         else:
-            stmt = stmt.where(Asset.status.in_(['assigned', 'in_stock', 'repairing']))
+            stmt = stmt.where(Asset.status.in_(['assigned', 'in_stock', 'borrowed', 'repairing']))
         assets = db.scalars(stmt.order_by(Asset.asset_code.asc())).all()
         return {
             'items': [
