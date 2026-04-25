@@ -123,6 +123,8 @@ def get_default_landing_path(user: User | None) -> str:
 
 
 def _refresh_session_cookie(response, user: User) -> None:
+    if not hasattr(response, 'set_cookie'):
+        return
     token = build_session_token(user)
     response.set_cookie(SESSION_COOKIE_NAME, token, httponly=True, samesite=SESSION_COOKIE_SAMESITE, secure=SESSION_COOKIE_SECURE, max_age=SESSION_MAX_AGE_SECONDS)
 
