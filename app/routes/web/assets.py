@@ -140,6 +140,22 @@ def _render_import_page(request: Request, *, error: str | None = None, summary: 
 # Routes
 # ---------------------------------------------------------------------------
 
+@router.get('/api/employees-by-department', response_class=HTMLResponse)
+@require_module_access('assets')
+def asset_api_employees_by_department(request: Request, department: str | None = Query(default=None), current_user: Any = None, db: Session = Depends(get_db)):
+    stmt = select(Employee).where(Employee.is_active == True)
+    if department and department.strip():
+        dept = db.scalar(select(Department).where(Department.name == department.strip()))
+        if dept:
+            stmt = stmt.where(Employee.department_id == dept.id)
+    employees = db.scalars(stmt.order_by(Employee.full_name.asc())).all()
+    
+    html = '<option value="">-- Chọn nhân viên / để trống cho tài sản dùng chung --</option>'
+    for emp in employees:
+        code_str = f' ({emp.employee_code})' if emp.employee_code else ''
+        html += f'<option value="{emp.full_name}">{emp.full_name}{code_str}</option>'
+    return HTMLResponse(content=html)
+
 @router.get('/api/list')
 @require_module_access('assets')
 def asset_api_list(request: Request, db: Session = Depends(get_db), current_user: Any = None, status: str | None = Query(None)):
