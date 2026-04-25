@@ -732,4 +732,4 @@ def asset_update(request: Request, asset_id: int, asset_code: str = Form(...), a
         _log_event(db, asset.id, 'asset_status_changed', 'Đổi trạng thái asset', f'{previous_status} -> {current_status}', current_user.username)
     _log_event(db, asset.id, 'asset_updated', 'Cập nhật asset', f'Cập nhật thông tin thiết bị {asset.asset_code}', current_user.username)
     db.commit()
-    return RedirectResponse(url=f'/assets/{asset_id}', status_code=303)
+    return RedirectResponse(url='/assets/', status_code=303)
