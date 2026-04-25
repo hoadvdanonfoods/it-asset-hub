@@ -83,7 +83,7 @@
 </div>
 
 <!-- Bulk Action Bar -->
-<div id="bulkActionBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 transform translate-y-32 opacity-0 flex items-center gap-6 bg-on-surface px-8 py-4 rounded-2xl shadow-2xl border border-white/10 z-50 transition-all duration-500 pointer-events-none">
+<div id="bulkActionBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 transform translate-y-32 opacity-0 flex items-center gap-6 bg-on-surface px-8 py-4 rounded-2xl shadow-2xl border border-white/10 z-50 pointer-events-none">
   <div class="flex flex-col">
     <span class="text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none mb-1">Đã chọn</span>
     <span class="text-white text-xl font-extrabold headline leading-none"><span id="selectedCountBar">0</span> <span class="text-xs font-medium opacity-60 ml-1">mục</span></span>
@@ -119,6 +119,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const bulkActionBar = document.getElementById('bulkActionBar');
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      bulkActionBar.classList.add('transition-all', 'duration-500');
+    });
+  });
   const selectedCountBar = document.getElementById('selectedCountBar');
   const selectionStatusSummary = document.getElementById('selectionStatusSummary');
   const cancelSelection = document.getElementById('cancelSelection');
