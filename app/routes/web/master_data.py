@@ -353,18 +353,40 @@ _FK_FIELD_MODELS = {
     'department_id': (Department, 'id'),
 }
 
+# Fallback lookup fields when the integer ID is not found (allows importing by code or name)
+_FK_FIELD_LOOKUP_FALLBACK = {
+    'department_id': ['code', 'name'],
+}
+
 
 def _sanitize_fk_fields(cleaned: dict, db: Session) -> dict:
-    """Replace any FK id values that don't exist in the target DB with None."""
+    """Resolve FK fields by ID first, then by code/name if ID not found."""
     for field_key, (model, pk_col) in _FK_FIELD_MODELS.items():
         if field_key not in cleaned:
             continue
         raw_id = cleaned[field_key]
         if raw_id is None:
             continue
+
+        # Try direct ID lookup
         exists = db.scalar(select(model).where(getattr(model, pk_col) == raw_id))
-        if not exists:
-            cleaned[field_key] = None
+        if exists:
+            continue
+
+        # Try fallback lookup by code/name (handles string values or cross-DB imports)
+        fallback_fields = _FK_FIELD_LOOKUP_FALLBACK.get(field_key, [])
+        lookup_value = str(raw_id).strip() if raw_id is not None else None
+        if fallback_fields and lookup_value:
+            found = None
+            for lookup_field in fallback_fields:
+                found = db.scalar(select(model).where(getattr(model, lookup_field).ilike(lookup_value)))
+                if found:
+                    break
+            if found:
+                cleaned[field_key] = getattr(found, pk_col)
+                continue
+
+        cleaned[field_key] = None
     return cleaned
 
 
@@ -740,12 +762,19 @@ async def import_model(request: Request, model_name: str, current_user=None, fil
 
 @router.get('/{model_name}/export')
 @require_permission('can_manage_system')
-async def export_model(model_name: str, current_user=None, db: Session = Depends(get_db)):
+async def export_model(request: Request, model_name: str, current_user=None, db: Session = Depends(get_db)):
     config = _get_config(model_name)
     if not config:
         return RedirectResponse('/', status_code=303)
 
     items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
+
+    # Build FK → display value lookup so exported files are portable across servers
+    fk_display: dict[str, dict] = {}
+    if model_name == 'employees':
+        depts = db.scalars(select(Department)).all()
+        fk_display['department_id'] = {d.id: (d.code or d.name) for d in depts}
+
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = config['label'][:31]
@@ -754,7 +783,13 @@ async def export_model(model_name: str, current_user=None, db: Session = Depends
     sheet.append(columns)
 
     for item in items:
-        sheet.append([getattr(item, key, None) for key in columns])
+        row = []
+        for key in columns:
+            value = getattr(item, key, None)
+            if key in fk_display and value is not None:
+                value = fk_display[key].get(value, value)
+            row.append(value)
+        sheet.append(row)
 
     output = io.BytesIO()
     workbook.save(output)

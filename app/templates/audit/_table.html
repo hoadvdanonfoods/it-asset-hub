@@ -1,0 +1,34 @@
+<div class="overflow-x-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-surface-container-low/50 text-on-surface/60">
+      <tr>
+        <th class="px-4 py-3 text-left">Time</th>
+        <th class="px-4 py-3 text-left">Actor</th>
+        <th class="px-4 py-3 text-left">Module</th>
+        <th class="px-4 py-3 text-left">Action</th>
+        <th class="px-4 py-3 text-left">Entity</th>
+        <th class="px-4 py-3 text-left">Result</th>
+        <th class="px-4 py-3 text-left">Reason</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-outline-variant/10">
+      {% for item in items %}
+      <tr>
+        <td class="px-4 py-3">{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '' }}</td>
+        <td class="px-4 py-3">{{ item.actor or '-' }}</td>
+        <td class="px-4 py-3">{{ item.module }}</td>
+        <td class="px-4 py-3">{{ item.action }}</td>
+        <td class="px-4 py-3">{{ item.entity_type }} #{{ item.entity_id or '-' }}</td>
+        <td class="px-4 py-3">{{ item.result }}</td>
+        <td class="px-4 py-3">{{ item.reason or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if not items %}
+<div class="p-8 text-on-surface/50">Không có dữ liệu audit.</div>
+{% endif %}
+<div class="px-4 py-3 text-sm text-on-surface/60 border-t border-outline-variant/10">
+  Trang {{ page }}/{{ total_pages }} · Tổng {{ total }} bản ghi
+</div>

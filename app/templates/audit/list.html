@@ -7,13 +7,26 @@
     <h1 class="text-3xl font-extrabold tracking-tight text-on-surface headline">Audit & Compliance</h1>
     <p class="text-on-surface/60 mt-1">Lịch sử thao tác hệ thống theo user/action/module</p>
   </div>
-  <a href="/audit/export?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&actor={{ filters.actor }}&action={{ filters.action }}&module={{ filters.module }}&result={{ filters.result }}&keyword={{ filters.keyword }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
+  <a id="export-link" href="/audit/export?date_from={{ filters.date_from }}&date_to={{ filters.date_to }}&actor={{ filters.actor }}&action={{ filters.action }}&module={{ filters.module }}&result={{ filters.result }}&keyword={{ filters.keyword }}" class="flex items-center gap-2 bg-surface-container-highest px-4 py-2.5 rounded-xl text-on-surface font-bold text-sm hover:bg-outline-variant/30 transition-colors shadow-sm border border-outline-variant/20">
     <i data-lucide="download" class="w-4 h-4"></i> Xuất CSV
   </a>
 </div>
 
-<div class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10 mb-6">
-  <form method="get" class="grid grid-cols-1 md:grid-cols-8 gap-3">
+<div class="bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/10 mb-6 relative">
+  <!-- Loading Indicator -->
+  <div id="filter-spinner" class="htmx-indicator absolute inset-0 bg-surface-container-lowest/50 backdrop-blur-sm rounded-2xl z-10 flex items-center justify-center pointer-events-none">
+    <div class="bg-surface-container-highest px-4 py-2 rounded-xl shadow-lg flex items-center gap-3">
+      <i data-lucide="loader-2" class="w-5 h-5 animate-spin text-on-surface/60"></i>
+      <span class="text-sm font-bold text-on-surface">Đang tải...</span>
+    </div>
+  </div>
+  <form method="get" id="filter-form"
+        hx-get="/audit/partial"
+        hx-target="#audit-table-wrapper"
+        hx-swap="innerHTML"
+        hx-trigger="submit"
+        hx-indicator="#filter-spinner"
+        class="grid grid-cols-1 md:grid-cols-8 gap-3">
     <input type="date" name="date_from" value="{{ filters.date_from }}" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm">
     <input type="date" name="date_to" value="{{ filters.date_to }}" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm">
     <select name="actor" class="bg-surface-container-low border border-outline-variant/20 rounded-xl py-2 px-3 text-sm"><option value="">Actor</option>{% for v in actors %}<option value="{{ v }}" {% if filters.actor == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
@@ -30,39 +43,57 @@
   </form>
 </div>
 
-<div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead class="bg-surface-container-low/50 text-on-surface/60">
-        <tr>
-          <th class="px-4 py-3 text-left">Time</th>
-          <th class="px-4 py-3 text-left">Actor</th>
-          <th class="px-4 py-3 text-left">Module</th>
-          <th class="px-4 py-3 text-left">Action</th>
-          <th class="px-4 py-3 text-left">Entity</th>
-          <th class="px-4 py-3 text-left">Result</th>
-          <th class="px-4 py-3 text-left">Reason</th>
-        </tr>
-      </thead>
-      <tbody class="divide-y divide-outline-variant/10">
-        {% for item in items %}
-        <tr>
-          <td class="px-4 py-3">{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') if item.created_at else '' }}</td>
-          <td class="px-4 py-3">{{ item.actor or '-' }}</td>
-          <td class="px-4 py-3">{{ item.module }}</td>
-          <td class="px-4 py-3">{{ item.action }}</td>
-          <td class="px-4 py-3">{{ item.entity_type }} #{{ item.entity_id or '-' }}</td>
-          <td class="px-4 py-3">{{ item.result }}</td>
-          <td class="px-4 py-3">{{ item.reason or '-' }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% if not items %}
-  <div class="p-8 text-on-surface/50">Không có dữ liệu audit.</div>
-  {% endif %}
+<div id="audit-table-wrapper" class="bg-surface-container-lowest rounded-2xl border border-outline-variant/10 overflow-hidden">
+  {% include 'audit/_table.html' %}
 </div>
+{% endblock %}
 
-<div class="mt-4 text-sm text-on-surface/60">Trang {{ page }}/{{ total_pages }} · Tổng {{ total }} bản ghi</div>
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var form = document.getElementById('filter-form');
+
+  document.querySelectorAll('#filter-form select').forEach(function(sel) {
+    sel.addEventListener('change', function() {
+      htmx.trigger(form, 'submit');
+      _updateAuditExportLink();
+    });
+  });
+
+  document.querySelectorAll('#filter-form input[type="date"]').forEach(function(inp) {
+    inp.addEventListener('change', function() {
+      htmx.trigger(form, 'submit');
+      _updateAuditExportLink();
+    });
+  });
+
+  var _keywordTimer;
+  var keywordInput = document.querySelector('#filter-form input[name="keyword"]');
+  if (keywordInput) {
+    keywordInput.addEventListener('input', function() {
+      clearTimeout(_keywordTimer);
+      _keywordTimer = setTimeout(function() {
+        htmx.trigger(form, 'submit');
+        _updateAuditExportLink();
+      }, 350);
+    });
+  }
+
+  function _updateAuditExportLink() {
+    var fd = new FormData(form);
+    var params = new URLSearchParams();
+    for (var pair of fd.entries()) {
+      if (pair[1]) params.set(pair[0], pair[1]);
+    }
+    var link = document.getElementById('export-link');
+    if (link) link.href = '/audit/export?' + params.toString();
+  }
+
+  document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target && evt.detail.target.id === 'audit-table-wrapper') {
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+  });
+});
+</script>
 {% endblock %}

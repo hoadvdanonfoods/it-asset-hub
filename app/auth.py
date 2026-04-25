@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import select
 
-from app.config import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, SESSION_COOKIE_NAME, SECRET_KEY, SESSION_MAX_AGE_SECONDS
+from app.config import DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_USERNAME, SESSION_COOKIE_NAME, SESSION_COOKIE_SAMESITE, SESSION_COOKIE_SECURE, SECRET_KEY, SESSION_MAX_AGE_SECONDS
 from app.db.models import User
 from app.db.session import SessionLocal
 from app.security import verify_password
@@ -122,6 +122,11 @@ def get_default_landing_path(user: User | None) -> str:
     return '/users/change-password'
 
 
+def _refresh_session_cookie(response, user: User) -> None:
+    token = build_session_token(user)
+    response.set_cookie(SESSION_COOKIE_NAME, token, httponly=True, samesite=SESSION_COOKIE_SAMESITE, secure=SESSION_COOKIE_SECURE, max_age=SESSION_MAX_AGE_SECONDS)
+
+
 def _resolve_request(args, kwargs):
     request = kwargs.get('request')
     if request is None:
@@ -150,7 +155,9 @@ def require_login(view_func: Callable):
             if redirect:
                 return redirect
             kwargs['current_user'] = user
-            return await view_func(*args, **kwargs)
+            response = await view_func(*args, **kwargs)
+            _refresh_session_cookie(response, user)
+            return response
     else:
         @wraps(view_func)
         def wrapper(*args, **kwargs):
@@ -174,7 +181,9 @@ def require_admin(view_func: Callable):
         if user.role != 'admin':
             return RedirectResponse(url=get_default_landing_path(user), status_code=303)
         kwargs['current_user'] = user
-        return view_func(*args, **kwargs)
+        response = view_func(*args, **kwargs)
+        _refresh_session_cookie(response, user)
+        return response
 
     return wrapper
 
@@ -191,7 +200,9 @@ def require_module_access(module: str):
                 if not has_module_access(user, module):
                     return RedirectResponse(url=get_default_landing_path(user), status_code=303)
                 kwargs['current_user'] = user
-                return await view_func(*args, **kwargs)
+                response = await view_func(*args, **kwargs)
+                _refresh_session_cookie(response, user)
+                return response
         else:
             @wraps(view_func)
             def wrapper(*args, **kwargs):
@@ -221,7 +232,9 @@ def require_permission(field_name: str):
                 if not has_permission(user, field_name):
                     return RedirectResponse(url=get_default_landing_path(user), status_code=303)
                 kwargs['current_user'] = user
-                return await view_func(*args, **kwargs)
+                response = await view_func(*args, **kwargs)
+                _refresh_session_cookie(response, user)
+                return response
         else:
             @wraps(view_func)
             def wrapper(*args, **kwargs):

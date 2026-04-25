@@ -112,6 +112,42 @@ def audit_list(
     )
 
 
+@router.get('/partial', response_class=HTMLResponse)
+@require_admin
+def audit_partial(
+    request: Request,
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    actor: str | None = Query(default=None),
+    action: str | None = Query(default=None),
+    module: str | None = Query(default=None),
+    result: str | None = Query(default=None),
+    keyword: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=10, le=200),
+    db: Session = Depends(get_db),
+    current_user=None,
+):
+    stmt = select(AuditLog)
+    filters = _build_filters(date_from=date_from, date_to=date_to, actor=actor, action=action, module=module, result=result, keyword=keyword)
+    if filters is not None:
+        stmt = stmt.where(filters)
+    total = len(db.scalars(stmt).all())
+    items = db.scalars(stmt.order_by(AuditLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size)).all()
+    return templates.TemplateResponse(
+        'audit/_table.html',
+        {
+            'request': request,
+            'current_user': current_user,
+            'items': items,
+            'page': page,
+            'page_size': page_size,
+            'total': total,
+            'total_pages': max(1, (total + page_size - 1) // page_size),
+        },
+    )
+
+
 @router.get('/export')
 @require_admin
 def audit_export(
