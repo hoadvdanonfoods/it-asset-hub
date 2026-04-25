@@ -1,4 +1,4 @@
-﻿from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_, select
@@ -105,186 +105,174 @@ def _auto_create_user_for_employee(employee, db: Session) -> bool:
 
 MODEL_CONFIG = {
     'departments': {
-        'label': 'PhÃ²ng ban',
-        'description': 'Quáº£n lÃ½ danh má»¥c phÃ²ng ban dÃ¹ng chung cho tÃ i sáº£n, nhÃ¢n sá»± vÃ  bÃ¡o cÃ¡o.',
+        'label': 'Phòng ban',
+        'description': 'Quản lý danh mục phòng ban dùng chung cho tài sản, nhân sự và báo cáo.',
         'icon': 'building',
         'accent': 'blue',
         'model': Department,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£', 'type': 'text', 'required': True, 'placeholder': 'VD: IT'},
-            {'key': 'name', 'label': 'TÃªn phÃ²ng ban', 'type': 'text', 'required': True, 'placeholder': 'VD: PhÃ²ng CÃ´ng nghá»‡ ThÃ´ng tin'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'note', 'label': 'Ghi chÃº', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
+            {'key': 'code', 'label': 'Mã', 'type': 'text', 'required': True, 'placeholder': 'VD: IT'},
+            {'key': 'name', 'label': 'Tên phòng ban', 'type': 'text', 'required': True, 'placeholder': 'VD: Phòng Công nghệ Thông tin'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'is_active', 'note'],
         'unique_field': 'code',
     },
     'employees': {
-        'label': 'NhÃ¢n viÃªn',
-        'description': 'Quáº£n lÃ½ danh má»¥c nhÃ¢n sá»± cÆ¡ báº£n phá»¥c vá»¥ bÃ n giao tÃ i sáº£n vÃ  tra cá»©u ná»™i bá»™.',
+        'label': 'Nhân viên',
+        'description': 'Quản lý danh mục nhân sự cơ bản phục vụ bàn giao tài sản và tra cứu nội bộ.',
         'icon': 'users',
         'accent': 'emerald',
         'model': Employee,
         'title_field': 'full_name',
         'columns': [
-            {'key': 'employee_code', 'label': 'MÃ£ nhÃ¢n viÃªn', 'type': 'text', 'required': True, 'placeholder': 'VD: NV001'},
-            {'key': 'full_name', 'label': 'Há» vÃ  tÃªn', 'type': 'text', 'required': True, 'placeholder': 'Nguyá»…n VÄƒn A'},
-            {'key': 'department_id', 'label': 'PhÃ²ng ban', 'type': 'select', 'placeholder': 'Chá»n phÃ²ng ban', 'options_source': 'departments', 'option_value': 'id', 'option_label': 'name'},
-            {'key': 'title', 'label': 'Chá»©c danh', 'type': 'text', 'placeholder': 'VD: IT Support'},
+            {'key': 'employee_code', 'label': 'Mã nhân viên', 'type': 'text', 'required': True, 'placeholder': 'VD: NV001'},
+            {'key': 'full_name', 'label': 'Họ và tên', 'type': 'text', 'required': True, 'placeholder': 'Nguyễn Văn A'},
+            {'key': 'department_id', 'label': 'Phòng ban', 'type': 'select', 'placeholder': 'Chọn phòng ban', 'options_source': 'departments', 'option_value': 'id', 'option_label': 'name'},
+            {'key': 'title', 'label': 'Chức danh', 'type': 'text', 'placeholder': 'VD: IT Support'},
             {'key': 'email', 'label': 'Email', 'type': 'email', 'placeholder': 'name@company.com'},
-            {'key': 'phone', 'label': 'Sá»‘ Ä‘iá»‡n thoáº¡i', 'type': 'text', 'placeholder': '090xxxxxxx'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'note', 'label': 'Ghi chÃº', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-        ],
-        # import_columns: dÃ¹ng riÃªng cho file Excel import/export (dÃ¹ng mÃ£ PB thay vÃ¬ ID)
-        'import_columns': [
-            {'key': 'employee_code', 'label': 'MÃ£ nhÃ¢n viÃªn', 'type': 'text', 'required': True, 'placeholder': 'VD: NV001'},
-            {'key': 'full_name', 'label': 'Há» vÃ  tÃªn', 'type': 'text', 'required': True, 'placeholder': 'Nguyá»…n VÄƒn A'},
-            {'key': 'department_code', 'label': 'MÃ£ phÃ²ng ban', 'type': 'text', 'placeholder': 'VD: IT'},
-            {'key': 'department_id', 'label': 'ID phÃ²ng ban (TÃ¹y chá»n)', 'type': 'number', 'placeholder': 'VD: 1'},
-            {'key': 'title', 'label': 'Chá»©c danh', 'type': 'text', 'placeholder': 'VD: IT Support'},
-            {'key': 'email', 'label': 'Email', 'type': 'email', 'placeholder': 'name@company.com'},
-            {'key': 'phone', 'label': 'Sá»‘ Ä‘iá»‡n thoáº¡i', 'type': 'text', 'placeholder': '090xxxxxxx'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'note', 'label': 'Ghi chÃº', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
+            {'key': 'phone', 'label': 'Số điện thoại', 'type': 'text', 'placeholder': '090xxxxxxx'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['employee_code', 'full_name', 'department_id', 'title', 'email', 'phone', 'is_active'],
         'table_display': {'department_id': 'department_name'},
         'unique_field': 'employee_code',
     },
     'asset_types': {
-        'label': 'Loáº¡i tÃ i sáº£n',
-        'description': 'Quáº£n lÃ½ danh má»¥c loáº¡i tÃ i sáº£n, nhÃ³m phÃ¢n loáº¡i vÃ  quy Æ°á»›c Ä‘áº·t mÃ£.',
+        'label': 'Loại tài sản',
+        'description': 'Quản lý danh mục loại tài sản, nhóm phân loại và quy ước đặt mã.',
         'icon': 'tag',
         'accent': 'amber',
         'model': AssetType,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ loáº¡i', 'type': 'text', 'required': True, 'placeholder': 'VD: LAPTOP'},
-            {'key': 'name', 'label': 'TÃªn loáº¡i tÃ i sáº£n', 'type': 'text', 'required': True, 'placeholder': 'VD: Laptop'},
-            {'key': 'category_group', 'label': 'NhÃ³m phÃ¢n loáº¡i', 'type': 'text', 'placeholder': 'VD: User Device'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'note', 'label': 'Ghi chÃº', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
+            {'key': 'code', 'label': 'Mã loại', 'type': 'text', 'required': True, 'placeholder': 'VD: LAPTOP'},
+            {'key': 'name', 'label': 'Tên loại tài sản', 'type': 'text', 'required': True, 'placeholder': 'VD: Laptop'},
+            {'key': 'category_group', 'label': 'Nhóm phân loại', 'type': 'text', 'placeholder': 'VD: User Device'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'category_group', 'is_active', 'note'],
         'unique_field': 'code',
     },
     'locations': {
-        'label': 'Vá»‹ trÃ­',
-        'description': 'Quáº£n lÃ½ danh má»¥c vá»‹ trÃ­, khu vá»±c vÃ  Ä‘iá»ƒm Ä‘áº·t tÃ i sáº£n trong há»‡ thá»‘ng.',
+        'label': 'Vị trí',
+        'description': 'Quản lý danh mục vị trí, khu vực và điểm đặt tài sản trong hệ thống.',
         'icon': 'map-pin',
         'accent': 'rose',
         'model': Location,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ vá»‹ trÃ­', 'type': 'text', 'required': True, 'placeholder': 'VD: HN-F1'},
-            {'key': 'name', 'label': 'TÃªn vá»‹ trÃ­', 'type': 'text', 'required': True, 'placeholder': 'VD: HÃ  Ná»™i - Táº§ng 1'},
-            {'key': 'site_group', 'label': 'NhÃ³m khu vá»±c', 'type': 'text', 'placeholder': 'VD: Head Office'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'note', 'label': 'Ghi chÃº', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
+            {'key': 'code', 'label': 'Mã vị trí', 'type': 'text', 'required': True, 'placeholder': 'VD: HN-F1'},
+            {'key': 'name', 'label': 'Tên vị trí', 'type': 'text', 'required': True, 'placeholder': 'VD: Hà Nội - Tầng 1'},
+            {'key': 'site_group', 'label': 'Nhóm khu vực', 'type': 'text', 'placeholder': 'VD: Head Office'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'note', 'label': 'Ghi chú', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
         ],
         'table_columns': ['code', 'name', 'site_group', 'is_active', 'note'],
         'unique_field': 'code',
     },
     'asset_categories': {
-        'label': 'NhÃ³m tÃ i sáº£n',
-        'description': 'Danh má»¥c chuáº©n hÃ³a nhÃ³m tÃ i sáº£n cho Phase 1 normalization.',
+        'label': 'Nhóm tài sản',
+        'description': 'Danh mục chuẩn hóa nhóm tài sản cho Phase 1 normalization.',
         'icon': 'boxes',
         'accent': 'violet',
         'model': AssetCategory,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ nhÃ³m', 'type': 'text', 'required': True, 'placeholder': 'VD: LAPTOP'},
-            {'key': 'name', 'label': 'TÃªn nhÃ³m', 'type': 'text', 'required': True, 'placeholder': 'VD: Laptop'},
-            {'key': 'description', 'label': 'MÃ´ táº£', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'sort_order', 'label': 'Thá»© tá»±', 'type': 'number', 'placeholder': '0'},
+            {'key': 'code', 'label': 'Mã nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: LAPTOP'},
+            {'key': 'name', 'label': 'Tên nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: Laptop'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
         'unique_field': 'code',
     },
     'asset_statuses': {
-        'label': 'Tráº¡ng thÃ¡i tÃ i sáº£n',
-        'description': 'Danh má»¥c tráº¡ng thÃ¡i tÃ i sáº£n chuáº©n hÃ³a dÃ¹ng chung.',
+        'label': 'Trạng thái tài sản',
+        'description': 'Danh mục trạng thái tài sản chuẩn hóa dùng chung.',
         'icon': 'activity',
         'accent': 'emerald',
         'model': AssetStatus,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ tráº¡ng thÃ¡i', 'type': 'text', 'required': True, 'placeholder': 'VD: IN_STOCK'},
-            {'key': 'name', 'label': 'TÃªn tráº¡ng thÃ¡i', 'type': 'text', 'required': True, 'placeholder': 'VD: In Stock'},
-            {'key': 'description', 'label': 'MÃ´ táº£', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'sort_order', 'label': 'Thá»© tá»±', 'type': 'number', 'placeholder': '0'},
+            {'key': 'code', 'label': 'Mã trạng thái', 'type': 'text', 'required': True, 'placeholder': 'VD: IN_STOCK'},
+            {'key': 'name', 'label': 'Tên trạng thái', 'type': 'text', 'required': True, 'placeholder': 'VD: In Stock'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
         'unique_field': 'code',
     },
     'vendors': {
-        'label': 'NhÃ  cung cáº¥p',
-        'description': 'Danh má»¥c nhÃ  cung cáº¥p vÃ  Ä‘á»‘i tÃ¡c báº£o trÃ¬.',
+        'label': 'Nhà cung cấp',
+        'description': 'Danh mục nhà cung cấp và đối tác bảo trì.',
         'icon': 'truck',
         'accent': 'amber',
         'model': Vendor,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ NCC', 'type': 'text', 'required': True, 'placeholder': 'VD: DELL'},
-            {'key': 'name', 'label': 'TÃªn NCC', 'type': 'text', 'required': True, 'placeholder': 'VD: Dell Viá»‡t Nam'},
-            {'key': 'description', 'label': 'MÃ´ táº£', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'sort_order', 'label': 'Thá»© tá»±', 'type': 'number', 'placeholder': '0'},
+            {'key': 'code', 'label': 'Mã NCC', 'type': 'text', 'required': True, 'placeholder': 'VD: DELL'},
+            {'key': 'name', 'label': 'Tên NCC', 'type': 'text', 'required': True, 'placeholder': 'VD: Dell Việt Nam'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
         'unique_field': 'code',
     },
     'incident_categories': {
-        'label': 'NhÃ³m sá»± cá»‘',
-        'description': 'Danh má»¥c phÃ¢n loáº¡i ticket sá»± cá»‘.',
+        'label': 'Nhóm sự cố',
+        'description': 'Danh mục phân loại ticket sự cố.',
         'icon': 'shield-alert',
         'accent': 'rose',
         'model': IncidentCategory,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ nhÃ³m', 'type': 'text', 'required': True, 'placeholder': 'VD: HARDWARE'},
-            {'key': 'name', 'label': 'TÃªn nhÃ³m', 'type': 'text', 'required': True, 'placeholder': 'VD: Hardware'},
-            {'key': 'description', 'label': 'MÃ´ táº£', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'sort_order', 'label': 'Thá»© tá»±', 'type': 'number', 'placeholder': '0'},
+            {'key': 'code', 'label': 'Mã nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: HARDWARE'},
+            {'key': 'name', 'label': 'Tên nhóm', 'type': 'text', 'required': True, 'placeholder': 'VD: Hardware'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
         'unique_field': 'code',
     },
     'priorities': {
-        'label': 'Äá»™ Æ°u tiÃªn',
-        'description': 'Danh má»¥c Æ°u tiÃªn chuáº©n hÃ³a cho ticket sá»± cá»‘.',
+        'label': 'Độ ưu tiên',
+        'description': 'Danh mục ưu tiên chuẩn hóa cho ticket sự cố.',
         'icon': 'flame',
         'accent': 'orange',
         'model': Priority,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ Æ°u tiÃªn', 'type': 'text', 'required': True, 'placeholder': 'VD: HIGH'},
-            {'key': 'name', 'label': 'TÃªn Æ°u tiÃªn', 'type': 'text', 'required': True, 'placeholder': 'VD: High'},
-            {'key': 'description', 'label': 'MÃ´ táº£', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'sort_order', 'label': 'Thá»© tá»±', 'type': 'number', 'placeholder': '0'},
+            {'key': 'code', 'label': 'Mã ưu tiên', 'type': 'text', 'required': True, 'placeholder': 'VD: HIGH'},
+            {'key': 'name', 'label': 'Tên ưu tiên', 'type': 'text', 'required': True, 'placeholder': 'VD: High'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
         'unique_field': 'code',
     },
     'maintenance_types': {
-        'label': 'Loáº¡i báº£o trÃ¬',
-        'description': 'Danh má»¥c loáº¡i báº£o trÃ¬ chuáº©n hÃ³a.',
+        'label': 'Loại bảo trì',
+        'description': 'Danh mục loại bảo trì chuẩn hóa.',
         'icon': 'wrench',
         'accent': 'yellow',
         'model': MaintenanceType,
         'title_field': 'name',
         'columns': [
-            {'key': 'code', 'label': 'MÃ£ loáº¡i', 'type': 'text', 'required': True, 'placeholder': 'VD: PREVENTIVE'},
-            {'key': 'name', 'label': 'TÃªn loáº¡i', 'type': 'text', 'required': True, 'placeholder': 'VD: Preventive'},
-            {'key': 'description', 'label': 'MÃ´ táº£', 'type': 'textarea', 'placeholder': 'ThÃ´ng tin bá»• sung...'},
-            {'key': 'is_active', 'label': 'KÃ­ch hoáº¡t', 'type': 'boolean'},
-            {'key': 'sort_order', 'label': 'Thá»© tá»±', 'type': 'number', 'placeholder': '0'},
+            {'key': 'code', 'label': 'Mã loại', 'type': 'text', 'required': True, 'placeholder': 'VD: PREVENTIVE'},
+            {'key': 'name', 'label': 'Tên loại', 'type': 'text', 'required': True, 'placeholder': 'VD: Preventive'},
+            {'key': 'description', 'label': 'Mô tả', 'type': 'textarea', 'placeholder': 'Thông tin bổ sung...'},
+            {'key': 'is_active', 'label': 'Kích hoạt', 'type': 'boolean'},
+            {'key': 'sort_order', 'label': 'Thứ tự', 'type': 'number', 'placeholder': '0'},
         ],
         'table_columns': ['code', 'name', 'description', 'is_active', 'sort_order'],
         'unique_field': 'code',
@@ -345,9 +333,6 @@ def _clean_import_row(row_data, config):
         if key not in allowed_fields:
             continue
         value = row_data.get(key)
-        if value is not None and field.get('type') in ('text', 'email', 'textarea'):
-            value = str(value)
-
         if isinstance(value, str):
             value = value.strip()
         if value == '':
@@ -402,38 +387,6 @@ def _sanitize_fk_fields(cleaned: dict, db: Session) -> dict:
                 continue
 
         cleaned[field_key] = None
-    return cleaned
-
-
-def _resolve_department_code(cleaned: dict, db: Session) -> dict:
-    """Chuyá»ƒn department_code (mÃ£ phÃ²ng ban) â†’ department_id khi import nhÃ¢n viÃªn."""
-    # Æ¯u tiÃªn náº¿u trong file cÃ³ cá»™t department_id (há»£p lá»‡)
-    dept_id = cleaned.get('department_id')
-    if dept_id is not None:
-        try:
-            dept = db.get(Department, int(dept_id))
-            cleaned['department_id'] = dept.id if dept else None
-            cleaned.pop('department_code', None)  # Bá» qua department_code
-            return cleaned
-        except (ValueError, TypeError):
-            pass  # Náº¿u khÃ´ng parse Ä‘Æ°á»£c int thÃ¬ tiáº¿p tá»¥c dÃ¹ng department_code
-
-    if 'department_code' not in cleaned:
-        return cleaned
-        
-    dept_code = cleaned.pop('department_code', None)
-    if dept_code:
-        dept = db.scalar(select(Department).where(Department.code == dept_code))
-        if dept:
-            cleaned['department_id'] = dept.id
-        elif str(dept_code).strip().isdigit():
-            # Fallback: Náº¿u há» Ä‘iá»n sá»‘ ID vÃ o cá»™t department_code
-            dept = db.get(Department, int(str(dept_code).strip()))
-            cleaned['department_id'] = dept.id if dept else None
-        else:
-            cleaned['department_id'] = None
-    else:
-        cleaned.setdefault('department_id', None)
     return cleaned
 
 
@@ -578,7 +531,7 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
     item_ids_raw = (form.get('item_ids') or '').strip()
     confirm_text = (form.get('confirm_text') or '').strip().upper()
     if not item_ids_raw or confirm_text != 'ARCHIVE':
-        return _redirect_with_bulk_feedback(model_name, message='XÃ¡c nháº­n khÃ´ng há»£p lá»‡')
+        return _redirect_with_bulk_feedback(model_name, message='Xác nhận không hợp lệ')
 
     item_ids = []
     for token in item_ids_raw.split(','):
@@ -617,14 +570,14 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
                 if blocking_assets:
                     blocked += 1
                     preview = ', '.join(blocking_assets[:3])
-                    suffix = '' if len(blocking_assets) <= 3 else f' vÃ  {len(blocking_assets) - 3} tÃ i sáº£n khÃ¡c'
-                    details.append(f'{item.full_name} ({item.employee_code}): cÃ²n giá»¯ {len(blocking_assets)} tÃ i sáº£n, gá»“m {preview}{suffix}')
+                    suffix = '' if len(blocking_assets) <= 3 else f' và {len(blocking_assets) - 3} tài sản khác'
+                    details.append(f'{item.full_name} ({item.employee_code}): còn giữ {len(blocking_assets)} tài sản, gồm {preview}{suffix}')
                     log_audit(db, actor=current_user.username if current_user else None, module='master_data', action='bulk_archive', entity_type='employee', entity_id=item.id, result='skipped', reason='active_assets', metadata={'employee_code': item.employee_code, 'assets': blocking_assets[:10]})
                     continue
 
             if getattr(item, 'is_active', None) is False:
                 blocked += 1
-                details.append(f'{getattr(item, config["title_field"], item.id)}: Ä‘Ã£ inactive')
+                details.append(f'{getattr(item, config["title_field"], item.id)}: đã inactive')
                 continue
 
             setattr(item, 'is_active', False)
@@ -633,7 +586,7 @@ async def bulk_archive_model_submit(request: Request, model_name: str, current_u
 
     db.commit()
     tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
-    return _redirect_with_bulk_feedback(model_name, message='ÄÃ£ xá»­ lÃ½ inactive hÃ ng loáº¡t', success=success, blocked=blocked, details=details, tone=tone)
+    return _redirect_with_bulk_feedback(model_name, message='Đã xử lý inactive hàng loạt', success=success, blocked=blocked, details=details, tone=tone)
 
 
 @router.post('/{model_name}/bulk-delete')
@@ -647,7 +600,7 @@ async def bulk_delete_model_submit(request: Request, model_name: str, current_us
     item_ids_raw = (form.get('item_ids') or '').strip()
     confirm_text = (form.get('confirm_text') or '').strip().upper()
     if not item_ids_raw or confirm_text != 'DELETE':
-        return _redirect_with_bulk_feedback(model_name, message='XÃ¡c nháº­n khÃ´ng há»£p lá»‡. Nháº­p chá»¯ DELETE Ä‘á»ƒ tiáº¿p tá»¥c.', tone='warning')
+        return _redirect_with_bulk_feedback(model_name, message='Xác nhận không hợp lệ. Nhập chữ DELETE để tiếp tục.', tone='warning')
 
     item_ids = [int(t) for t in item_ids_raw.split(',') if t.strip().isdigit()]
     success = 0
@@ -669,7 +622,7 @@ async def bulk_delete_model_submit(request: Request, model_name: str, current_us
                 )
                 if active_assignment:
                     blocked += 1
-                    details.append(f'{title}: cÃ²n bÃ n giao tÃ i sáº£n chÆ°a thu há»“i')
+                    details.append(f'{title}: còn bàn giao tài sản chưa thu hồi')
                     continue
 
             try:
@@ -680,11 +633,11 @@ async def bulk_delete_model_submit(request: Request, model_name: str, current_us
             except IntegrityError:
                 db.rollback()
                 blocked += 1
-                details.append(f'{title}: Ä‘ang Ä‘Æ°á»£c tham chiáº¿u bá»Ÿi dá»¯ liá»‡u khÃ¡c')
+                details.append(f'{title}: đang được tham chiếu bởi dữ liệu khác')
 
     db.commit()
     tone = 'success' if success and not blocked else 'warning' if blocked else 'info'
-    return _redirect_with_bulk_feedback(model_name, message=f'ÄÃ£ xÃ³a {success} báº£n ghi.', success=success, blocked=blocked, details=details, tone=tone)
+    return _redirect_with_bulk_feedback(model_name, message=f'Đã xóa {success} bản ghi.', success=success, blocked=blocked, details=details, tone=tone)
 
 
 @router.post('/employees/bulk-create-users')
@@ -703,7 +656,7 @@ async def bulk_create_users_for_employees(request: Request, current_user=None, d
             skipped += 1
     db.commit()
     from urllib.parse import quote
-    msg = quote(f'ÄÃ£ táº¡o {created} tÃ i khoáº£n má»›i. {skipped} nhÃ¢n viÃªn Ä‘Ã£ cÃ³ tÃ i khoáº£n hoáº·c thiáº¿u mÃ£.')
+    msg = quote(f'Đã tạo {created} tài khoản mới. {skipped} nhân viên đã có tài khoản hoặc thiếu mã.')
     return RedirectResponse(f'/master-data/employees?bulk_message={msg}&bulk_tone=success', status_code=303)
 
 
@@ -729,14 +682,9 @@ async def import_model_preview(request: Request, model_name: str, current_user=N
     workbook = openpyxl.load_workbook(io.BytesIO(contents))
     sheet = workbook.active
     headers = [cell.value for cell in sheet[1]]
-    # DÃ¹ng import_columns náº¿u cÃ³ (há»— trá»£ department_code cho employees)
-    import_cols = config.get('import_columns', config['columns'])
-    parse_config = {**config, 'columns': import_cols}
     rows_cleaned = []
     for row in sheet.iter_rows(min_row=2, values_only=True):
-        cleaned = _clean_import_row(dict(zip(headers, row)), parse_config)
-        if model_name == 'employees':
-            cleaned = _resolve_department_code(cleaned, db)
+        cleaned = _clean_import_row(dict(zip(headers, row)), config)
         if any(v is not None and v != '' for v in cleaned.values()):
             rows_cleaned.append(cleaned)
     preview = _build_md_preview(rows_cleaned, config, db, file.filename or 'import.xlsx')
@@ -756,7 +704,7 @@ async def import_model_confirm(request: Request, model_name: str, current_user=N
     unique_field = config.get('unique_field')
     created = updated = 0
     for cleaned in rows_cleaned:
-        # Validate FK references â€” nullify any IDs that don't exist in target DB
+        # Validate FK references — nullify any IDs that don't exist in target DB
         cleaned = _sanitize_fk_fields(cleaned, db)
         unique_value = cleaned.get(unique_field) if unique_field else None
         existing = None
@@ -775,7 +723,7 @@ async def import_model_confirm(request: Request, model_name: str, current_user=N
             created += 1
     db.commit()
     from urllib.parse import quote
-    msg = quote(f'Import xong: {created} thÃªm má»›i, {updated} cáº­p nháº­t')
+    msg = quote(f'Import xong: {created} thêm mới, {updated} cập nhật')
     return RedirectResponse(f'/master-data/{model_name}?bulk_message={msg}&bulk_tone=success', status_code=303)
 
 
@@ -791,17 +739,12 @@ async def import_model(request: Request, model_name: str, current_user=None, fil
     sheet = workbook.active
     headers = [cell.value for cell in sheet[1]]
     unique_field = config.get('unique_field')
-    # DÃ¹ng import_columns náº¿u cÃ³ (há»— trá»£ department_code cho employees)
-    import_cols = config.get('import_columns', config['columns'])
-    parse_config = {**config, 'columns': import_cols}
 
     for row in sheet.iter_rows(min_row=2, values_only=True):
         row_data = dict(zip(headers, row))
-        cleaned = _clean_import_row(row_data, parse_config)
-        if model_name == 'employees':
-            cleaned = _resolve_department_code(cleaned, db)
+        cleaned = _clean_import_row(row_data, config)
         if any(v is not None and v != '' for v in cleaned.values()):
-            # Validate FK references â€” nullify any IDs that don't exist in target DB
+            # Validate FK references — nullify any IDs that don't exist in target DB
             cleaned = _sanitize_fk_fields(cleaned, db)
             existing = None
             unique_value = cleaned.get(unique_field) if unique_field else None
@@ -826,33 +769,26 @@ async def export_model(request: Request, model_name: str, current_user=None, db:
 
     items = db.scalars(select(config['model']).order_by(config['model'].id.asc())).all()
 
-    # Build FK â†’ display value lookup so exported files are portable across servers
+    # Build FK → display value lookup so exported files are portable across servers
     fk_display: dict[str, dict] = {}
     if model_name == 'employees':
         depts = db.scalars(select(Department)).all()
-        fk_display['department_code'] = {d.id: (d.code or d.name) for d in depts}
+        fk_display['department_id'] = {d.id: (d.code or d.name) for d in depts}
 
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = config['label'][:31]
 
-    # DÃ¹ng import_columns náº¿u cÃ³ Ä‘á»ƒ export ra file dá»… re-import
-    import_cols = config.get('import_columns', config['columns'])
-    columns = [field['key'] for field in import_cols]
+    columns = [field['key'] for field in config['columns']]
     sheet.append(columns)
 
     for item in items:
         row = []
         for key in columns:
-            if key == 'department_code' and model_name == 'employees':
-                dept_id = getattr(item, 'department_id', None)
-                val = fk_display['department_code'].get(dept_id, '') if dept_id else ''
-                row.append(val)
-            else:
-                value = getattr(item, key, None)
-                if key in fk_display and value is not None:
-                    value = fk_display[key].get(value, value)
-                row.append(value)
+            value = getattr(item, key, None)
+            if key in fk_display and value is not None:
+                value = fk_display[key].get(value, value)
+            row.append(value)
         sheet.append(row)
 
     output = io.BytesIO()
@@ -862,4 +798,3 @@ async def export_model(request: Request, model_name: str, current_user=None, db:
     filename = f'{model_name}_export.xlsx'
     headers = {'Content-Disposition': f'attachment; filename="{filename}"'}
     return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers=headers)
-
