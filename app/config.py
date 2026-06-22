@@ -39,6 +39,15 @@ ZALO_BOT_URL = os.getenv('ZALO_BOT_URL', '')
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '')
 ZALO_NOTIFICATION_TARGET = os.getenv('ZALO_NOTIFICATION_TARGET', '')
 
+# SMTP Configuration for Incident Reports
+SMTP_HOST = os.getenv('SMTP_HOST', '')
+SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+SMTP_USERNAME = os.getenv('SMTP_USERNAME', '')
+SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+SMTP_USE_TLS = os.getenv('SMTP_USE_TLS', 'true').lower() == 'true'
+SMTP_USE_SSL = os.getenv('SMTP_USE_SSL', 'false').lower() == 'true'
+ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', '')
+
 if IS_PRODUCTION and SECRET_KEY == 'it-asset-hub-local-secret':
     raise RuntimeError('SECRET_KEY must be set in production and must not use the local default secret')
 

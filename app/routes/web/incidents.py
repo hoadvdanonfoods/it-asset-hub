@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.auth import require_module_access, require_permission
 from app.db.models import Asset, Incident, IncidentEvent, Department, Priority
 from app.db.session import get_db
+from app.services.email import send_incident_email_notification
 from app.services.zalo import send_zalo_notification
 
 router = APIRouter(prefix='/incidents', tags=['incidents'])
@@ -247,7 +248,7 @@ def incident_list(request: Request, q: str | None = Query(default=None), status:
     items = [_incident_view_model(item) for item in _filtered_incidents(db, current_user, status=status, priority=priority, source=source)]
     if q:
         q_lower = q.lower()
-        items = [i for i in items if q_lower in (i.asset.asset_code if i.asset else '').lower() or q_lower in (i.reported_by or '').lower() or q_lower in (i.issue_description or '').lower()]
+        items = [i for i in items if q_lower in (i.asset.asset_code if i.asset else '').lower() or q_lower in (i.reported_by or '').lower() or q_lower in (i.device_user or '').lower() or q_lower in (i.device_location or '').lower() or q_lower in (i.issue_description or '').lower()]
     return templates.TemplateResponse('incidents/list.html', {
         'request': request,
         'items': items,
@@ -276,7 +277,7 @@ def incident_list_partial(request: Request, q: str | None = Query(default=None),
     items = [_incident_view_model(item) for item in _filtered_incidents(db, current_user, status=status, priority=priority, source=source)]
     if q:
         q_lower = q.lower()
-        items = [i for i in items if q_lower in (i.asset.asset_code if i.asset else '').lower() or q_lower in (i.reported_by or '').lower() or q_lower in (i.issue_description or '').lower()]
+        items = [i for i in items if q_lower in (i.asset.asset_code if i.asset else '').lower() or q_lower in (i.reported_by or '').lower() or q_lower in (i.device_user or '').lower() or q_lower in (i.device_location or '').lower() or q_lower in (i.issue_description or '').lower()]
     return templates.TemplateResponse('incidents/_table.html', {
         'request': request,
         'items': items,
@@ -308,7 +309,7 @@ def incident_export(request: Request, status: str | None = Query(default=None), 
     ws.title = 'Incidents'
     ws.append(['ID', 'Thiết bị', 'Người báo', 'Bộ phận', 'Nguồn', 'Ưu tiên', 'Trạng thái', 'Báo lúc', 'Hoàn tất lúc', 'Thời gian xử lý', 'Mô tả', 'Hướng xử lý'])
     for item in items:
-        ws.append([item.id, item.asset.asset_code if item.asset else '', item.reported_by or '', item.requester_department or '', source_label(item.source), priority_label(item.priority), status_label(item.status), str(item.reported_at), str(item.resolved_at) if item.resolved_at else '', format_duration(item.reported_at, item.resolved_at), item.issue_description, item.resolution or ''])
+        ws.append([item.id, item.asset.asset_code if item.asset else f"{item.device_user or ''} ({item.device_location or ''})".strip(" ()"), item.reported_by or '', item.requester_department or '', source_label(item.source), priority_label(item.priority), status_label(item.status), str(item.reported_at), str(item.resolved_at) if item.resolved_at else '', format_duration(item.reported_at, item.resolved_at), item.issue_description, item.resolution or ''])
     stream = io.BytesIO()
     wb.save(stream)
     content = stream.getvalue()
@@ -345,11 +346,11 @@ def incident_new(request: Request, asset_id: int | None = Query(default=None), d
 
 @router.post('/new')
 @require_permission('can_create_incidents')
-def incident_create(request: Request, background_tasks: BackgroundTasks, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), source: str = Form(default='user_report'), status: str = Form(default='open'), db: Session = Depends(get_db), current_user=None):
+def incident_create(request: Request, background_tasks: BackgroundTasks, device_user: str = Form(...), device_location: str = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), source: str = Form(default='user_report'), status: str = Form(default='open'), db: Session = Depends(get_db), current_user=None):
     normalized_priority, priority_id = _resolve_incident_priority(db, priority)
     normalized_status = _normalize_status(status if current_user and getattr(current_user, 'can_edit_incidents', False) else 'open')
     effective_reported_by = reported_by.strip() or (current_user.full_name or current_user.username if current_user else None)
-    item = Incident(asset_id=asset_id, reported_by=effective_reported_by, requester_department=requester_department.strip() or None, department_id=_resolve_department_id(db, requester_department), issue_description=issue_description.strip(), priority=normalized_priority, priority_id=priority_id, source=(source or 'user_report').strip().lower(), status=normalized_status, reported_at=datetime.utcnow())
+    item = Incident(asset_id=None, device_user=device_user.strip(), device_location=device_location.strip(), reported_by=effective_reported_by, requester_department=requester_department.strip() or None, department_id=_resolve_department_id(db, requester_department), issue_description=issue_description.strip(), priority=normalized_priority, priority_id=priority_id, source=(source or 'user_report').strip().lower(), status=normalized_status, reported_at=datetime.utcnow())
     _apply_status_effects(item, normalized_status)
     db.add(item)
     db.flush()
@@ -361,7 +362,19 @@ def incident_create(request: Request, background_tasks: BackgroundTasks, asset_i
         description=issue_description.strip(),
         Mức_độ=priority_label(item.priority),
         Người_báo=effective_reported_by or "Không xác định",
+        Người_sử_dụng=device_user.strip(),
+        Khu_vực=device_location.strip(),
         Phòng_ban=requester_department.strip() or "Không xác định",
+    )
+    background_tasks.add_task(
+        send_incident_email_notification,
+        incident_id=item.id,
+        issue_description=issue_description.strip(),
+        priority_label=priority_label(item.priority),
+        reported_by=effective_reported_by or "Không xác định",
+        requester_department=requester_department.strip() or "Không xác định",
+        device_user=device_user.strip() or "Không rõ",
+        device_location=device_location.strip() or "Không rõ",
     )
     return RedirectResponse(url='/incidents/', status_code=303)
 
@@ -425,14 +438,18 @@ def incident_edit(incident_id: int, request: Request, db: Session = Depends(get_
 
 @router.post('/{incident_id}/edit')
 @require_permission('can_edit_incidents')
-def incident_update(request: Request, incident_id: int, background_tasks: BackgroundTasks, asset_id: int = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), source: str = Form(default='user_report'), status: str = Form(default='open'), resolution: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
+def incident_update(request: Request, incident_id: int, background_tasks: BackgroundTasks, device_user: str = Form(...), device_location: str = Form(...), reported_by: str = Form(default=''), requester_department: str = Form(default=''), issue_description: str = Form(...), priority: str = Form(default='medium'), source: str = Form(default='user_report'), status: str = Form(default='open'), resolution: str = Form(default=''), db: Session = Depends(get_db), current_user=None):
     item = db.get(Incident, incident_id)
     old_status = item.status
     old_priority = item.priority
     old_resolution = item.resolution or ''
     old_department = item.requester_department or ''
     old_source = item.source or 'user_report'
-    item.asset_id = asset_id
+    old_device_user = item.device_user or ''
+    old_device_location = item.device_location or ''
+    item.asset_id = None
+    item.device_user = device_user.strip()
+    item.device_location = device_location.strip()
     item.reported_by = reported_by.strip() or None
     item.requester_department = requester_department.strip() or None
     item.department_id = _resolve_department_id(db, requester_department)
@@ -441,6 +458,12 @@ def incident_update(request: Request, incident_id: int, background_tasks: Backgr
     item.source = (source or 'user_report').strip().lower()
     item.status = _normalize_status(status)
     item.resolution = resolution.strip() or None
+
+    if old_device_user != item.device_user:
+        _log_incident_event(db, item.id, 'device_user_updated', 'Cập nhật người sử dụng', f'{old_device_user or "(trống)"} -> {item.device_user or "(trống)"}', current_user.username if current_user else None)
+
+    if old_device_location != item.device_location:
+        _log_incident_event(db, item.id, 'device_location_updated', 'Cập nhật khu vực', f'{old_device_location or "(trống)"} -> {item.device_location or "(trống)"}', current_user.username if current_user else None)
 
     if old_status != item.status:
         _apply_status_effects(item, item.status)

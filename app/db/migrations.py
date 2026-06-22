@@ -134,6 +134,8 @@ FK_COLUMNS = {
         ('priority_id', 'INTEGER'),
         ('department_id', 'INTEGER'),
         ('source', 'VARCHAR(30)'),
+        ('device_user', 'VARCHAR(120)'),
+        ('device_location', 'VARCHAR(120)'),
     ],
     'maintenances': [
         ('maintenance_type_id', 'INTEGER'),
@@ -644,6 +646,7 @@ def ensure_schema() -> None:
         "CREATE INDEX ix_audit_logs_module ON audit_logs (module)",
         "CREATE INDEX ix_audit_logs_action ON audit_logs (action)",
         "CREATE INDEX ix_audit_logs_result ON audit_logs (result)",
+        "ALTER TABLE incidents ALTER COLUMN asset_id DROP NOT NULL",
     ]
     backfill_statements = [
         "UPDATE users SET is_active = 1 WHERE is_active IS NULL",

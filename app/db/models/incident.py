@@ -10,7 +10,9 @@ class Incident(Base):
     __tablename__ = 'incidents'
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    asset_id: Mapped[int] = mapped_column(ForeignKey('assets.id'), index=True)
+    asset_id: Mapped[int | None] = mapped_column(ForeignKey('assets.id'), nullable=True, index=True)
+    device_user: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    device_location: Mapped[str | None] = mapped_column(String(120), nullable=True)
     category_id: Mapped[int | None] = mapped_column(ForeignKey('incident_categories.id'), nullable=True, index=True)
     priority_id: Mapped[int | None] = mapped_column(ForeignKey('priorities.id'), nullable=True, index=True)
     department_id: Mapped[int | None] = mapped_column(ForeignKey('departments.id'), nullable=True, index=True)

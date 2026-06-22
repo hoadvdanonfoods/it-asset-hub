@@ -68,6 +68,21 @@
           </div>
           <i data-lucide="external-link" class="w-4 h-4 ml-auto text-on-surface/10 group-hover/asset:text-rose-400 transition-colors"></i>
         </div>
+        {% else %}
+        <div class="flex items-center gap-4 p-4 rounded-3xl bg-surface-container-low border border-outline-variant/10">
+          <div class="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-600 border border-rose-500/10">
+            <i data-lucide="user" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-[10px] font-black uppercase tracking-widest text-on-surface/30">Người sử dụng thiết bị</div>
+            <div class="text-sm font-black text-on-surface">{{ item.device_user or 'Không rõ' }}</div>
+            {% if item.device_location %}
+            <div class="text-[10px] text-on-surface/50 font-semibold flex items-center gap-1 mt-0.5">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-600 opacity-60"></i> {{ item.device_location }}
+            </div>
+            {% endif %}
+          </div>
+        </div>
         {% endif %}
 
         <div class="grid grid-cols-3 gap-8">
