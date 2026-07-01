@@ -196,7 +196,7 @@ def user_create(request: Request, username: str = Form(...), password: str = For
         return _render_user_form(request, current_user, user_obj=form_user, error='Tài khoản đã tồn tại')
     if len(password.strip()) < MIN_PASSWORD_LENGTH:
         return _render_user_form(request, current_user, user_obj=form_user, error=f'Mật khẩu phải có ít nhất {MIN_PASSWORD_LENGTH} ký tự')
-    user = User(username=username.strip(), password='[hashed]', password_hash=hash_password(password), role=role, full_name=full_name.strip() or None, is_active=True, **module_flags, **action_flags)
+    user = User(username=username.strip(), password='[hashed]', password_hash=hash_password(password), role=role, full_name=full_name.strip() or None, is_active=True, must_change_password=True, **module_flags, **action_flags)
     db.add(user)
     db.commit()
     log_audit(db, actor=current_user.username if current_user else None, module='users', action='create', entity_type='user', entity_id=user.id, metadata={'username': user.username, 'role': user.role})
