@@ -64,7 +64,7 @@ def _apply_role_defaults(role: str, module_flags: dict, action_flags: dict):
     return module_flags, action_flags
 
 
-def _build_form_user(*, username: str = '', role: str = 'user', full_name: str = '', is_active: bool = True, module_flags: dict | None = None, action_flags: dict | None = None, existing_user: User | None = None):
+def _build_form_user(*, username: str = '', role: str = 'user', full_name: str = '', email: str = '', is_active: bool = True, module_flags: dict | None = None, action_flags: dict | None = None, existing_user: User | None = None):
     module_flags = module_flags or {f'can_view_{key}': key not in ('resources', 'documents') for key in MODULE_KEYS}
     action_flags = action_flags or {
         'can_create_assets': False,
@@ -87,6 +87,7 @@ def _build_form_user(*, username: str = '', role: str = 'user', full_name: str =
         'username': existing_user.username if existing_user else username.strip(),
         'role': role,
         'full_name': full_name.strip() or None,
+        'email': email.strip() or None,
         'is_active': is_active,
     }
     base.update(module_flags)
@@ -171,7 +172,7 @@ def user_new(request: Request, current_user=None):
 
 @router.post('/new')
 @require_permission('can_manage_users')
-def user_create(request: Request, username: str = Form(...), password: str = Form(...), role: str = Form(...), full_name: str = Form(default=''), can_view_dashboard: str | None = Form(default=None), can_view_assets: str | None = Form(default=None), can_view_maintenance: str | None = Form(default=None), can_view_incidents: str | None = Form(default=None), can_view_resources: str | None = Form(default=None), can_create_assets: str | None = Form(default=None), can_edit_assets: str | None = Form(default=None), can_import_assets: str | None = Form(default=None), can_export_assets: str | None = Form(default=None), can_create_maintenance: str | None = Form(default=None), can_edit_maintenance: str | None = Form(default=None), can_export_maintenance: str | None = Form(default=None), can_create_incidents: str | None = Form(default=None), can_edit_incidents: str | None = Form(default=None), can_export_incidents: str | None = Form(default=None), can_manage_users: str | None = Form(default=None), can_manage_system: str | None = Form(default=None), can_manage_resources: str | None = Form(default=None), can_view_documents: str | None = Form(default=None), can_manage_documents: str | None = Form(default=None), db: Session = Depends(get_db), current_user=None):
+def user_create(request: Request, username: str = Form(...), password: str = Form(...), role: str = Form(...), full_name: str = Form(default=''), email: str = Form(default=''), can_view_dashboard: str | None = Form(default=None), can_view_assets: str | None = Form(default=None), can_view_maintenance: str | None = Form(default=None), can_view_incidents: str | None = Form(default=None), can_view_resources: str | None = Form(default=None), can_create_assets: str | None = Form(default=None), can_edit_assets: str | None = Form(default=None), can_import_assets: str | None = Form(default=None), can_export_assets: str | None = Form(default=None), can_create_maintenance: str | None = Form(default=None), can_edit_maintenance: str | None = Form(default=None), can_export_maintenance: str | None = Form(default=None), can_create_incidents: str | None = Form(default=None), can_edit_incidents: str | None = Form(default=None), can_export_incidents: str | None = Form(default=None), can_manage_users: str | None = Form(default=None), can_manage_system: str | None = Form(default=None), can_manage_resources: str | None = Form(default=None), can_view_documents: str | None = Form(default=None), can_manage_documents: str | None = Form(default=None), db: Session = Depends(get_db), current_user=None):
     module_flags = _module_flags_from_form(can_view_dashboard, can_view_assets, can_view_maintenance, can_view_incidents, can_view_resources, can_view_documents)
     action_flags = _action_flags_from_form(
         can_create_assets=can_create_assets,
@@ -190,13 +191,13 @@ def user_create(request: Request, username: str = Form(...), password: str = For
         can_manage_documents=can_manage_documents,
     )
     module_flags, action_flags = _apply_role_defaults(role, module_flags, action_flags)
-    form_user = _build_form_user(username=username, role=role, full_name=full_name, is_active=True, module_flags=module_flags, action_flags=action_flags)
+    form_user = _build_form_user(username=username, role=role, full_name=full_name, email=email, is_active=True, module_flags=module_flags, action_flags=action_flags)
     existing = db.scalar(select(User).where(User.username == username.strip()))
     if existing:
         return _render_user_form(request, current_user, user_obj=form_user, error='Tài khoản đã tồn tại')
     if len(password.strip()) < MIN_PASSWORD_LENGTH:
         return _render_user_form(request, current_user, user_obj=form_user, error=f'Mật khẩu phải có ít nhất {MIN_PASSWORD_LENGTH} ký tự')
-    user = User(username=username.strip(), password='[hashed]', password_hash=hash_password(password), role=role, full_name=full_name.strip() or None, is_active=True, must_change_password=True, **module_flags, **action_flags)
+    user = User(username=username.strip(), password='[hashed]', password_hash=hash_password(password), role=role, full_name=full_name.strip() or None, email=email.strip() or None, is_active=True, must_change_password=True, **module_flags, **action_flags)
     db.add(user)
     db.commit()
     log_audit(db, actor=current_user.username if current_user else None, module='users', action='create', entity_type='user', entity_id=user.id, metadata={'username': user.username, 'role': user.role})
@@ -213,7 +214,7 @@ def user_edit(user_id: int, request: Request, db: Session = Depends(get_db), cur
 
 @router.post('/{user_id}/edit')
 @require_permission('can_manage_users')
-def user_update(request: Request, user_id: int, password: str = Form(default=''), role: str = Form(...), full_name: str = Form(default=''), is_active: str | None = Form(default=None), can_view_dashboard: str | None = Form(default=None), can_view_assets: str | None = Form(default=None), can_view_maintenance: str | None = Form(default=None), can_view_incidents: str | None = Form(default=None), can_view_resources: str | None = Form(default=None), can_create_assets: str | None = Form(default=None), can_edit_assets: str | None = Form(default=None), can_import_assets: str | None = Form(default=None), can_export_assets: str | None = Form(default=None), can_create_maintenance: str | None = Form(default=None), can_edit_maintenance: str | None = Form(default=None), can_export_maintenance: str | None = Form(default=None), can_create_incidents: str | None = Form(default=None), can_edit_incidents: str | None = Form(default=None), can_export_incidents: str | None = Form(default=None), can_manage_users: str | None = Form(default=None), can_manage_system: str | None = Form(default=None), can_manage_resources: str | None = Form(default=None), can_view_documents: str | None = Form(default=None), can_manage_documents: str | None = Form(default=None), db: Session = Depends(get_db), current_user=None):
+def user_update(request: Request, user_id: int, password: str = Form(default=''), role: str = Form(...), full_name: str = Form(default=''), email: str = Form(default=''), is_active: str | None = Form(default=None), can_view_dashboard: str | None = Form(default=None), can_view_assets: str | None = Form(default=None), can_view_maintenance: str | None = Form(default=None), can_view_incidents: str | None = Form(default=None), can_view_resources: str | None = Form(default=None), can_create_assets: str | None = Form(default=None), can_edit_assets: str | None = Form(default=None), can_import_assets: str | None = Form(default=None), can_export_assets: str | None = Form(default=None), can_create_maintenance: str | None = Form(default=None), can_edit_maintenance: str | None = Form(default=None), can_export_maintenance: str | None = Form(default=None), can_create_incidents: str | None = Form(default=None), can_edit_incidents: str | None = Form(default=None), can_export_incidents: str | None = Form(default=None), can_manage_users: str | None = Form(default=None), can_manage_system: str | None = Form(default=None), can_manage_resources: str | None = Form(default=None), can_view_documents: str | None = Form(default=None), can_manage_documents: str | None = Form(default=None), db: Session = Depends(get_db), current_user=None):
     user_obj = db.get(User, user_id)
     if not user_obj:
         return RedirectResponse('/users/', status_code=303)
@@ -236,7 +237,7 @@ def user_update(request: Request, user_id: int, password: str = Form(default='')
         can_manage_documents=can_manage_documents,
     )
     module_flags, action_flags = _apply_role_defaults(role, module_flags, action_flags)
-    form_user = _build_form_user(role=role, full_name=full_name, is_active=new_is_active, module_flags=module_flags, action_flags=action_flags, existing_user=user_obj)
+    form_user = _build_form_user(role=role, full_name=full_name, email=email, is_active=new_is_active, module_flags=module_flags, action_flags=action_flags, existing_user=user_obj)
     if current_user and current_user.id == user_obj.id and role != 'admin':
         return _render_user_form(request, current_user, user_obj=form_user, error='Không thể tự bỏ quyền admin của chính mình')
     if current_user and current_user.id == user_obj.id and not new_is_active:
@@ -245,6 +246,7 @@ def user_update(request: Request, user_id: int, password: str = Form(default='')
         return _render_user_form(request, current_user, user_obj=form_user, error='Không thể tự gỡ quyền quản trị người dùng của chính mình')
     user_obj.role = role
     user_obj.full_name = full_name.strip() or None
+    user_obj.email = email.strip() or None
     user_obj.is_active = new_is_active
     for key, value in module_flags.items():
         setattr(user_obj, key, value)

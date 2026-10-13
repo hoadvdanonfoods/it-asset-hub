@@ -10,10 +10,11 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.auth import require_module_access, require_permission
-from app.db.models import Asset, Incident, IncidentEvent, Department, Priority
+from app.db.models import Asset, Incident, IncidentEvent, Department, Priority, User
 from app.db.session import get_db
-from app.services.email import send_incident_email_notification
+from app.services.email import send_incident_email_notification, send_incident_resolved_email
 from app.services.zalo import send_zalo_notification
+from app.services.teams import send_teams_notification
 
 router = APIRouter(prefix='/incidents', tags=['incidents'])
 templates = Jinja2Templates(directory='app/templates')
@@ -367,6 +368,16 @@ def incident_create(request: Request, background_tasks: BackgroundTasks, device_
         Phòng_ban=requester_department.strip() or "Không xác định",
     )
     background_tasks.add_task(
+        send_teams_notification,
+        title=f"SỰ CỐ MỚI #{item.id}",
+        description=issue_description.strip(),
+        Mức_độ=priority_label(item.priority),
+        Người_báo=effective_reported_by or "Không xác định",
+        Người_sử_dụng=device_user.strip(),
+        Khu_vực=device_location.strip(),
+        Phòng_ban=requester_department.strip() or "Không xác định",
+    )
+    background_tasks.add_task(
         send_incident_email_notification,
         incident_id=item.id,
         issue_description=issue_description.strip(),
@@ -490,5 +501,28 @@ def incident_update(request: Request, incident_id: int, background_tasks: Backgr
             Trạng_thái=status_label(item.status),
             Mức_độ=priority_label(item.priority),
             Người_báo=item.reported_by or "Không rõ",
+        )
+        background_tasks.add_task(
+            send_teams_notification,
+            title=f"SỰ CỐ ĐÃ XỬ LÝ #{item.id}",
+            description=f"Hướng xử lý: {item.resolution or 'Không có thông tin'}",
+            Trạng_thái=status_label(item.status),
+            Mức_độ=priority_label(item.priority),
+            Người_báo=item.reported_by or "Không rõ",
+        )
+        
+        reporter_email = None
+        if item.reported_by:
+            reporter = db.scalar(select(User).where(or_(User.username == item.reported_by, User.full_name == item.reported_by)).limit(1))
+            if reporter and reporter.email:
+                reporter_email = reporter.email
+                
+        background_tasks.add_task(
+            send_incident_resolved_email,
+            incident_id=item.id,
+            reporter_email=reporter_email,
+            issue_description=item.issue_description,
+            resolution=item.resolution or 'Đã xử lý xong (Không có ghi chú)',
+            priority_label=priority_label(item.priority),
         )
     return RedirectResponse(url=f'/incidents/{incident_id}', status_code=303)

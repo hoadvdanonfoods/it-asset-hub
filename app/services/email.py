@@ -118,3 +118,94 @@ def send_incident_email_notification(incident_id: int, issue_description: str, p
         logger.info(f"Successfully sent incident email notification for ticket #{incident_id} to {', '.join(admin_emails)}")
     except Exception as e:
         logger.exception(f"Failed to send email notification for incident #{incident_id}: {str(e)}")
+
+def send_incident_resolved_email(incident_id: int, reporter_email: str | None, issue_description: str, resolution: str, priority_label: str):
+    if not SMTP_HOST or not SMTP_USERNAME or not SMTP_PASSWORD:
+        logger.info("SMTP configuration is not fully set. Skipping email notification.")
+        return
+
+    try:
+        admin_emails = [email.strip() for email in (ADMIN_EMAIL or "").split(',') if email.strip()]
+        recipients = admin_emails.copy()
+        if reporter_email and reporter_email not in recipients:
+            recipients.append(reporter_email)
+
+        if not recipients:
+            return
+
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"[IT Asset Hub] SỰ CỐ ĐÃ XỬ LÝ XONG #{incident_id} - Ưu tiên: {priority_label}"
+        msg['From'] = SMTP_USERNAME
+        msg['To'] = ", ".join(recipients)
+        
+        detail_url = f"{APP_BASE_URL}/incidents/{incident_id}"
+
+        html_content = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #f8fafc; }}
+                .header {{ background-color: #10b981; color: white; padding: 15px; border-radius: 8px 8px 0 0; font-weight: bold; text-align: center; font-size: 18px; }}
+                .content {{ padding: 20px; background-color: white; border-radius: 0 0 8px 8px; border: 1px solid #f1f5f9; }}
+                table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+                td {{ padding: 10px; border-bottom: 1px solid #f1f5f9; }}
+                td.label {{ font-weight: bold; width: 40%; color: #475569; }}
+                td.value {{ color: #0f172a; }}
+                .desc-box {{ background-color: #f1f5f9; padding: 15px; border-radius: 8px; margin-top: 15px; white-space: pre-wrap; font-style: italic; border-left: 4px solid #cbd5e1; }}
+                .button {{ display: inline-block; padding: 12px 24px; background-color: #10b981; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; text-align: center; }}
+                .footer {{ text-align: center; margin-top: 20px; font-size: 11px; color: #94a3b8; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    Sự Cố IT Đã Được Xử Lý Xong
+                </div>
+                <div class="content">
+                    <p>Chào bạn,</p>
+                    <p>Sự cố <strong>#INC-{incident_id:04d}</strong> đã được đội ngũ IT xử lý hoàn tất.</p>
+                    
+                    <table>
+                        <tr>
+                            <td class="label">Mã ticket:</td>
+                            <td class="value">INC-{incident_id:04d}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Mức độ ưu tiên:</td>
+                            <td class="value"><span style="color: #10b981; font-weight: bold;">{priority_label}</span></td>
+                        </tr>
+                    </table>
+
+                    <div style="font-weight: bold; margin-top: 20px; color: #475569;">Nội dung sự cố:</div>
+                    <div class="desc-box">{issue_description}</div>
+
+                    <div style="font-weight: bold; margin-top: 20px; color: #475569;">Hướng xử lý / Kết quả:</div>
+                    <div class="desc-box" style="border-left-color: #10b981;">{resolution}</div>
+
+                    <div style="text-align: center;">
+                        <a href="{detail_url}" class="button" style="color: white;">Xem chi tiết trên IT Asset Hub</a>
+                    </div>
+                </div>
+                <div class="footer">
+                    Email tự động gửi từ hệ thống IT Asset Hub. Vui lòng không trả lời email này.
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        msg.attach(MIMEText(html_content, 'html'))
+
+        if SMTP_USE_SSL:
+            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT)
+        else:
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT)
+            if SMTP_USE_TLS:
+                server.starttls()
+        
+        server.login(SMTP_USERNAME, SMTP_PASSWORD)
+        server.sendmail(SMTP_USERNAME, recipients, msg.as_string())
+        server.quit()
+        logger.info(f"Successfully sent resolved email notification for ticket #{incident_id} to {', '.join(recipients)}")
+    except Exception as e:
+        logger.exception(f"Failed to send resolved email notification for incident #{incident_id}: {str(e)}")

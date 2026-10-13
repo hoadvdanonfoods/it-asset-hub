@@ -15,6 +15,7 @@ class User(Base):
     password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     role: Mapped[str] = mapped_column(String(20), default='user')
     full_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    email: Mapped[str | None] = mapped_column(String(120), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     can_view_dashboard: Mapped[bool] = mapped_column(Boolean, default=True)
     can_view_assets: Mapped[bool] = mapped_column(Boolean, default=True)

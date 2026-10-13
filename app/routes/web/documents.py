@@ -20,7 +20,7 @@ router = APIRouter(prefix='/documents', tags=['documents'])
 templates = Jinja2Templates(directory='app/templates')
 DOCUMENTS_DIR = DATA_DIR / 'uploads' / 'documents'
 DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
-ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx'}
+ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx', '.jpg', '.jpeg', '.png'}
 
 
 def _render_form(request: Request, current_user, *, item=None, error: str | None = None):
@@ -68,7 +68,7 @@ def document_new(request: Request, current_user=None):
 def document_create(request: Request, title: str = Form(...), category: str = Form(default='Biểu mẫu'), description: str = Form(default=''), file: UploadFile = File(...), db: Session = Depends(get_db), current_user=None):
     ext = Path(file.filename or '').suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
-        return _render_form(request, current_user, error='Chỉ hỗ trợ PDF, Word hoặc Excel.')
+        return _render_form(request, current_user, error='Chỉ hỗ trợ file PDF, Word, Excel hoặc hình ảnh (JPG, PNG).')
     content = file.file.read()
     if not content:
         return _render_form(request, current_user, error='File upload đang rỗng.')
@@ -89,7 +89,6 @@ def document_create(request: Request, title: str = Form(...), category: str = Fo
         is_active=True,
     )
     db.add(item)
-    db.commit()
     db.commit()
     return RedirectResponse('/documents/', status_code=303)
 
@@ -215,6 +214,15 @@ def document_download(document_id: int, request: Request, db: Session = Depends(
     return FileResponse(path=item.stored_path, filename=item.original_filename, media_type=item.mime_type or 'application/octet-stream')
 
 
+@router.get('/{document_id}/view')
+@require_module_access('documents')
+def document_view(document_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
+    item = db.get(Document, document_id)
+    if not item or not item.is_active:
+        return RedirectResponse('/documents/', status_code=303)
+    return FileResponse(path=item.stored_path, filename=item.original_filename, media_type=item.mime_type or 'application/octet-stream', content_disposition_type='inline')
+
+
 @router.get('/{document_id}/edit', response_class=HTMLResponse)
 @require_permission('can_manage_documents')
 def document_edit(document_id: int, request: Request, db: Session = Depends(get_db), current_user=None):
@@ -232,7 +240,7 @@ def document_update(document_id: int, request: Request, title: str = Form(...), 
     if replace_file and (replace_file.filename or '').strip():
         ext = Path(replace_file.filename or '').suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
-            return _render_form(request, current_user, item=item, error='Chỉ hỗ trợ PDF, Word hoặc Excel.')
+            return _render_form(request, current_user, item=item, error='Chỉ hỗ trợ file PDF, Word, Excel hoặc hình ảnh (JPG, PNG).')
         content = replace_file.file.read()
         if content:
             old_path = Path(item.stored_path)

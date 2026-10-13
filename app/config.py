@@ -39,6 +39,9 @@ ZALO_BOT_URL = os.getenv('ZALO_BOT_URL', '')
 ZALO_BOT_TOKEN = os.getenv('ZALO_BOT_TOKEN', '')
 ZALO_NOTIFICATION_TARGET = os.getenv('ZALO_NOTIFICATION_TARGET', '')
 
+# Microsoft Teams Notification
+TEAMS_WEBHOOK_URL = os.getenv('TEAMS_WEBHOOK_URL', '')
+
 # SMTP Configuration for Incident Reports
 SMTP_HOST = os.getenv('SMTP_HOST', '')
 SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))

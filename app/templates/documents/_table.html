@@ -28,8 +28,18 @@
           </td>
           <td class="px-6 py-5 font-bold text-on-surface group-hover:text-sky-700 transition-colors">
             <div class="flex items-center gap-2.5">
+              {% if item.original_filename and item.original_filename.lower().endswith(('.jpg', '.jpeg', '.png')) %}
+              <span class="p-2 rounded-xl bg-purple-500/10 text-purple-600" title="Hình ảnh"><i data-lucide="image" class="w-4 h-4"></i></span>
+              {% elif item.original_filename and item.original_filename.lower().endswith(('.xls', '.xlsx')) %}
+              <span class="p-2 rounded-xl bg-emerald-500/10 text-emerald-600" title="Excel"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i></span>
+              {% elif item.original_filename and item.original_filename.lower().endswith('.pdf') %}
+              <span class="p-2 rounded-xl bg-rose-500/10 text-rose-600" title="PDF"><i data-lucide="file-text" class="w-4 h-4"></i></span>
+              {% elif item.original_filename and item.original_filename.lower().endswith(('.doc', '.docx')) %}
+              <span class="p-2 rounded-xl bg-blue-500/10 text-blue-600" title="Word"><i data-lucide="file-text" class="w-4 h-4"></i></span>
+              {% else %}
               <span class="p-2 rounded-xl bg-sky-500/10 text-sky-600"><i data-lucide="file-text" class="w-4 h-4"></i></span>
-              {{ item.title }}
+              {% endif %}
+              <span class="line-clamp-2" title="{{ item.title }}">{{ item.title }}</span>
             </div>
           </td>
           <td class="px-6 py-5">
@@ -43,10 +53,17 @@
             <p class="max-w-[220px] line-clamp-2" title="{{ item.description }}">{{ item.description or '-' }}</p>
           </td>
           <td class="px-6 py-5">
-            <a href="/documents/{{ item.id }}/download" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/5 text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 font-medium text-xs border border-sky-500/10 transition-all">
-              <i data-lucide="download" class="w-3.5 h-3.5"></i>
-              <span class="truncate max-w-[120px]">{{ item.original_filename }}</span>
-            </a>
+            <div class="flex items-center gap-1.5">
+              <a href="/documents/{{ item.id }}/download" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-sky-500/5 text-sky-600 hover:bg-sky-500/10 hover:text-sky-700 font-medium text-xs border border-sky-500/10 transition-all" title="Tải về tập tin">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span class="truncate max-w-[120px]">{{ item.original_filename }}</span>
+              </a>
+              {% if item.original_filename and item.original_filename.lower().endswith(('.jpg', '.jpeg', '.png', '.pdf')) %}
+              <a href="/documents/{{ item.id }}/view" target="_blank" class="p-1.5 rounded-xl bg-surface-container-highest/60 hover:bg-sky-500/10 text-on-surface/50 hover:text-sky-600 transition-all border border-outline-variant/10" title="Xem trực tiếp trong tab mới">
+                <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              </a>
+              {% endif %}
+            </div>
           </td>
           <td class="px-6 py-5">
             {% if item.uploaded_by %}
